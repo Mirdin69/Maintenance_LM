@@ -1,47 +1,40 @@
 # La Mache · Atelier
 
-Application destinée aux enseignants du lycée La Mache : parc de systèmes pédagogiques, maintenance, demandes d’achat de matériel et consommables, planning des TP par année scolaire.
+Maintenance des systèmes pédagogiques, demandes d’achat, planning des TP et gestion des enseignants autorisés. React + TypeScript + Vite, Cloudflare Pages et Supabase. Connexion par lien email : aucun identifiant Google requis.
 
-- React + TypeScript + Vite, hébergés sur **Cloudflare Pages**.
-- Supabase : PostgreSQL, authentification Google et règles d’accès.
-- Accès aux données réservé à un compte Google vérifié `@lamache.org`.
-- L’aperçu public contient uniquement des exemples, non enregistrables.
-- Historique des interventions et demandes d’achat conservé dans `lm_history`.
-- Les réservations simultanées d’un même système sont bloquées dans une transaction PostgreSQL.
-- Un système utilisé dans un suivi doit être archivé plutôt que supprimé.
-- Tous les enseignants autorisés peuvent gérer les systèmes et les statuts des demandes ; aucun circuit d’approbation par rôle n’est encore défini.
-
-## Installation, dans cet ordre
-
-### 1. Préparer Supabase
+## Installer ou mettre à jour Supabase
 
 Projet : `https://dzktjhiosaypezrvhhjw.supabase.co`.
 
-Utiliser un projet dédié à cette application. Dans **SQL Editor**, ouvrir une nouvelle requête, copier le contenu de [`supabase/01_schema.sql`](supabase/01_schema.sql) et cliquer sur **Run**. Ce script initial s’exécute une seule fois ; il ne supprime pas de données existantes et ne crée aucun exemple.
+- Installation neuve : exécuter `supabase/01_schema.sql` une fois dans **SQL Editor**, puis `supabase/03_email_allowlist.sql`.
+- Si les scripts 01 et 02 ont déjà été exécutés : exécuter seulement **03_email_allowlist.sql**. Les systèmes, interventions, demandes et réservations sont conservés. Ne pas relancer 01.
+- Le script 02 est l’ancienne configuration Google : ne pas le réexécuter après 03.
 
-Faire ensuite de même avec [`supabase/02_signup_hook.sql`](supabase/02_signup_hook.sql). Dans **Authentication → Hooks → Before User Created**, sélectionner la fonction PostgreSQL `public.lm_before_user_created`, puis activer le hook. Il refuse les nouvelles inscriptions hors Google `@lamache.org` pour tout le projet Supabase. Les protections des données restent actives même si ce hook n’est pas activé.
+Dans **Authentication → Hooks → Before User Created**, activer la fonction PostgreSQL **public.lm_before_user_created**. Si elle est déjà active, 03 remplace sa définition sans changer son nom. Ce hook refuse les inscriptions hors liste et s’applique à tout le projet : utiliser un projet dédié.
 
-Dans **Authentication → Sign In / Providers**, activer Google. Désactiver les connexions par email et les inscriptions anonymes si elles ne sont pas nécessaires dans ce projet dédié.
+### Premier enseignant
 
-### 2. Configurer Google
+La liste est vide après installation. Ajouter votre propre adresse dans **SQL Editor**, en remplaçant le texte d’exemple ci-dessous :
 
-Dans Google Cloud Console, créer ou choisir un projet. Configurer Google Auth Platform / l’écran de consentement OAuth, puis créer un client OAuth de type **Web application**.
-
-Avec l’administrateur Google Workspace du lycée, utiliser une audience **Internal / Interne** lorsque le projet appartient à l’organisation La Mache. Sinon, configurer l’audience et les utilisateurs de test autorisés pendant les essais, puis la publication de l’application selon les règles Google. L’administrateur du lycée peut avoir à autoriser l’application.
-
-URI de redirection autorisé :
-
-```
-https://dzktjhiosaypezrvhhjw.supabase.co/auth/v1/callback
+```sql
+insert into public.lm_allowed_teachers(email)
+values ('votre.adresse@lamache.org')
+on conflict (email) do update set enabled = true;
 ```
 
-Coller le client ID et le client secret dans le fournisseur Google de Supabase. Le client secret reste dans Supabase : ne pas le mettre dans GitHub, Cloudflare ou le navigateur.
+Ne pas enregistrer les adresses réelles dans GitHub. Les prochains enseignants sont ajoutés et retirés via la page **Utilisateurs**. Chaque enseignant autorisé a ce droit. Retirer une adresse coupe immédiatement son accès aux données, y compris si une session est encore ouverte. La suppression du dernier accès est bloquée. Un enseignant peut se retirer si un autre accès actif subsiste. Le retrait supprime l’autorisation, pas le compte Supabase Auth ni l’historique des interventions.
 
-La connexion demande à Google de proposer le domaine `lamache.org`. Ce paramètre facilite le choix du compte ; il ne constitue pas une protection. L’accès est contrôlé côté Supabase à partir de l’email confirmé et de l’identité Google du compte.
+Dans **Authentication → Sign In / Providers**, activer **Email**, conserver la confirmation des emails, désactiver Google si inutilisé et ne pas activer les inscriptions anonymes. Conserver les modèles email comportant le lien `{{ .ConfirmationURL }}` pour **Confirm signup** et **Magic link**. L’enseignant saisit son adresse puis ouvre le lien dans le même navigateur.
 
-### 3. Relier Cloudflare à GitHub
+### Envoi des emails
 
-Dans Cloudflare, ouvrir **Workers & Pages**, choisir la création d’un projet **Pages** et l’import d’un dépôt Git existant. Autoriser GitHub pour le dépôt `Mirdin69/Maintenance_LM`.
+Le service email par défaut de Supabase est destiné aux essais et n’envoie qu’aux adresses de l’équipe du projet. Pour les enseignants, configurer un serveur **SMTP** dans les réglages d’envoi d’emails de Supabase (service du lycée ou prestataire d’envoi).
+
+Les identifiants SMTP restent dans Supabase. Ne pas les mettre dans GitHub ou dans les variables VITE. Il n’est pas nécessaire de donner aux enseignants un accès administrateur au projet Supabase.
+
+## Héberger sur Cloudflare Pages via GitHub
+
+Dans Cloudflare **Workers & Pages**, créer un projet **Pages** depuis le dépôt `Mirdin69/Maintenance_LM`.
 
 | Réglage | Valeur |
 |---|---|
@@ -50,45 +43,35 @@ Dans Cloudflare, ouvrir **Workers & Pages**, choisir la création d’un projet 
 | Commande de compilation | `npm run build` |
 | Dossier de sortie | `dist` |
 | Dossier racine | racine du dépôt |
-| Version Node | `22` ou plus (`NODE_VERSION=22` si nécessaire) |
+| Version Node | `22` ou plus |
 
-Ajouter les variables de compilation pour la production :
+Variables de compilation :
 
 ```
 VITE_SUPABASE_URL=https://dzktjhiosaypezrvhhjw.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=la_cle_publishable_de_ton_projet
+VITE_SUPABASE_PUBLISHABLE_KEY=la_cle_publishable_du_projet
 ```
 
-La clé **publishable**, préfixe `sb_publishable_…`, est disponible dans les réglages des clés API de Supabase. La clé historique **anon** peut aussi être utilisée. Cette clé publique est incluse dans le navigateur ; la protection repose sur les règles d’accès. Ne jamais utiliser une clé **secret**, **service_role**, un mot de passe PostgreSQL ou un jeton d’administration à sa place.
+Utiliser la clé **publishable** (`sb_publishable_…`) disponible dans les réglages API Supabase, ou la clé historique **anon**. Jamais de clé **secret**, **service_role** ou de mot de passe PostgreSQL : ces variables sont publiques dans le navigateur. Les droits sont contrôlés dans la base, pas par le secret de cette clé. Si les variables sont absentes, seul l’aperçu fonctionne. Redéployer après une modification des variables.
 
-Si aucune variable n’est renseignée, l’application propose seulement son aperçu : elle ne simule pas une connexion fonctionnelle. Après toute modification de variable, relancer un déploiement.
+Après publication, dans Supabase **Authentication → URL Configuration**, renseigner l’adresse Cloudflare comme **Site URL**, et cette même adresse avec `/` final dans **Redirect URLs**. Ne pas inventer l’adresse Cloudflare : utiliser celle fournie après déploiement. Faire de même pour un éventuel domaine du lycée.
 
-### 4. Autoriser l’adresse du site
+## Protections et fonctionnement
 
-Après le premier déploiement Cloudflare, copier l’adresse exacte `https://nom-du-projet.pages.dev` fournie par Cloudflare.
+- Les enseignants autorisés partagent les données ; aucun circuit d’approbation par rôle n’est défini.
+- RLS refuse les lectures aux comptes hors liste. Les mutations PostgreSQL vérifient à nouveau le compte, son email confirmé et son autorisation.
+- La liste des enseignants est visible seulement aux enseignants autorisés. Aucun visiteur public ne peut la lire ou la modifier.
+- Les réservations se chevauchant sur un même système sont refusées dans une transaction avec verrouillage.
+- Une nouvelle réservation est refusée pour un système indisponible. Un changement de statut d’un système ne supprime pas les réservations déjà enregistrées.
+- Un système lié à un suivi doit être archivé plutôt que supprimé.
+- Les mises à jour des interventions et achats conservent leur auteur et leurs remarques dans l’historique.
+- L’aperçu public utilise uniquement des exemples non enregistrables.
 
-Dans Supabase **Authentication → URL Configuration** :
+## Vérifier avant ouverture
 
-- **Site URL** : cette adresse.
-- **Redirect URLs** : cette même adresse avec `/` à la fin.
+Tester la connexion email réelle, la persistance après rechargement, le refus d’un compte hors liste, l’ajout d’un collègue, puis le retrait de son accès alors qu’il est connecté. Vérifier également les réservations concurrentes depuis deux navigateurs. L’envoi d’email et l’hébergement réels nécessitent les réglages des comptes et ne sont pas simulés par les tests.
 
-Si un domaine du lycée est ajouté ultérieurement, ajouter sa redirection exacte et actualiser la Site URL. Les previews Cloudflare ne sont pas automatiquement autorisées pour Google ; ne pas ajouter de wildcard large sans nécessité.
-
-### 5. Vérifier avant l’ouverture aux enseignants
-
-1. Se connecter avec un compte Google `@lamache.org` : accès au tableau de bord vide.
-2. Essayer un compte Google extérieur : inscription refusée ou aucun accès aux données.
-3. Ajouter un système puis une intervention. Recharger : données conservées.
-4. Modifier l’intervention : l’historique affiche les mises à jour et leurs auteurs.
-5. Planifier un TP ; tenter un second TP sur le même système avec un créneau qui chevauche le premier : refus.
-6. Tester deux réservations simultanées depuis deux navigateurs.
-7. Passer le système en maintenance : toute nouvelle réservation est refusée.
-8. Vérifier qu’un système lié à un historique ne peut être supprimé, mais peut être archivé.
-9. Se déconnecter : les données du lycée ne sont plus visibles.
-
-Le code peut être public sans rendre les données publiques. Pour un dépôt privé, modifier sa visibilité dans GitHub et conserver l’autorisation de l’intégration Cloudflare.
-
-## Développement et vérifications
+## Développement
 
 ```
 npm ci
@@ -99,12 +82,11 @@ npm test
 npm run build
 ```
 
-Pour une connexion OAuth locale, autoriser explicitement `http://localhost:5173/` dans les redirections Supabase. Ne pas réutiliser une clé secrète.
+Pour un test local, autoriser explicitement `http://localhost:5173/` dans les redirections Supabase. Les tests PostgreSQL embarqués couvrent les protections, l’historique, les réservations, la migration et la gestion des enseignants, sans accéder au projet réel.
 
-Les tests utilisent un PostgreSQL embarqué pour vérifier le SQL réel, les règles d’accès, les contrôles des achats, les réservations et l’archivage. Ils n’accèdent pas au projet Supabase réel. La connexion Google réelle et le déploiement doivent être vérifiés après configuration des comptes.
-
-## Références officielles
+## Documentation officielle
 
 - [Cloudflare Pages : React](https://developers.cloudflare.com/pages/framework-guides/deploy-a-react-site/)
-- [Supabase : connexion Google](https://supabase.com/docs/guides/auth/social-login/auth-google)
-- [Supabase : restriction des inscriptions](https://supabase.com/docs/guides/auth/auth-hooks/before-user-created-hook)
+- [Supabase : connexion par email](https://supabase.com/docs/guides/auth/auth-email-passwordless)
+- [Supabase : SMTP](https://supabase.com/docs/guides/auth/auth-smtp)
+- [Supabase : restrictions d’inscription](https://supabase.com/docs/guides/auth/auth-hooks/before-user-created-hook)

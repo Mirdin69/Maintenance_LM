@@ -61,5 +61,26 @@ test('Supabase schema: authorization, bookings, purchases and history',async t=>
   assert((await hook('teacher@lamache.org.evil.com','google')).error);
   assert((await hook('teacher@lamache.org','email')).error);
  });
+ await t.test('email allowlist migration preserves records and enables delegated access management',async()=>{
+  await db.exec(await readFile(new URL('../supabase/03_email_allowlist.sql',import.meta.url),'utf8'));
+  await db.query("insert into public.lm_allowed_teachers(email) values ($1)",['test@lamache.org']);
+  const manage=(address,remove,user=teacher)=>as(user,tx=>tx.query('select public.lm_manage_teacher($1,$2)',[address,remove]));
+  const rows=await as(teacher,tx=>tx.query('select * from public.lm_records'));assert(rows.rows.length>0);
+  await assert.rejects(manage('test@lamache.org',true),/dernier enseignant/);
+  await assert.rejects(manage('test@example.org',false),/adresse @lamache/);
+  await assert.rejects(manage('password@lamache.org',false,outsider),/enseignants autorisés/);
+  const hidden=await as(outsider,tx=>tx.query('select * from public.lm_allowed_teachers'));assert.equal(hidden.rows.length,0);
+  await manage('password@lamache.org',false);
+  const emailAccess=await as(noGoogle,tx=>tx.query('select public.lm_is_teacher() as allowed'));assert.equal(emailAccess.rows[0].allowed,true);
+  await manage('unconfirmed@lamache.org',false,noGoogle);
+  const unverified=await as(unconfirmed,tx=>tx.query('select public.lm_is_teacher() as allowed'));assert.equal(unverified.rows[0].allowed,false);
+  await manage('password@lamache.org',true);
+  const revoked=await as(noGoogle,tx=>tx.query('select public.lm_is_teacher() as allowed'));assert.equal(revoked.rows[0].allowed,false);
+  await assert.rejects(manage('test@lamache.org',true,noGoogle),/enseignants autorisés/);
+  const hook=async(email,provider)=>as(null,async tx=>(await tx.query('select public.lm_before_user_created($1::jsonb) as result',[JSON.stringify({user:{email,app_metadata:{provider}}})])).rows[0].result,'supabase_auth_admin');
+  assert.deepEqual(await hook('test@lamache.org','email'),{});
+  assert((await hook('unlisted@lamache.org','email')).error);
+  assert((await hook('test@lamache.org','google')).error);
+ });
  await db.close();
 });
