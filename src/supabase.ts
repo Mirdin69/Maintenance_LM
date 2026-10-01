@@ -1,0 +1,7 @@
+import {createClient} from '@supabase/supabase-js';
+export const configured=!!import.meta.env.VITE_SUPABASE_URL&&!!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+export const supabase=configured?createClient(import.meta.env.VITE_SUPABASE_URL,import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}}):null;
+export async function signIn(){if(!supabase)throw Error('La connexion n’est pas encore configurée.');const {error}=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+'/',queryParams:{hd:'lamache.org',prompt:'select_account'}}});if(error)throw error;}
+export async function signOut(){if(supabase){const {error}=await supabase.auth.signOut();if(error)throw error;}}
+export async function loadData(){if(!supabase)throw Error('Connexion indisponible.');const results=await Promise.all([supabase.from('lm_systems').select('*').order('created',{ascending:false}),supabase.from('lm_records').select('*').order('created',{ascending:false}),supabase.from('lm_history').select('*').order('created',{ascending:false})]);for(const r of results)if(r.error)throw r.error;return {systems:results[0].data??[],records:results[1].data??[],history:results[2].data??[]};}
+export async function mutate(payload:Record<string,unknown>){if(!supabase)throw Error('Connexion indisponible.');const {error}=await supabase.rpc('lm_mutate',{payload});if(error)throw error;}
