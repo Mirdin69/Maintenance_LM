@@ -32,7 +32,15 @@ Le service email par défaut de Supabase est destiné aux essais et n’envoie q
 
 Les identifiants SMTP restent dans Supabase. Ne pas les mettre dans GitHub ou dans les variables VITE. Il n’est pas nécessaire de donner aux enseignants un accès administrateur au projet Supabase.
 
-## Héberger sur Cloudflare Pages via GitHub
+## Héberger sur Cloudflare Workers via GitHub
+
+Le dépôt comporte `wrangler.jsonc` pour le Worker **maintenance-lm** avec assets statiques. Le mode `single-page-application` sert automatiquement la page React pour les navigations. Aucun fichier `_redirects` n’est nécessaire.
+
+Pour le projet Workers déjà créé, conserver la commande de déploiement **`npx wrangler deploy`**. Wrangler exécute `npm run build` grâce à sa configuration, puis publie `dist`. Si une commande de compilation séparée est configurée dans le tableau de bord, elle peut rester vide pour éviter une compilation en double.
+
+Les variables `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY` doivent être disponibles pendant la compilation. Ajouter ensuite l’adresse `workers.dev` exacte dans Supabase, comme décrit ci-dessous.
+
+## Autre possibilité : Cloudflare Pages via GitHub
 
 Dans Cloudflare **Workers & Pages**, créer un projet **Pages** depuis le dépôt `Mirdin69/Maintenance_LM`.
 
