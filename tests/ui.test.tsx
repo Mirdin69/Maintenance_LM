@@ -274,7 +274,8 @@ describe('nouvelles fonctions', () => {
     await userEvent.type(await screen.findByLabelText('Rechercher'), 'zelio');
     const hit = await screen.findByRole('option', { name: /Banc Zelio/ });
     await userEvent.click(hit);
-    await waitFor(() => expect(window.location.hash).toBe('#systemes'));
+    await waitFor(() => expect(window.location.hash).toBe('#admin'));
+    expect(await screen.findByRole('heading', { name: 'Systèmes pédagogiques' })).toBeInTheDocument();
   });
 
   it('signale une panne : intervention créée, système hors service, alerte affichée', async () => {
@@ -340,6 +341,15 @@ describe('nouvelles fonctions', () => {
     await userEvent.click(btn);
     await userEvent.click(btn);
     await waitFor(async () => expect((await api.select<{ name: string }>('systems')).some((s) => s.name === 'Système éphémère')).toBe(false));
+  });
+
+  it('les systèmes ne sont plus dans la barre d’onglets mais dans Administration', async () => {
+    await open('admin', 'accueil');
+    const nav = within(await screen.findByRole('navigation', { name: 'Sections' }));
+    expect(nav.queryByRole('button', { name: 'Systèmes' })).toBeNull();
+    await userEvent.click(nav.getByRole('button', { name: 'Administration' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    expect(await screen.findByRole('heading', { name: 'Systèmes pédagogiques' })).toBeInTheDocument();
   });
 
   it('un enseignant ne voit pas l’historique', async () => {

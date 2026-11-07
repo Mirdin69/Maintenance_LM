@@ -29,7 +29,6 @@ type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'main
 const TABS: Array<[TabId, string]> = [
   ['accueil', 'Accueil'],
   ['semainier', 'Semainier'],
-  ['systemes', 'Systèmes'],
   ['edt', 'Emploi du temps'],
   ['occupation', 'Occupation'],
   ['maintenance', 'Maintenance'],
@@ -44,7 +43,7 @@ const TABS: Array<[TabId, string]> = [
 
 const fromHash = (): TabId => {
   const h = window.location.hash.slice(1);
-  return TABS.some(([id]) => id === h) ? (h as TabId) : 'accueil';
+  return h === 'systemes' || TABS.some(([id]) => id === h) ? (h as TabId) : 'accueil';
 };
 
 export function App() {
@@ -225,6 +224,11 @@ function Shell() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
   const go = (t: string) => {
+    // Les systèmes se gèrent dans Administration ; les autres comptes y accèdent encore par les liens de l'application
+    if (t === 'systemes' && isAdmin) {
+      try { window.localStorage.setItem('parc:admin-sec', 'systemes'); } catch { /* ignoré */ }
+      t = 'admin';
+    }
     window.location.hash = t;
     setTab(t as TabId);
     window.scrollTo(0, 0);
