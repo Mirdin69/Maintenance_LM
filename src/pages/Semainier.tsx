@@ -118,7 +118,7 @@ function Year({ groups, tps, cells, weekdays, from, to, level, canWrite, teacher
         if (p) return p.label;
         const c = cells.get(cellKey(d, g));
         const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
-        return tp ? `${tp.code ?? tp.title} (${teacherOf(tp)})` : c?.label ?? '';
+        return tp ? `${domainLabel(tp.domain)} (${teacherOf(tp)})` : c?.label ?? '';
       })]);
     }
     downloadBlob(`semainier-${level}.csv`, toCsv(rows));
