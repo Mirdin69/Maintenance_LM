@@ -42,7 +42,8 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Fiches** séquence et séance : saisie, partage entre collègues, impression.
 - **Images** des systèmes, outils et logos : collez le lien de partage d'un fichier du Drive, réglé sur « Tous les utilisateurs disposant du lien ». Si votre Drive est limité à l'établissement, les images ne s'afficheront que pour les personnes connectées à leur compte Google du lycée dans le même navigateur.
 - **Documents joints** (Word, PDF, Excel) sur les TP et les fiches : collez le lien de partage du fichier du Drive ; un bouton « Aperçu » l'affiche dans la page (aperçu limité à Google Drive/Docs, sinon lien « Ouvrir »). Une fiche séance se rattache à une fiche séquence.
-- Appliquez dans l'ordre **`0002_semainier.sql`** puis **`0003_documents.sql`**, après `0001_init.sql`.
+- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql` puis **`0004_stockage.sql`**, après `0001_init.sql`.
+- Documents : dépôt direct de PDF, Word, Excel, PowerPoint ou OpenDocument (10 Mo max, bucket privé `documents`, lecture réservée aux comptes actifs). Aperçu intégré des PDF, .docx et .xlsx ; les .doc, .xls et .ppt se téléchargent. Les liens Google Drive restent possibles.
 
 ## Salles et occupation
 

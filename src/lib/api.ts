@@ -66,6 +66,23 @@ export const api: Api = {
     },
   },
 
+  storage: {
+    async upload(path, file) {
+      const { error } = await db().storage.from('documents').upload(path, file, { contentType: file.type || undefined, upsert: false });
+      if (error) fail(error);
+    },
+    async download(path) {
+      const { data, error } = await db().storage.from('documents').download(path);
+      if (error || !data) fail(error ?? { message: 'Fichier introuvable.' });
+      return data;
+    },
+    async remove(paths) {
+      if (!paths.length) return;
+      const { error } = await db().storage.from('documents').remove(paths);
+      if (error) fail(error);
+    },
+  },
+
   async select<T>(table: string, q: Query = {}) {
     const rows: T[] = [];
     const order = q.order ?? (PK[table] ?? ['id']).map((c) => [c, 'asc'] as [string, 'asc' | 'desc']);

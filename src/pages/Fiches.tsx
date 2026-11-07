@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { api } from '@/lib/api';
+import { dropFiles } from '@/lib/docs';
 import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
 import { COMPETENCES, DOMAINS, LEVELS } from '@/lib/domain';
@@ -7,7 +8,7 @@ import { fmtStamp } from '@/lib/dates';
 import type { Fiche, FicheKind, Level } from '@/lib/types';
 import { ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
 import { DocsEditor, DocsViewer } from '@/components/Docs';
-import { asDocs, cleanDocs, type Doc } from '@/lib/docs';
+import { asDocs, cleanDocs, orphanPaths, type Doc } from '@/lib/docs';
 
 interface Activity { activite: string; professeur: string; eleve: string; outils: string }
 interface Data {
@@ -87,6 +88,7 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
       if (id) await api.update('fiches', { id }, row);
       else id = ((await api.insert<Fiche>('fiches', row))[0] as Fiche).id;
     }, { ok: 'Fiche enregistrée.', tables: ['fiches'] });
+    if (ok && fiche) void dropFiles(orphanPaths(asDocs(fiche.documents), row.documents));
     if (ok && id) onSaved(id);
   };
 
@@ -108,7 +110,7 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
         {ro && canEdit && <button className="btn sm" onClick={onEdit}>Modifier</button>}
         {editable && <button className="btn sm" onClick={() => void save()}>Enregistrer</button>}
         <button className="btn ghost sm" onClick={() => window.print()}>Imprimer</button>
-        {fiche && canEdit && <ConfirmButton onConfirm={async () => { if (await act(() => api.remove('fiches', { id: fiche.id }), { ok: 'Fiche supprimée.', tables: ['fiches'] })) onClose(); }}>Supprimer</ConfirmButton>}
+        {fiche && canEdit && <ConfirmButton onConfirm={async () => { if (await act(() => api.remove('fiches', { id: fiche.id }), { ok: 'Fiche supprimée.', tables: ['fiches'] })) { void dropFiles(orphanPaths(asDocs(fiche.documents), [])); onClose(); } }}>Supprimer</ConfirmButton>}
       </div>
       <section className="panel form fiche-sheet">
         <Field label="Titre *" wide>{ro ? <b>{title}</b> : <input className="in" value={title} maxLength={160} onChange={(e) => setTitle(e.target.value)} />}</Field>

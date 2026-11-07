@@ -9,7 +9,7 @@ import { sessionConflicts } from '@/lib/conflicts';
 import type { Level, Tp } from '@/lib/types';
 import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
 import { DocsEditor, DocsViewer } from '@/components/Docs';
-import { asDocs, cleanDocs, type Doc } from '@/lib/docs';
+import { asDocs, cleanDocs, dropFiles, orphanPaths, type Doc } from '@/lib/docs';
 
 type Sub = 'week' | 'tps' | 'usage';
 
@@ -204,6 +204,7 @@ function Catalogue() {
       documents: cleanDocs(docs),
     };
     const ok = await act(() => (editing ? api.update('tps', { id: editing.id }, row) : api.insert('tps', row)), { ok: editing ? 'TP modifié.' : 'TP ajouté.', tables: ['tps'] });
+    if (ok && editing) void dropFiles(orphanPaths(asDocs(editing.documents), row.documents));
     if (ok) { edit(null); setFormKey((k) => k + 1); }
   };
 
@@ -245,7 +246,7 @@ function Catalogue() {
                 <td>{t.competences.join(', ') || '—'}</td>
                 <td>{asDocs(t.documents).length ? <button className="btn ghost sm" aria-pressed={viewing === t.id} onClick={() => setViewing(viewing === t.id ? null : t.id)}>{asDocs(t.documents).length} document{asDocs(t.documents).length > 1 ? 's' : ''}</button> : <span className="muted">—</span>}</td>
                 {canWrite && <td><div className="row"><button className="btn ghost sm" onClick={() => { edit(t); window.scrollTo(0, 0); }}>Modifier</button>
-                  {isAdmin && <ConfirmButton onConfirm={() => void act(() => api.remove('tps', { id: t.id }), { ok: 'TP supprimé.', tables: ['tps', 'progress', 'timetable_slots', 'sessions'] })}>Supprimer</ConfirmButton>}</div></td>}
+                  {isAdmin && <ConfirmButton onConfirm={async () => { if (await act(() => api.remove('tps', { id: t.id }), { ok: 'TP supprimé.', tables: ['tps', 'progress', 'timetable_slots', 'sessions'] })) void dropFiles(orphanPaths(asDocs(t.documents), [])); }}>Supprimer</ConfirmButton>}</div></td>}
               </tr>))}</tbody>
           </table></div>
         )}

@@ -158,7 +158,7 @@ describe('documents et séquences', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
     await userEvent.click(await screen.findByText('Ajouter un TP'));
     await userEvent.type(screen.getByLabelText(/Titre \*/), 'TP avec document');
-    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter un document' }));
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter un lien' }));
     await userEvent.type(screen.getByLabelText('Titre du document 1'), 'Sujet.docx');
     await userEvent.type(screen.getByLabelText('Lien du document 1'), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view');
     await userEvent.click(screen.getByRole('button', { name: 'Ajouter' }));
@@ -170,6 +170,37 @@ describe('documents et séquences', () => {
     expect(frame.getAttribute('sandbox')).toContain('allow-scripts');
     expect(screen.getByText('Word')).toBeInTheDocument();
   });
+  it('dépose un PDF et un Excel sur un TP et les prévisualise', async () => {
+    (URL as unknown as Record<string, unknown>).createObjectURL = () => 'blob:test';
+    (URL as unknown as Record<string, unknown>).revokeObjectURL = () => {};
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    wb.addWorksheet('Suivi').addRows([['Nom', 'Note'], ['Dupont', 'Valeur-12']]);
+    const xlsx = new File([await wb.xlsx.writeBuffer()], 'suivi.xlsx');
+    const pdf = new File(['%PDF-1.4'], 'cours.pdf', { type: 'application/pdf' });
+    await open('admin', 'planning');
+    await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
+    await userEvent.click(await screen.findByText('Ajouter un TP'));
+    await userEvent.type(screen.getByLabelText(/Titre \*/), 'TP fichiers');
+    await userEvent.upload(screen.getByLabelText('Déposer un fichier'), [pdf, xlsx]);
+    expect(await screen.findByLabelText('Titre du document 2')).toHaveValue('suivi.xlsx');
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter' }));
+    await userEvent.click(await screen.findByRole('button', { name: '2 documents' }));
+    const previews = await screen.findAllByRole('button', { name: 'Aperçu' });
+    await userEvent.click(previews[0]);
+    await waitFor(() => expect((document.querySelector('iframe') as HTMLIFrameElement).src).toBe('blob:test'));
+    await userEvent.click(screen.getByRole('button', { name: 'Masquer' }));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Aperçu' }))[1]);
+    expect(await screen.findByText('Valeur-12')).toBeInTheDocument();
+  });
+  it('refuse un fichier au mauvais format', async () => {
+    await open('admin', 'planning');
+    await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
+    await userEvent.click(await screen.findByText('Ajouter un TP'));
+    await userEvent.upload(screen.getByLabelText('Déposer un fichier'), new File(['x'], 'virus.exe'), { applyAccept: false });
+    expect(await screen.findByRole('status')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Titre du document 1')).toBeNull();
+  });
   it('relie une fiche séance à une fiche séquence avec un document', async () => {
     await open('prof', 'fiches');
     await userEvent.click(await screen.findByRole('button', { name: '+ Fiche séquence' }));
@@ -179,7 +210,7 @@ describe('documents et séquences', () => {
     await userEvent.click(await screen.findByRole('button', { name: '+ Fiche séance' }));
     await userEvent.type(screen.getByLabelText(/Titre \*/), 'Séance 1 moteur');
     await userEvent.selectOptions(screen.getByLabelText('Fiche séquence liée'), screen.getByRole('option', { name: 'Séquence moteur' }));
-    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter un document' }));
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter un lien' }));
     await userEvent.type(screen.getByLabelText('Titre du document 1'), 'Fiche séance.pdf');
     await userEvent.type(screen.getByLabelText('Lien du document 1'), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view');
     await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));

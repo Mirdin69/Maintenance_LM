@@ -268,7 +268,7 @@ function checkConflicts(table: string, row: Row, previous?: Row) {
     const target = (T.fiches ?? []).find((f) => f.id === row.sequence_id);
     if (!target || target.kind !== 'sequence') throw new Error('La fiche rattachée doit être une fiche séquence.');
   }
-  if ((table === 'fiches' || table === 'tps') && Array.isArray(row.documents) && row.documents.some((d: { url?: string }) => !/^https?:\/\//i.test(d?.url ?? '')))
+  if ((table === 'fiches' || table === 'tps') && Array.isArray(row.documents) && row.documents.some((d: { url?: string; path?: string }) => !(/^https?:\/\//i.test(d?.url ?? '') || /^docs\/[\w-]{8,64}\/[^/]{1,150}$/.test(d?.path ?? ''))))
     throw new Error('violates check constraint "documents_check"');
   const slots = T.timetable_slots as unknown as Slot[];
   const sessions = T.sessions as unknown as Session[];
@@ -312,8 +312,25 @@ function cascade(table: string, removed: Row[]) {
   if (table === 'timetable_slots') nullify('sessions', 'slot_id');
 }
 
+const FILES = new Map<string, Blob>();
+
 export const api: Api = {
   configured: true,
+  storage: {
+    async upload(path, file) {
+      const p = currentProfile();
+      if (!p?.active || p.role === 'lecture') throw new Error('new row violates row-level security policy for table "objects"');
+      if (FILES.has(path)) throw new Error('The resource already exists');
+      if (file.size > 10 * 1024 * 1024) throw new Error('The object exceeded the maximum allowed size');
+      FILES.set(path, file);
+    },
+    async download(path) {
+      const f = FILES.get(path);
+      if (!f) throw new Error('Object not found');
+      return f;
+    },
+    async remove(paths) { paths.forEach((x) => FILES.delete(x)); },
+  },
   auth: {
     async user() { return currentUser(); },
     onChange(cb) { authListeners.add(cb); return () => authListeners.delete(cb); },

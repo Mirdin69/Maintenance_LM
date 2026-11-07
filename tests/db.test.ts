@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 const migration = readFileSync(new URL('../supabase/migrations/0001_init.sql', import.meta.url), 'utf8');
 const migration2 = readFileSync(new URL('../supabase/migrations/0002_semainier.sql', import.meta.url), 'utf8');
 const migration3 = readFileSync(new URL('../supabase/migrations/0003_documents.sql', import.meta.url), 'utf8');
+const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
 // Simulation minimale de l'authentification Supabase
@@ -51,9 +52,18 @@ async function fails(text: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(authStub);
+  await db.exec(`
+    create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner_id text default auth.uid()::text);
+    alter table storage.objects enable row level security;
+    grant usage on schema storage to authenticated;
+    grant select, insert, update, delete on storage.objects to authenticated;
+  `);
   await db.exec(migration);
   await db.exec(migration2);
   await db.exec(migration3);
+  await db.exec(migration4);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -391,5 +401,48 @@ describe('migration 0003 : documents et fiches liées', () => {
     expect(await fails(`insert into public.fiches (kind, title, sequence_id) values ('sequence', 'Séquence B', $1)`, [seq.id])).toMatch(/séance/);
     await db.query('delete from public.fiches where id = $1', [seq.id]);
     expect((await sql('select sequence_id from public.fiches where id = $1', [sea.id]))[0].sequence_id).toBeNull();
+  });
+});
+
+describe('migration 0004 : fichiers déposés', () => {
+  const path = 'docs/3f2a9c1e-77b1-4c3e/Sujet TP1.docx';
+  it('accepte un fichier déposé ou un lien, refuse un chemin douteux', async () => {
+    await as('admin');
+    expect(await fails(`update public.tps set documents = $1::jsonb`, [JSON.stringify([{ title: 'Sujet', path }])])).toBeNull();
+    expect(await fails(`update public.tps set documents = $1::jsonb`, [JSON.stringify([{ title: 'Lien', url: 'https://a.fr/x.pdf' }])])).toBeNull();
+    for (const bad of ['docs/../secret/x.pdf', '../x.pdf', 'autre/abc12345/x.pdf', 'docs/abc12345/dossier/x.pdf', 'docs/abc12345/x<script>.pdf']) {
+      expect(await fails(`update public.tps set documents = $1::jsonb`, [JSON.stringify([{ title: 'x', path: bad }])])).toMatch(/check/);
+    }
+    expect(await fails(`update public.tps set documents = $1::jsonb`, [JSON.stringify([{ title: 'x' }])])).toMatch(/check/);
+  });
+  it('le bucket est privé, limité à 10 Mo et aux formats bureautiques', async () => {
+    await as('admin');
+    await db.exec('reset role');
+    const [b] = await sql("select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'documents'");
+    expect(b.public).toBe(false);
+    expect(Number(b.file_size_limit)).toBe(10485760);
+    expect(b.allowed_mime_types).toContain('application/pdf');
+    expect(b.allowed_mime_types).not.toContain('text/html');
+    expect(b.allowed_mime_types).not.toContain('image/svg+xml');
+  });
+  it('dépôt : enseignant oui, lecteur non, anonyme non ; suppression : auteur ou gestionnaire', async () => {
+    await as('prof');
+    expect(await fails("insert into storage.objects (bucket_id, name) values ('documents', 'docs/aaaaaaaa/a.pdf')")).toBeNull();
+    await as('lecteur');
+    expect(await fails("insert into storage.objects (bucket_id, name) values ('documents', 'docs/bbbbbbbb/b.pdf')")).toMatch(/row-level security/);
+    expect(await sql('select name from storage.objects')).toHaveLength(1);
+    await as(null);
+    expect(await fails('select * from storage.objects')).toMatch(/permission denied/);
+    await as('prof2');
+    await db.query("delete from storage.objects where name = 'docs/aaaaaaaa/a.pdf'");
+    await as('prof');
+    expect(await sql('select name from storage.objects')).toHaveLength(1);
+    await db.query("delete from storage.objects where name = 'docs/aaaaaaaa/a.pdf'");
+    expect(await sql('select name from storage.objects')).toHaveLength(0);
+    await as('prof');
+    await db.query("insert into storage.objects (bucket_id, name) values ('documents', 'docs/cccccccc/c.pdf')");
+    await as('admin');
+    await db.query("delete from storage.objects where name = 'docs/cccccccc/c.pdf'");
+    expect(await sql('select name from storage.objects')).toHaveLength(0);
   });
 });

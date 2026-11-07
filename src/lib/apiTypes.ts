@@ -23,6 +23,12 @@ export interface Api {
     verifyCode(email: string, code: string): Promise<void>;
     signOut(): Promise<void>;
   };
+  /** Fichiers déposés (Supabase Storage, espace « documents », privé) */
+  storage: {
+    upload(path: string, file: File): Promise<void>;
+    download(path: string): Promise<Blob>;
+    remove(paths: string[]): Promise<void>;
+  };
   select<T>(table: string, q?: Query): Promise<T[]>;
   insert<T>(table: string, rows: Row | Row[]): Promise<T[]>;
   update(table: string, match: Match, patch: Row): Promise<void>;

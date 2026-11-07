@@ -192,7 +192,7 @@ describe('semainier', () => {
   });
 });
 
-import { cleanDocs, docKind, embedUrl } from '@/lib/docs';
+import { cleanDocs, docKind, embedUrl, safeFileName, newStoragePath, checkFile, orphanPaths, hasPreview, MAX_FILE_BYTES } from '@/lib/docs';
 
 describe('documents joints', () => {
   const id = '1AbCdEfGhIjKlMnOpQrSt';
@@ -213,5 +213,16 @@ describe('documents joints', () => {
   });
   it('nettoie la saisie', () => {
     expect(cleanDocs([{ title: ' ', url: 'https://a.fr/x.pdf' }, { title: 'x', url: 'ftp://a' }, { title: 'y', url: '' }])).toEqual([{ title: 'Document', url: 'https://a.fr/x.pdf' }]);
+  });
+  it('gère les fichiers déposés', () => {
+    expect(safeFileName('Sujet TP é#1.docx')).toMatch(/^[A-Za-z0-9._ ()-]+\.docx$/);
+    expect(newStoragePath('Cours.pdf')).toMatch(/^docs\/[A-Za-z0-9_-]{8,64}\/Cours\.pdf$/);
+    expect(checkFile({ name: 'a.pdf', size: 10 })).toBeNull();
+    expect(checkFile({ name: 'a.exe', size: 10 })).toMatch(/.+/);
+    expect(checkFile({ name: 'a.pdf', size: MAX_FILE_BYTES + 1 })).toMatch(/.+/);
+    expect(cleanDocs([{ title: 'T', path: 'docs/abcdefgh12/T.pdf' }])).toHaveLength(1);
+    expect(orphanPaths([{ title: 'a', path: 'docs/x/a.pdf' }, { title: 'b', path: 'docs/y/b.pdf' }, { title: 'l', url: 'https://a.fr' }], [{ title: 'b', path: 'docs/y/b.pdf' }])).toEqual(['docs/x/a.pdf']);
+    expect(hasPreview({ title: 'a', path: 'docs/abcdefgh12/a.pdf' })).toBe(true);
+    expect(hasPreview({ title: 'a', path: 'docs/abcdefgh12/a.doc' })).toBe(false);
   });
 });

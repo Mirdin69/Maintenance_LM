@@ -286,3 +286,5 @@ tr.sel td { background: var(--sunken); }
 .doc-t { font-weight: 700; overflow-wrap: anywhere; }
 .preview iframe { width: 100%; height: 70vh; min-height: 360px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 a.btn { text-decoration: none; display: inline-block; }
+.sheet { max-height: 70vh; }
+.sheet .tbl th { position: sticky; top: 0; }
