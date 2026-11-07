@@ -12,7 +12,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["vite/client", "vitest/globals"],
+    "types": ["vite/client", "vitest/globals", "node"],
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "tests", "vite.config.ts", "vitest.config.ts"]
