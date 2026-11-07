@@ -12,6 +12,7 @@ const open = async (as: string, tab: string) => {
 };
 
 beforeEach(() => {
+  window.localStorage.clear();
   window.location.hash = '';
 });
 
@@ -254,5 +255,162 @@ describe('élèves', () => {
     expect(btn).toBeDefined();
     await userEvent.click(btn!);
     await waitFor(() => expect(btn!.textContent).toBe('NA'));
+  });
+});
+
+import { api } from '@/lib/api';
+import { fireEvent } from '@testing-library/react';
+
+const openWith = async (as: string, tab: string, prepare?: () => Promise<unknown>) => {
+  configureDemo({ as: as as never });
+  if (prepare) await prepare();
+  window.location.hash = tab;
+  render(<App />);
+};
+
+describe('nouvelles fonctions', () => {
+  it('la recherche trouve un système et ouvre son onglet', async () => {
+    await open('admin', 'accueil');
+    await userEvent.type(await screen.findByLabelText('Rechercher'), 'zelio');
+    const hit = await screen.findByRole('option', { name: /Banc Zelio/ });
+    await userEvent.click(hit);
+    await waitFor(() => expect(window.location.hash).toBe('#systemes'));
+  });
+
+  it('signale une panne : intervention créée, système hors service, alerte affichée', async () => {
+    await open('prof', 'accueil');
+    await userEvent.click(await screen.findByRole('button', { name: 'Signaler une panne' }));
+    const dlg = within(await screen.findByRole('dialog', { name: 'Signaler une panne' }));
+    await userEvent.selectOptions(dlg.getByLabelText('Système *'), 'Banc API M221');
+    await userEvent.type(dlg.getByLabelText('Ce qui ne marche pas *'), 'Port Ethernet cassé');
+    await userEvent.click(dlg.getByRole('button', { name: 'Signaler' }));
+    expect(await screen.findByText('Panne signalée.')).toBeInTheDocument();
+    const sys = (await api.select<{ name: string; state: string }>('systems')).find((s) => s.name === 'Banc API M221')!;
+    expect(sys.state).toBe('hs');
+    expect((await api.select<{ title: string }>('maintenance')).some((m) => m.title === 'Port Ethernet cassé')).toBe(true);
+    await userEvent.click(screen.getByRole('button', { name: /^Alertes/ }));
+    expect(await screen.findByText(/hors service/)).toBeInTheDocument();
+  });
+
+  it('un changement du semainier peut être annulé', async () => {
+    await open('prof', 'semainier');
+    const cell = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ }))[0] as HTMLSelectElement;
+    const before = cell.value;
+    await userEvent.selectOptions(cell, 'Évaluation');
+    await userEvent.click(await screen.findByRole('button', { name: 'Annuler' }));
+    await waitFor(() => expect((screen.getAllByRole('combobox', { name: /^2PB1\.1,/ })[0] as HTMLSelectElement).value).toBe(before));
+  });
+
+  it('copie une semaine vers la suivante', async () => {
+    await open('prof', 'semainier');
+    await userEvent.click(await screen.findByText('Copier une semaine vers une autre'));
+    await userEvent.click(await screen.findByRole('button', { name: /^Copier \(Seconde\)/ }));
+    expect(await screen.findByText(/cases? copiées?/)).toBeInTheDocument();
+  });
+
+  it('crée automatiquement l’intervention d’un contrôle préventif échu', async () => {
+    await openWith('admin', 'maintenance', async () => {
+      const [sys] = await api.select<{ id: string }>('systems');
+      await api.insert('maintenance_plans', { system_id: sys.id, title: 'Contrôle isolement', every_days: 90, next_due: '2020-01-01', checklist: ['Mesure', 'Visuel'] });
+    });
+    expect(await screen.findByText('Contrôle isolement')).toBeInTheDocument();
+    const m = (await api.select<{ title: string; kind: string; description: string }>('maintenance')).find((x) => x.title === 'Contrôle isolement')!;
+    expect(m.kind).toBe('prev');
+    expect(m.description).toContain('- Mesure');
+    expect((await api.select<{ next_due: string }>('maintenance_plans'))[0].next_due > '2025-01-01').toBe(true);
+  });
+
+  it('PFMP : ajoute une période pour un élève', async () => {
+    await open('prof', 'pfmp');
+    await userEvent.click(await screen.findByText('Ajouter une période de PFMP'));
+    const sel = (await screen.findByLabelText('Élève *')) as HTMLSelectElement;
+    await userEvent.selectOptions(sel, sel.options[1].value);
+    await userEvent.type(screen.getByLabelText('Début *'), '2026-12-01');
+    await userEvent.type(screen.getByLabelText('Fin *'), '2026-12-19');
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter' }));
+    expect(await screen.findByText('Période ajoutée.')).toBeInTheDocument();
+    expect((await screen.findAllByText(/Prévue|En cours|Terminée/)).length).toBeGreaterThan(0);
+  });
+
+  it('l’historique liste les modifications et permet de les annuler', async () => {
+    await openWith('admin', 'admin', async () => { await api.insert('systems', { name: 'Système éphémère' }); });
+    await userEvent.click(await screen.findByRole('button', { name: 'Historique' }));
+    expect(await screen.findByText('Système éphémère')).toBeInTheDocument();
+    const btn = screen.getAllByRole('button', { name: 'Annuler' })[0];
+    await userEvent.click(btn);
+    await userEvent.click(btn);
+    await waitFor(async () => expect((await api.select<{ name: string }>('systems')).some((s) => s.name === 'Système éphémère')).toBe(false));
+  });
+
+  it('un enseignant ne voit pas l’historique', async () => {
+    await open('prof', 'admin');
+    expect(screen.queryByRole('button', { name: 'Historique' })).toBeNull();
+  });
+
+  it('le budget s’affiche dans les achats avec l’alerte de dépassement', async () => {
+    await openWith('admin', 'achats', async () => { await api.upsert('settings', [{ key: 'budget_mat', value: '100' }], 'key'); });
+    expect(await screen.findByText('Budget de l’année')).toBeInTheDocument();
+    expect(await screen.findByText(/en attente de validation/)).toBeInTheDocument();
+  });
+
+  it('suivi par compétence', async () => {
+    await open('prof', 'eleves');
+    await userEvent.click(await screen.findByRole('button', { name: 'Par compétence' }));
+    expect(await screen.findByText('Élèves au moins PA')).toBeInTheDocument();
+  });
+
+  it('rotation des groupes sur les systèmes', async () => {
+    await open('prof', 'planning');
+    await userEvent.click(await screen.findByRole('button', { name: 'Rotations des groupes' }));
+    await userEvent.selectOptions(await screen.findByLabelText('Groupe'), '1PB1.1');
+    await userEvent.click(screen.getByLabelText(/Banc API M221/));
+    await userEvent.click(screen.getByLabelText(/Banc Zelio/));
+    expect(await screen.findByText('Groupe 1')).toBeInTheDocument();
+    expect(screen.getByText('Groupe 2')).toBeInTheDocument();
+    expect(screen.getAllByText(/Séance/).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('dépose une image pour un système', async () => {
+    await open('admin', 'systemes');
+    await userEvent.click(await screen.findByText('Ajouter un système'));
+    await userEvent.upload(await screen.findByLabelText('Déposer une image : Image du système'), new File(['x'], 'banc.png', { type: 'image/png' }));
+    await waitFor(() => expect((screen.getByLabelText('Image du système') as HTMLInputElement).value).toContain('demo.local/images'));
+  });
+
+  it('refuse une image trop lourde ou d’un mauvais format', async () => {
+    await open('admin', 'systemes');
+    await userEvent.click(await screen.findByText('Ajouter un système'));
+    const input = await screen.findByLabelText('Déposer une image : Image du système');
+    fireEvent.change(input, { target: { files: [new File(['x'], 'doc.pdf', { type: 'application/pdf' })] } });
+    expect(await screen.findByText(/n’est pas une image/)).toBeInTheDocument();
+    expect((screen.getByLabelText('Image du système') as HTMLInputElement).value).toBe('');
+  });
+
+  it('la banque liste les ressources marquées réutilisables', async () => {
+    await openWith('prof', 'banque', async () => {
+      const tp = (await api.select<{ id: string }>('tps'))[0];
+      await api.update('tps', { id: tp.id }, { reusable: true });
+    });
+    expect(await screen.findByText('Réutilisable')).toBeInTheDocument();
+  });
+
+  it('duplique un TP', async () => {
+    await open('prof', 'planning');
+    await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Dupliquer' }))[0]);
+    expect(await screen.findByText('TP dupliqué.')).toBeInTheDocument();
+    expect((await api.select<{ code: string }>('tps')).some((t) => /\(copie\)/.test(t.code ?? ''))).toBe(true);
+  });
+
+  it('le bilan de l’année est accessible aux gestionnaires', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Bilan' }));
+    expect(await screen.findByText('cases de TP au semainier')).toBeInTheDocument();
+  });
+
+  it('les réglages des jours du semainier restent mémorisés', async () => {
+    await open('admin', 'semainier');
+    await userEvent.click(await screen.findByRole('button', { name: 'Terminale' }));
+    expect(window.localStorage.getItem('parc:sem-level')).toBe('Terminale');
   });
 });

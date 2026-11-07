@@ -42,7 +42,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async (tables?: TableName | TableName[]) => {
     const list = tables ? (Array.isArray(tables) ? tables : [tables]) : ALL;
-    const results = await Promise.all(list.map((t) => api.select(t)));
+    // Tables ajoutées par la migration 0005 : tant qu'elle n'est pas appliquée, le reste du site doit fonctionner
+    const optional: TableName[] = ['maintenance_plans', 'companies', 'pfmp_periods'];
+    const results = await Promise.all(list.map((t) => (optional.includes(t) ? api.select(t).catch(() => []) : api.select(t))));
     setData((d) => {
       const next: Record<string, unknown> = { ...d };
       list.forEach((t, i) => (next[t] = results[i]));

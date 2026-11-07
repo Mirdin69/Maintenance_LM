@@ -42,7 +42,8 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Fiches** séquence et séance : saisie, partage entre collègues, impression.
 - **Images** des systèmes, outils et logos : collez le lien de partage d'un fichier du Drive, réglé sur « Tous les utilisateurs disposant du lien ». Si votre Drive est limité à l'établissement, les images ne s'afficheront que pour les personnes connectées à leur compte Google du lycée dans le même navigateur.
 - **Documents joints** (Word, PDF, Excel) sur les TP et les fiches : collez le lien de partage du fichier du Drive ; un bouton « Aperçu » l'affiche dans la page (aperçu limité à Google Drive/Docs, sinon lien « Ouvrir »). Une fiche séance se rattache à une fiche séquence.
-- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql` puis **`0004_stockage.sql`**, après `0001_init.sql`.
+- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql`, `0004_stockage.sql` puis **`0005_ameliorations.sql`**, après `0001_init.sql`.
+- `0005` ajoute : images déposées (espace public `images`, 5 Mo), historique des modifications (gestionnaires), contrôles préventifs récurrents, PFMP et entreprises, fournisseur et devis des achats, outils et « réutilisable » sur les TP et fiches. Elle peut être rejouée sans dommage. Tant qu'elle n'est pas appliquée, le reste du site fonctionne, mais l'enregistrement d'un TP, d'une fiche ou d'un achat avec ces nouveaux champs échoue.
 - Documents : dépôt direct de PDF, Word, Excel, PowerPoint ou OpenDocument (10 Mo max, bucket privé `documents`, lecture réservée aux comptes actifs). Aperçu intégré des PDF, .docx et .xlsx ; les .doc, .xls et .ppt se téléchargent. Les liens Google Drive restent possibles.
 
 ## Salles et occupation
@@ -72,3 +73,14 @@ npm run build
 - Supprimer une salle qui a des créneaux est refusé : désactivez-la.
 - `exceljs` signale un avis npm modéré sur `uuid`, sans effet ici (la fonction concernée n'est pas utilisée).
 - La clé `anon` est publique par conception ; la protection repose sur les règles RLS du fichier SQL. Ne mettez jamais la clé `service_role` dans Vercel.
+
+
+## Fonctions ajoutées
+
+- **Recherche** (touche `/`), **alertes** (comptes à valider, urgences, retards, systèmes hors service, cours du jour touchés) et **signalement de panne** avec photo dans l'en-tête. Les alertes sont affichées dans le site : aucun e-mail n'est envoyé.
+- **Annuler** après un changement du semainier ; **Historique** (Administration) avec retour en arrière.
+- **Semainier** : copie d'une semaine, glisser-déposer d'une case (Maj pour déplacer), avertissements (système hors service, même système demandé par deux groupes), vue **Besoins matériel**, jours affichés par niveau.
+- **Planning** : rotations des groupes sur les postes ; duplication des TP ; outils nécessaires.
+- **Suivi des élèves** : vue par compétence. **PFMP** : entreprises, périodes, visites. **Banque** de ressources réutilisables.
+- **Achats** : fournisseur, devis, budget de l'année (Administration, Budget). **Maintenance** : contrôles récurrents créés automatiquement à l'échéance.
+- **Bilan** de l'année (Administration, Bilan) : export CSV et impression.
