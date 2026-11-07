@@ -6,7 +6,7 @@ import { LEVELS, byText, domainClass, domainLabel, levelOfGroup } from '@/lib/do
 import { GROUP_CODES } from '@/lib/domain';
 import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf, parseISO, schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { isoWeek, monthBlocks, periodOn, weekdaysFor } from '@/lib/calendar';
-import { SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, cellValue, copyWeekOps, hoursOf, indexCells, isMine, weekNeeds, type CellOp } from '@/lib/semainier';
+import { SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, hoursOf, indexCells, isMine, weekNeeds, type CellOp } from '@/lib/semainier';
 import { usePersisted } from '@/hooks/usePersisted';
 import { useMedia } from '@/hooks/useMedia';
 import type { Level, PlanningCell, Tp } from '@/lib/types';
@@ -104,8 +104,15 @@ function Year({ groups, tps, cells, weekdays, from, to, level, canWrite, teacher
   const [copyFrom, setCopyFrom] = useState(() => iso(mondayOf(new Date())));
   const [copyTo, setCopyTo] = useState(() => iso(addDays(mondayOf(new Date()), 7)));
   const [overwrite, setOverwrite] = useState(false);
+  const [carousel, setCarousel] = useState(false);
+  const [rounds, setRounds] = useState(() => groups.length);
   const copyWeek = () => {
-    const ops = copyWeekOps(cells, groups, iso(mondayOf(parseISO(copyFrom))), iso(mondayOf(parseISO(copyTo))), { overwrite, blocked: (d) => !!periodOn(d, data.calendar_periods) });
+    const blocked = (d: string) => !!periodOn(d, data.calendar_periods);
+    const from = iso(mondayOf(parseISO(copyFrom)));
+    const to = iso(mondayOf(parseISO(copyTo)));
+    const ops = carousel
+      ? carouselOps(cells, groups, from, to, Math.min(Math.max(1, rounds), 40), { overwrite, blocked })
+      : copyWeekOps(cells, groups, from, to, { overwrite, blocked });
     if (!ops.length) return void act(() => Promise.reject(new Error('Rien à copier : la semaine source est vide, ou la cible est déjà remplie.')));
     apply(ops, `${ops.length} case${ops.length > 1 ? 's' : ''} copiée${ops.length > 1 ? 's' : ''}.`);
   };
@@ -151,8 +158,16 @@ function Year({ groups, tps, cells, weekdays, from, to, level, canWrite, teacher
             <label className="row">De la semaine du <input className="in" type="date" value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)} /></label>
             <label className="row">vers la semaine du <input className="in" type="date" value={copyTo} onChange={(e) => setCopyTo(e.target.value)} /></label>
             <label className="row"><input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} /> Remplacer les cases déjà remplies</label>
-            <button type="button" className="btn sm" onClick={copyWeek}>Copier ({level})</button>
+            <label className="row"><input type="checkbox" checked={carousel} onChange={(e) => setCarousel(e.target.checked)} /> En carrousel : les groupes tournent d’une semaine à l’autre</label>
+            {carousel && <label className="row">sur <input className="in" type="number" min={1} max={40} style={{ width: 70 }} aria-label="Nombre de semaines du carrousel" value={rounds} onChange={(e) => setRounds(Number(e.target.value) || 1)} /> semaine{rounds > 1 ? 's' : ''}</label>}
+            <button type="button" className="btn sm" onClick={copyWeek}>{carousel ? `Copier en carrousel (${level})` : `Copier (${level})`}</button>
           </div>
+          {carousel && (
+            <p className="muted small add-body">
+              Exemple avec cette semaine source : la 1re semaine cible donne à <b>{groups[1 % groups.length]}</b> ce que fait <b>{groups[0]}</b>
+              {groups.length > 2 && <>, à <b>{groups[2 % groups.length]}</b> ce que fait <b>{groups[1]}</b></>}…, la 2e semaine décale d’un cran de plus, et ainsi de suite en revenant au début après {groups.length} semaines. Les jours de vacances et les jours fériés sont ignorés.
+            </p>
+          )}
           <p className="muted small add-body">Copie lundi à vendredi des groupes de {level} ; les vacances et jours fériés de la cible sont ignorés. Astuce : glissez la poignée ⠿ d’une case sur une autre pour la copier (avec Maj : la déplacer).</p>
         </details>
       )}

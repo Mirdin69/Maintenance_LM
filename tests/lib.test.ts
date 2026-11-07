@@ -280,3 +280,23 @@ describe('domaines personnalisés', () => {
     expect(DOMAINS['c-froid']).toBeUndefined();
   });
 });
+
+describe('carrousel de semaines', () => {
+  it('fait tourner les groupes d’une semaine à l’autre', async () => {
+    const { carouselOps, indexCells } = await import('@/lib/semainier');
+    const groups = ['2PB1.1', '2PB1.2', '2PB2'];
+    const cells = indexCells([
+      { day: '2026-09-02', group_code: '2PB1.1', tp_id: 'th0', label: null, note: null },
+      { day: '2026-09-03', group_code: '2PB1.1', tp_id: 'th0', label: null, note: null },
+    ] as never);
+    const ops = carouselOps(cells, groups, '2026-08-31', '2026-09-07', 3, { overwrite: false, blocked: () => false });
+    const by = (day: string) => ops.filter((o) => o.day === day).map((o) => o.group);
+    expect(by('2026-09-09')).toEqual(['2PB1.2']); // semaine B
+    expect(by('2026-09-10')).toEqual(['2PB1.2']);
+    expect(by('2026-09-16')).toEqual(['2PB2']); // semaine C
+    expect(by('2026-09-23')).toEqual(['2PB1.1']); // retour au début
+    expect(ops.every((o) => o.value === 'tp:th0')).toBe(true);
+    const skipped = carouselOps(cells, groups, '2026-08-31', '2026-09-07', 1, { overwrite: false, blocked: (d) => d === '2026-09-10' });
+    expect(skipped.map((o) => o.day)).toEqual(['2026-09-09']);
+  });
+});

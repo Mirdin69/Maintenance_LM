@@ -83,13 +83,14 @@ export function buildWarnings(
   return out;
 }
 
-/** Recopie une semaine (lundi à vendredi) vers une autre pour les groupes donnés. `blocked` : jours de la cible à ignorer. */
+/** Recopie une semaine (lundi à vendredi) vers une autre pour les groupes donnés. `blocked` : jours de la cible à ignorer.
+ *  `shift` : décalage des groupes (carrousel), 0 = simple copie. */
 export function copyWeekOps(
   cells: Map<string, PlanningCell>,
   groups: string[],
   fromMonday: string,
   toMonday: string,
-  opts: { overwrite: boolean; blocked: (day: string) => boolean },
+  opts: { overwrite: boolean; blocked: (day: string) => boolean; shift?: number },
 ): CellOp[] {
   const ops: CellOp[] = [];
   const shift = (d: string, n: number) => {
@@ -100,13 +101,34 @@ export function copyWeekOps(
     const src = shift(fromMonday, i);
     const dst = shift(toMonday, i);
     if (opts.blocked(dst)) continue;
-    for (const g of groups) {
-      const c = cells.get(cellKey(src, g));
+    for (const [gi, g] of groups.entries()) {
+      // Carrousel : le groupe g reçoit ce que faisait, la semaine source, le groupe situé `shift` rangs avant lui
+      const from = groups[(((gi - (opts.shift ?? 0)) % groups.length) + groups.length) % groups.length];
+      const c = cells.get(cellKey(src, from));
       const value = cellValue(c);
       if (!value) continue;
       if (cells.get(cellKey(dst, g)) && !opts.overwrite) continue;
       ops.push({ day: dst, group: g, value });
     }
+  }
+  return ops;
+}
+
+/** Carrousel : la semaine source est recopiée sur `weeks` semaines consécutives, les groupes tournant d'un cran à chaque semaine (A : 1.1, B : 1.2, C : 2…). */
+export function carouselOps(
+  cells: Map<string, PlanningCell>,
+  groups: string[],
+  fromMonday: string,
+  firstTargetMonday: string,
+  weeks: number,
+  opts: { overwrite: boolean; blocked: (day: string) => boolean },
+): CellOp[] {
+  const ops: CellOp[] = [];
+  const [y, m, d] = [Number(firstTargetMonday.slice(0, 4)), Number(firstTargetMonday.slice(5, 7)) - 1, Number(firstTargetMonday.slice(8, 10))];
+  for (let k = 0; k < weeks; k++) {
+    const t = new Date(y, m, d + 7 * k);
+    const monday = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    ops.push(...copyWeekOps(cells, groups, fromMonday, monday, { ...opts, shift: k + 1 }));
   }
   return ops;
 }
