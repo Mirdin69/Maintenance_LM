@@ -41,7 +41,7 @@ export const BUILTIN_DOMAINS: Record<string, string> = {
   pen: 'Production d’énergie',
   ten: 'Transport d’énergie',
   hab: 'Sécurité, habilitation',
-  rem: 'Remise à niveau (REM)',
+  rem: 'Ressources essentielles au métier (REM)',
 };
 
 /** Liste courante : domaines prédéfinis + domaines ajoutés par un gestionnaire (voir registerDomains) */
