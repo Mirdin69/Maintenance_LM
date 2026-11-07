@@ -4,9 +4,9 @@ import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
 import { ROOM_KINDS, byText } from '@/lib/domain';
 import type { Room, RoomKind } from '@/lib/types';
-import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead } from '@/components/ui';
+import { AddPanel, Chip, ConfirmButton, Empty, Field, Options } from '@/components/ui';
 
-export default function Rooms() {
+export default function RoomsAdmin() {
   const { data } = useStore();
   const { isAdmin } = useAuth();
   const act = useAct();
@@ -43,9 +43,7 @@ export default function Rooms() {
 
   return (
     <>
-      <PageHead title="Salles et ateliers">
-        Les lieux d’enseignement. Une salle « partagée » (grand atelier, par exemple) peut accueillir plusieurs groupes en même temps sans signaler de conflit.
-      </PageHead>
+      <p className="muted">Les lieux d’enseignement. Une salle « partagée » (grand atelier, par exemple) peut accueillir plusieurs groupes en même temps sans signaler de conflit.</p>
       {isAdmin && (
         <AddPanel summary={editing ? `Modifier la salle ${editing.name}` : 'Ajouter une salle'} open={!!editing}>
           <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>

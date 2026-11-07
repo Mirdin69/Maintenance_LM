@@ -4,7 +4,9 @@ import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
 import { DOMAINS, SYSTEM_STATES, byText } from '@/lib/domain';
 import type { Domain, System, SystemState } from '@/lib/types';
-import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead } from '@/components/ui';
+import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
+import { Img, ImageHint } from '@/components/Img';
+import { ToolsList } from '@/components/Tools';
 
 export default function Systems() {
   const { data, roomById } = useStore();
@@ -12,6 +14,8 @@ export default function Systems() {
   const act = useAct();
   const [editing, setEditing] = useState<System | null>(null);
   const [formKey, setFormKey] = useState(0);
+  const [img, setImg] = useState('');
+  const [tab, setTab] = useState<'systemes' | 'outils'>('systemes');
 
   const systems = [...data.systems].sort(byText((s) => s.name));
   const rooms = data.rooms.filter((r) => r.active || r.id === editing?.room_id);
@@ -27,6 +31,7 @@ export default function Systems() {
       qty: Math.max(1, Number(f.get('qty')) || 1),
       state: f.get('state') as SystemState,
       notes: String(f.get('notes')).trim() || null,
+      image_url: img.trim() || null,
     };
     const ok = await act(
       () => (editing ? api.update('systems', { id: editing.id }, row) : api.insert('systems', row)),
@@ -34,6 +39,7 @@ export default function Systems() {
     );
     if (ok) {
       setEditing(null);
+      setImg('');
       setFormKey((k) => k + 1);
     }
   };
@@ -47,7 +53,9 @@ export default function Systems() {
       <PageHead title="Systèmes pédagogiques">
         Le parc des systèmes, maquettes et bancs utilisés en TP, avec la salle où ils se trouvent. Ajoutez un système avant de lui rattacher une intervention, un achat ou une séance.
       </PageHead>
-      {canWrite && (
+      <div className="tools"><Seg<'systemes' | 'outils'> label="Section" value={tab} onChange={setTab} items={[['systemes', 'Systèmes'], ['outils', 'Outils']]} /></div>
+      {tab === 'outils' && <section className="panel"><h2>Outils et équipements</h2><ToolsList /><p className="muted small">La liste est gérée par un gestionnaire (Administration, Outils).</p></section>}
+      {tab === 'systemes' && canWrite && (
         <AddPanel summary={editing ? 'Modifier le système' : 'Ajouter un système'} open={!!editing}>
           <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
             <Field label="Nom du système *"><input className="in" name="name" required maxLength={120} defaultValue={editing?.name} placeholder="Capsuleuse Ravoux" /></Field>
@@ -68,6 +76,10 @@ export default function Systems() {
                 <Options items={Object.entries(SYSTEM_STATES).map(([k, v]) => [k, v.label])} />
               </select>
             </Field>
+            <Field label="Image (lien du Drive partagé)" wide>
+              <input className="in" value={img} onChange={(e) => setImg(e.target.value)} placeholder="https://drive.google.com/file/d/…/view" />
+            </Field>
+            <ImageHint value={img} />
             <Field label="Notes" wide><textarea className="in" name="notes" maxLength={500} defaultValue={editing?.notes ?? ''} /></Field>
             <div className="actions">
               <button className="btn" type="submit">{editing ? 'Enregistrer' : 'Ajouter le système'}</button>
@@ -76,7 +88,7 @@ export default function Systems() {
           </form>
         </AddPanel>
       )}
-      <section className="panel">
+      {tab === 'systemes' && <section className="panel">
         <h2>Parc actuel</h2>
         {systems.length === 0 ? (
           <Empty>Aucun système pour le moment.{canWrite ? ' Utilisez « Ajouter un système » pour créer le premier.' : ''}</Empty>
@@ -90,9 +102,14 @@ export default function Systems() {
                 {systems.map((s) => (
                   <tr key={s.id}>
                     <td>
-                      <b>{s.name}</b>
-                      {s.ref && <span className="sub">Réf. {s.ref}</span>}
-                      {s.notes && <span className="sub">{s.notes}</span>}
+                      <div className="sys-card">
+                        <Img url={s.image_url} alt={`Photo de ${s.name}`} className="thumb" width={300} />
+                        <div>
+                          <b>{s.name}</b>
+                          {s.ref && <span className="sub">Réf. {s.ref}</span>}
+                          {s.notes && <span className="sub">{s.notes}</span>}
+                        </div>
+                      </div>
                     </td>
                     <td>{DOMAINS[s.domain]}</td>
                     <td>{s.room_id ? roomById.get(s.room_id)?.name : <span className="muted">—</span>}</td>
@@ -111,7 +128,7 @@ export default function Systems() {
                     {canWrite && (
                       <td>
                         <div className="row">
-                          <button className="btn ghost sm" onClick={() => { setEditing(s); window.scrollTo(0, 0); }}>Modifier</button>
+                          <button className="btn ghost sm" onClick={() => { setEditing(s); setImg(s.image_url ?? ''); window.scrollTo(0, 0); }}>Modifier</button>
                           {isAdmin && (
                             <ConfirmButton warn={linked(s) ? `Confirmer (${linked(s)} lien${linked(s) > 1 ? 's' : ''})` : 'Confirmer'}
                               onConfirm={() => void act(() => api.remove('systems', { id: s.id }), { ok: 'Système supprimé.', tables: ['systems', 'maintenance', 'timetable_slots', 'sessions', 'purchases'] })}>
@@ -127,7 +144,7 @@ export default function Systems() {
             </table>
           </div>
         )}
-      </section>
+      </section>}
     </>
   );
 }

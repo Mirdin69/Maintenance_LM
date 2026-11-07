@@ -35,9 +35,17 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - Les comptes suivants (@lamache.org uniquement) restent « en attente » jusqu'à validation dans l'onglet **Administration**. Un élève disposant d'une adresse @lamache.org ne voit donc aucune donnée.
 - Créez ensuite les salles, puis les créneaux de l'emploi du temps.
 
+## Administration, semainier et fiches
+
+- **Administration** (gestionnaire) : comptes, **élèves** (ajout, déplacement, import Excel), **salles**, **outils**, **calendrier** (année scolaire, jours affichés, vacances, jours fériés générés automatiquement) et **apparence** (titre et deux logos).
+- **Semainier** : vue année (une case par groupe et par jour, choix du TP dans une liste), vue semaine (domaine, enseignant, TP, objectif, compétences), vue « Mes cours ». Export CSV et impression. Les TP se créent dans Planning des TP, Catalogue, avec leur domaine, enseignant et objectif.
+- **Fiches** séquence et séance : saisie, partage entre collègues, impression.
+- **Images** des systèmes, outils et logos : collez le lien de partage d'un fichier du Drive, réglé sur « Tous les utilisateurs disposant du lien ». Si votre Drive est limité à l'établissement, les images ne s'afficheront que pour les personnes connectées à leur compte Google du lycée dans le même navigateur.
+- Appliquez **`supabase/migrations/0002_semainier.sql`** après `0001_init.sql`.
+
 ## Salles et occupation
 
-- **Salles** (gestionnaire) : nom, bâtiment, type, places, option *partagée* (grand atelier : plusieurs groupes en même temps sans conflit).
+- **Salles** (Administration, gestionnaire) : nom, bâtiment, type, places, option *partagée* (grand atelier : plusieurs groupes en même temps sans conflit).
 - **Emploi du temps** : créneaux hebdomadaires (jour, horaire, salle, groupe, enseignant, TP, système) sur une période, avec vue par salle, groupe ou enseignant. Plusieurs jours peuvent être créés d'un coup.
 - **Planning des TP** : exceptions d'un jour (annuler, déplacer de salle ou d'horaire, marquer réalisée) et réservations ponctuelles.
 - **Occupation** : taux par salle et par jour (8 h – 18 h), détail hebdomadaire, recherche de salle libre avec réservation.

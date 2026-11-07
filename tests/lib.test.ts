@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseGroup } from '@/lib/domain';
+import { iso, isoDow, parseISO } from '@/lib/dates';
 import { planImport, parseCsv, rowsFromGrid } from '@/lib/importStudents';
 import { buildOccurrences, freeRooms, roomLoads, unionMinutes } from '@/lib/occupancy';
 import { sessionConflicts, slotConflicts } from '@/lib/conflicts';
@@ -112,5 +113,81 @@ describe('conflits', () => {
     const r = sessionConflicts({ date: '2026-11-03', start: 9 * 60, end: 10 * 60, roomId: 'A', groupCode: null }, slots, [], rooms);
     expect(r.join()).toMatch(/salle/i);
     expect(sessionConflicts({ date: '2026-11-04', start: 9 * 60, end: 10 * 60, roomId: 'A', groupCode: null }, slots, [], rooms)).toEqual([]);
+  });
+});
+
+import { easter, frenchHolidays, isoWeek, monthBlocks, parseWeekdays, periodOn } from '@/lib/calendar';
+import { driveId, imageSrc, isDriveFolder } from '@/lib/images';
+import { cellPatch, cellValue, isMine } from '@/lib/semainier';
+
+describe('calendrier', () => {
+  it('Pâques et jours fériés 2026-2027 identiques à ceux du fichier Excel', () => {
+    expect(iso(easter(2027))).toBe('2027-03-28');
+    const h = Object.fromEntries(frenchHolidays(2026).map((x) => [x.label, x.date]));
+    expect(h['Lundi de Pâques']).toBe('2027-03-29');
+    expect(h['Ascension']).toBe('2027-05-06');
+    expect(h['Lundi de Pentecôte']).toBe('2027-05-17');
+    expect(h['Armistice']).toBe('2026-11-11');
+    expect(h['Fête nationale']).toBe('2027-07-14');
+    expect(frenchHolidays(2026)).toHaveLength(10);
+  });
+  it('numéro de semaine ISO', () => {
+    expect(isoWeek('2026-09-01')).toBe(36);
+    expect(isoWeek('2026-11-02')).toBe(45);
+  });
+  it('découpe en mois, lundi à jeudi par défaut', () => {
+    const m = monthBlocks('2026-09-01', '2026-10-31', parseWeekdays(undefined));
+    expect(m.map((x) => x.key)).toEqual(['2026-09', '2026-10']);
+    expect(m[0].days[0]).toBe('2026-09-01');
+    expect(m.flatMap((x) => x.days).every((d) => isoDow(parseISO(d)) <= 4)).toBe(true);
+    expect(parseWeekdays('1,2,9,x')).toEqual([1, 2]);
+    expect(parseWeekdays('')).toEqual([1, 2, 3, 4]);
+  });
+  it('un jour férié l’emporte sur les vacances', () => {
+    const p = [
+      { id: 'a', kind: 'vacances' as const, label: 'Toussaint', start_date: '2026-10-17', end_date: '2026-11-01' },
+      { id: 'b', kind: 'ferie' as const, label: 'Toussaint (férié)', start_date: '2026-11-01', end_date: '2026-11-01' },
+    ];
+    expect(periodOn('2026-11-01', p)?.label).toBe('Toussaint (férié)');
+    expect(periodOn('2026-10-20', p)?.label).toBe('Toussaint');
+    expect(periodOn('2026-11-02', p)).toBeUndefined();
+  });
+});
+
+describe('images Drive', () => {
+  const id = '1AbCdEfGhIjKlMnOpQrSt';
+  it.each([
+    `https://drive.google.com/file/d/${id}/view?usp=sharing`,
+    `https://drive.google.com/open?id=${id}`,
+    `https://drive.google.com/uc?export=view&id=${id}`,
+    `https://lh3.googleusercontent.com/d/${id}`,
+  ])('convertit %s', (u) => {
+    expect(driveId(u)).toBe(id);
+    expect(imageSrc(u, 300)).toBe(`https://drive.google.com/thumbnail?id=${id}&sz=w300`);
+  });
+  it('laisse une autre adresse web, refuse le reste', () => {
+    expect(imageSrc('https://exemple.fr/logo.png')).toBe('https://exemple.fr/logo.png');
+    expect(imageSrc('javascript:alert(1)')).toBeNull();
+    expect(imageSrc('data:text/html,x')).toBeNull();
+    expect(imageSrc('')).toBeNull();
+    expect(isDriveFolder('https://drive.google.com/drive/folders/abc')).toBe(true);
+  });
+});
+
+describe('semainier', () => {
+  const me = { id: 'u1', email: 'alex.verwaerde@lamache.org', full_name: null } as never;
+  it('retrouve mes cours par compte ou par nom', () => {
+    expect(isMine({ teacher_id: 'u1', teacher_label: null }, me)).toBe(true);
+    expect(isMine({ teacher_id: 'u2', teacher_label: 'Verwaerde' }, me)).toBe(false);
+    expect(isMine({ teacher_id: null, teacher_label: 'Verwaerde' }, me)).toBe(true);
+    expect(isMine({ teacher_id: null, teacher_label: 'Sadky' }, me)).toBe(false);
+    expect(isMine({ teacher_id: null, teacher_label: 'ab' }, me)).toBe(false);
+    expect(isMine(undefined, me)).toBe(false);
+  });
+  it('encode et décode la valeur d’une case', () => {
+    expect(cellPatch('tp:abc')).toEqual({ tp_id: 'abc', label: null });
+    expect(cellPatch('lab:PFMP')).toEqual({ tp_id: null, label: 'PFMP' });
+    expect(cellPatch('')).toEqual({ tp_id: null, label: null });
+    expect(cellValue(undefined)).toBe('');
   });
 });

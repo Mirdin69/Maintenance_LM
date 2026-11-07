@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'prof' | 'lecture';
 export type Level = 'Seconde' | 'Première' | 'Terminale';
-export type Domain = 'ind' | 'ter' | 'bat' | 'tra';
+export type Domain = 'ind' | 'ter' | 'bat' | 'tra' | 'ate' | 'ann' | 'pen' | 'ten' | 'hab' | 'rem';
 export type RoomKind = 'atelier' | 'salle' | 'labo' | 'info' | 'autre';
 export type SystemState = 'service' | 'maint' | 'hs';
 export type MarkLevel = 'NA' | 'ECA' | 'PA' | 'A';
@@ -48,6 +48,7 @@ export interface System {
   qty: number;
   state: SystemState;
   notes: string | null;
+  image_url: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -61,6 +62,10 @@ export interface Tp {
   hours: number | null;
   system_ids: string[];
   competences: string[];
+  objective: string | null;
+  teacher_id: string | null;
+  teacher_label: string | null;
+  sequence_name: string | null;
   created_at: string;
 }
 
@@ -157,6 +162,56 @@ export interface Progress {
   updated_by: string | null;
 }
 
+export interface Tool {
+  id: string;
+  name: string;
+  ref: string | null;
+  category: string | null;
+  qty: number;
+  room_id: string | null;
+  state: 'ok' | 'usage' | 'hs';
+  image_url: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Setting {
+  key: string;
+  value: string;
+}
+
+export interface CalendarPeriod {
+  id: string;
+  kind: 'vacances' | 'ferie' | 'autre';
+  label: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface PlanningCell {
+  day: string;
+  group_code: string;
+  tp_id: string | null;
+  label: string | null;
+  note: string | null;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export type FicheKind = 'sequence' | 'seance';
+
+export interface Fiche {
+  id: string;
+  kind: FicheKind;
+  title: string;
+  level: Level | null;
+  tp_id: string | null;
+  data: Record<string, unknown>;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DataSet {
   profiles: Profile[];
   teacher_groups: TeacherGroup[];
@@ -170,6 +225,11 @@ export interface DataSet {
   purchases: Purchase[];
   students: Student[];
   progress: Progress[];
+  tools: Tool[];
+  settings: Setting[];
+  calendar_periods: CalendarPeriod[];
+  planning_cells: PlanningCell[];
+  fiches: Fiche[];
 }
 
 export type TableName = keyof DataSet;

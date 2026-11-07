@@ -3,6 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 const migration = readFileSync(new URL('../supabase/migrations/0001_init.sql', import.meta.url), 'utf8');
+const migration2 = readFileSync(new URL('../supabase/migrations/0002_semainier.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
 // Simulation minimale de l'authentification Supabase
@@ -50,6 +51,7 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(authStub);
   await db.exec(migration);
+  await db.exec(migration2);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -302,5 +304,69 @@ describe('maintenance', () => {
     expect((await sql('select closed_at from public.maintenance where id = $1', [m.id]))[0].closed_at).not.toBeNull();
     await db.query(`update public.maintenance set status = 'wip' where id = $1`, [m.id]);
     expect((await sql('select closed_at from public.maintenance where id = $1', [m.id]))[0].closed_at).toBeNull();
+  });
+});
+
+describe('migration 0002 : réglages, outils, semainier, fiches', () => {
+  it('les logos sont lisibles sans connexion, pas le reste', async () => {
+    await as(null);
+    const rows = await sql('select key from public.settings order by key');
+    expect(rows.map((r) => r.key)).toEqual(['school_logo_url', 'site_logo_url', 'site_title']);
+    expect(await fails("update public.settings set value = 'x' where key = 'site_title'")).toMatch(/permission denied/);
+    await as('admin');
+    expect((await sql("select value from public.settings where key = 'site_title'"))[0].value).toBe('Parc MELEC');
+  });
+  it('seul le gestionnaire modifie les réglages, outils et le calendrier', async () => {
+    await as('prof');
+    expect(await sql('select key from public.settings')).toHaveLength(6);
+    await db.query("update public.settings set value = 'piraté' where key = 'site_title'");
+    await as('admin');
+    expect((await sql("select value from public.settings where key = 'site_title'"))[0].value).toBe('Parc MELEC');
+    await as('prof');
+    expect(await fails("insert into public.tools (name) values ('Pince')")).toMatch(/row-level security/);
+    expect(await fails("insert into public.calendar_periods (kind,label,start_date,end_date) values ('vacances','X','2026-10-17','2026-11-01')")).toMatch(/row-level security/);
+    await as('admin');
+    expect(await fails("insert into public.tools (name, qty) values ('Pince à dénuder', 4)")).toBeNull();
+    expect(await fails("insert into public.calendar_periods (kind,label,start_date,end_date) values ('vacances','Toussaint','2026-10-17','2026-11-01')")).toBeNull();
+    expect(await fails("insert into public.calendar_periods (kind,label,start_date,end_date) values ('vacances','Inversée','2026-11-01','2026-10-17')")).toMatch(/check/);
+  });
+  it('refuse une image qui n’est pas une adresse web', async () => {
+    await as('admin');
+    expect(await fails("insert into public.tools (name, image_url) values ('T', 'javascript:alert(1)')")).toMatch(/check/);
+    expect(await fails("update public.systems set image_url = 'file:///etc/passwd'")).toMatch(/check/);
+    expect(await fails("update public.systems set image_url = 'https://drive.google.com/thumbnail?id=abc'")).toBeNull();
+  });
+  it('le semainier : un enseignant écrit, un lecteur non, une case par jour et groupe', async () => {
+    await as('prof');
+    expect(await fails("insert into public.planning_cells (day, group_code, label) values ('2026-11-02', '2PB1.1', 'Période d''observation')")).toBeNull();
+    expect(await fails("insert into public.planning_cells (day, group_code, label) values ('2026-11-02', '2PB1.1', 'doublon')")).toMatch(/duplicate/);
+    expect(await fails("insert into public.planning_cells (day, group_code) values ('2026-11-03', '2PB1.1')")).toMatch(/check/);
+    expect(await fails("insert into public.planning_cells (day, group_code, label) values ('2026-11-03', 'XX', 'a')")).toMatch(/foreign key/);
+    await as('lecteur');
+    expect(await sql('select * from public.planning_cells')).toHaveLength(1);
+    expect(await fails("insert into public.planning_cells (day, group_code, label) values ('2026-11-04', '2PB1.1', 'a')")).toMatch(/row-level security/);
+  });
+  it('le TP supprimé vide la case sans la supprimer', async () => {
+    await as('admin');
+    const [tp] = await sql("insert into public.tps (title, level, domain, code) values ('TP semainier', 'Seconde', 'pen', 'Prod Ener (1)') returning id");
+    await db.query("insert into public.planning_cells (day, group_code, tp_id, label) values ('2026-11-05', '2PB1.2', $1, 'x')", [tp.id]);
+    await db.query('delete from public.tps where id = $1', [tp.id]);
+    const c = await sql("select tp_id from public.planning_cells where day = '2026-11-05' and group_code = '2PB1.2'");
+    expect(c[0].tp_id).toBeNull();
+  });
+  it('les fiches : visibles par tous, modifiables par leur auteur ou le gestionnaire', async () => {
+    await as('prof');
+    const [f] = await sql(`insert into public.fiches (kind, title, level, data) values ('seance', 'Séance 1', 'Première', '{"objectifs":"x"}') returning id`);
+    expect(await fails("insert into public.fiches (kind, title, created_by) values ('seance', 'Usurpée', (select id from public.profiles where email = 'autre@lamache.org'))")).toMatch(/row-level security/);
+    await as('prof2');
+    expect(await sql('select id from public.fiches')).toHaveLength(1);
+    await db.query("update public.fiches set title = 'Modifiée par un autre' where id = $1", [f.id]);
+    await as('prof');
+    expect((await sql('select title from public.fiches where id = $1', [f.id]))[0].title).toBe('Séance 1');
+    await as('admin');
+    await db.query("update public.fiches set title = 'Corrigée' where id = $1", [f.id]);
+    expect((await sql('select title from public.fiches where id = $1', [f.id]))[0].title).toBe('Corrigée');
+    await as('lecteur');
+    expect(await fails("insert into public.fiches (kind, title) values ('sequence', 'x')")).toMatch(/row-level security/);
   });
 });

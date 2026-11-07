@@ -36,6 +36,26 @@ export const DOMAINS: Record<Domain, string> = {
   ter: 'Tertiaire',
   bat: 'Bâtiment',
   tra: 'Transversal',
+  ate: 'Atelier',
+  ann: 'Annexe',
+  pen: 'Production d’énergie',
+  ten: 'Transport d’énergie',
+  hab: 'Sécurité, habilitation',
+  rem: 'Remise à niveau (REM)',
+};
+
+/** Couleurs des domaines dans le semainier : fond, texte (contraste AA vérifié en clair et en sombre) */
+export const DOMAIN_COLORS: Record<Domain, { bg: string; fg: string; dbg: string; dfg: string }> = {
+  ind: { bg: '#dbe7f7', fg: '#14305c', dbg: '#243a5e', dfg: '#d6e4fa' },
+  ter: { bg: '#e6e0f3', fg: '#33225e', dbg: '#35294f', dfg: '#e0d8f5' },
+  bat: { bg: '#fbe3cf', fg: '#6b3410', dbg: '#5a3820', dfg: '#fbe0cb' },
+  tra: { bg: '#e6e8ec', fg: '#2c3440', dbg: '#343a45', dfg: '#e2e5ea' },
+  ate: { bg: '#dcefd9', fg: '#1d4a1a', dbg: '#27442a', dfg: '#d8efd5' },
+  ann: { bg: '#f6e9b8', fg: '#5a4500', dbg: '#524512', dfg: '#f6e8b4' },
+  pen: { bg: '#cfeee9', fg: '#0d4a42', dbg: '#1f4a45', dfg: '#cdeee9' },
+  ten: { bg: '#f6d9e0', fg: '#6a1630', dbg: '#552334', dfg: '#f6d6de' },
+  hab: { bg: '#f8d4d0', fg: '#7a1a12', dbg: '#5a2622', dfg: '#f8d2cd' },
+  rem: { bg: '#e8e1d2', fg: '#4a3d1f', dbg: '#40392a', dfg: '#e8e0d0' },
 };
 
 export const ROOM_KINDS: Record<RoomKind, string> = {
@@ -65,6 +85,14 @@ export const MAINT_STATUS = {
   wip: { label: 'En cours', tone: 'warn' as Tone },
   done: { label: 'Terminée', tone: 'ok' as Tone },
 };
+
+export const TOOL_STATES = {
+  ok: { label: 'Disponible', tone: 'ok' as Tone },
+  usage: { label: 'À contrôler', tone: 'warn' as Tone },
+  hs: { label: 'Hors service', tone: 'bad' as Tone },
+};
+
+export const PERIOD_KINDS = { vacances: 'Vacances', ferie: 'Jour férié', autre: 'Autre période' };
 
 export const MAINT_KIND = { prev: 'Préventive', corr: 'Corrective' };
 

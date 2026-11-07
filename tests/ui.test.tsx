@@ -39,15 +39,17 @@ describe('accès', () => {
 });
 
 describe('salles et occupation', () => {
-  it('liste les salles et la salle partagée', async () => {
-    await open('admin', 'salles');
+  it('liste les salles et la salle partagée (Administration)', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Salles' }));
     expect(await screen.findByText('Grand atelier')).toBeInTheDocument();
     expect(screen.getAllByText('Partagée').length).toBeGreaterThan(0);
   });
-  it('un enseignant ne peut pas créer de salle', async () => {
-    await open('prof', 'salles');
-    await screen.findByText(/Salles \(/);
-    expect(screen.queryByText('Ajouter une salle')).toBeNull();
+  it('un enseignant n’a plus d’onglet Salles ni Administration', async () => {
+    await open('prof', '');
+    await screen.findByText('Tableau de bord');
+    expect(screen.queryByRole('button', { name: 'Salles' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Administration' })).toBeNull();
   });
   it('refuse un créneau en conflit avec un message clair', async () => {
     await open('admin', 'edt');
@@ -63,6 +65,90 @@ describe('salles et occupation', () => {
     await open('admin', 'occupation');
     await screen.findByText('Trouver une salle libre');
     expect(screen.getAllByRole('button', { name: /Réserver/ }).length).toBeGreaterThan(0);
+  });
+});
+
+describe('administration', () => {
+  it('gère les élèves depuis Administration, plus depuis le suivi', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Élèves' }));
+    expect(await screen.findByText('Mise à jour par fichier Excel')).toBeInTheDocument();
+    const input = screen.getByLabelText(/Nom de l’élève à ajouter dans 2PB1.1/);
+    await userEvent.type(input, 'Nina T.{enter}');
+    expect(await screen.findByText('Nina T.')).toBeInTheDocument();
+  });
+  it('le suivi des élèves n’a plus d’import', async () => {
+    await open('admin', 'eleves');
+    await screen.findByText('Suivi des élèves');
+    expect(screen.queryByText(/Mise à jour par fichier/)).toBeNull();
+    expect(screen.queryByText(/Ajouter ou mettre à jour des élèves/)).toBeNull();
+  });
+  it('ajoute un outil dans la liste', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Outils' }));
+    await userEvent.click(await screen.findByText('Ajouter un outil'));
+    await userEvent.type(screen.getByLabelText(/Nom \*/), 'Pince coupante');
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter l’outil' }));
+    expect(await screen.findByText('Pince coupante')).toBeInTheDocument();
+    expect(screen.getByText('Multimètre numérique CAT III')).toBeInTheDocument();
+  });
+  it('enregistre le titre et les logos', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Apparence' }));
+    const title = await screen.findByLabelText('Titre du site');
+    await userEvent.clear(title);
+    await userEvent.type(title, 'Atelier La Mâche');
+    await userEvent.type(screen.getByLabelText(/Logo du lycée/), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view?usp=sharing');
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    await waitFor(() => expect(screen.getAllByText('Atelier La Mâche').length).toBeGreaterThan(0));
+    const img = document.querySelector('img[alt="Logo du lycée"]') as HTMLImageElement;
+    expect(img.src).toContain('drive.google.com/thumbnail?id=1AbCdEfGhIjKlMnOpQrSt');
+  });
+  it('les outils sont visibles par un enseignant, sans modification', async () => {
+    await open('prof', 'systemes');
+    await userEvent.click(await screen.findByRole('button', { name: 'Outils' }));
+    expect(await screen.findByText('Multimètre numérique CAT III')).toBeInTheDocument();
+    expect(screen.queryByText('Ajouter un outil')).toBeNull();
+  });
+});
+
+describe('semainier', () => {
+  it('affiche les TP affectés et permet de changer une case', async () => {
+    await open('prof', 'semainier');
+    const cell = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ }))[0];
+    expect(cell).toBeEnabled();
+    const options = within(cell).getAllByRole('option').map((o) => o.textContent);
+    expect(options).toContain('Prod Ener (1)');
+    expect(options).toContain('Période d’observation');
+  });
+  it('un lecteur voit le semainier sans pouvoir le modifier', async () => {
+    await open('lecture', 'semainier');
+    const cell = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ }))[0];
+    expect(cell).toBeDisabled();
+  });
+  it('« Mes cours » liste les TP de l’utilisateur', async () => {
+    await open('admin', 'semainier');
+    await userEvent.click(await screen.findByRole('button', { name: 'Mes cours' }));
+    expect(await screen.findByText(/Répartition sur l’année/)).toBeInTheDocument();
+    expect(screen.getAllByText('Industrie (1)').length).toBeGreaterThan(0);
+  });
+  it('la vue semaine montre domaine, enseignant, TP, objectif et compétences', async () => {
+    await open('admin', 'semainier');
+    await userEvent.click(await screen.findByRole('button', { name: 'Semaine' }));
+    expect((await screen.findAllByText('Compétences')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Objectif').length).toBeGreaterThan(0);
+  });
+});
+
+describe('fiches', () => {
+  it('crée une fiche séance, la retrouve et l’ouvre', async () => {
+    await open('prof', 'fiches');
+    await userEvent.click(await screen.findByRole('button', { name: '+ Fiche séance' }));
+    await userEvent.type(screen.getByLabelText(/Titre \*/), 'Inversion du sens de marche');
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(await screen.findByText('Fiche enregistrée.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Retour à la liste/ }));
+    expect(await screen.findByText('Inversion du sens de marche')).toBeInTheDocument();
   });
 });
 

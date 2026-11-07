@@ -7,11 +7,13 @@ import type { DataSet, Profile, Room, System, TableName, Tp } from '@/lib/types'
 const ALL: TableName[] = [
   'profiles', 'teacher_groups', 'rooms', 'systems', 'tps', 'timetable_slots', 'sessions',
   'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress',
+  'tools', 'settings', 'calendar_periods', 'planning_cells', 'fiches',
 ];
 
 const emptyData = (): DataSet => ({
   profiles: [], teacher_groups: [], rooms: [], systems: [], tps: [], timetable_slots: [], sessions: [],
   maintenance: [], maintenance_notes: [], purchases: [], students: [], progress: [],
+  tools: [], settings: [], calendar_periods: [], planning_cells: [], fiches: [],
 });
 
 interface Store {
@@ -23,6 +25,8 @@ interface Store {
   systemById: Map<string, System>;
   tpById: Map<string, Tp>;
   profileById: Map<string, Profile>;
+  /** Réglages (année scolaire, jours affichés, titre, logos) */
+  settings: Record<string, string>;
   /** Nom lisible d'un utilisateur à partir de son identifiant */
   who: (id: string | null | undefined, fallbackLabel?: string | null) => string;
 }
@@ -85,6 +89,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       systemById: new Map(data.systems.map((s) => [s.id, s])),
       tpById: new Map(data.tps.map((t) => [t.id, t])),
       profileById,
+      settings: Object.fromEntries(data.settings.map((x) => [x.key, x.value])),
       who: (id, label) => (id && profileById.has(id) ? displayName(profileById.get(id)) : label || '—'),
     };
   }, [data, loading, error, reload]);

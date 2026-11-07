@@ -7,27 +7,31 @@ import { displayName, ROLES } from '@/lib/domain';
 import { Chip, Field, Spinner } from '@/components/ui';
 import Home from '@/pages/Home';
 import Systems from '@/pages/Systems';
-import Rooms from '@/pages/Rooms';
 import Timetable from '@/pages/Timetable';
 import Occupancy from '@/pages/Occupancy';
 import Maintenance from '@/pages/Maintenance';
 import Purchases from '@/pages/Purchases';
 import Planning from '@/pages/Planning';
+import Semainier from '@/pages/Semainier';
+import Fiches from '@/pages/Fiches';
+import { BrandingProvider, useBranding } from '@/state/branding';
+import { Img } from '@/components/Img';
 import Students from '@/pages/Students';
 import Admin from '@/pages/Admin';
 
-type TabId = 'accueil' | 'systemes' | 'salles' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'eleves' | 'admin';
+type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'admin';
 
 const TABS: Array<[TabId, string]> = [
   ['accueil', 'Accueil'],
+  ['semainier', 'Semainier'],
   ['systemes', 'Systèmes'],
-  ['salles', 'Salles'],
   ['edt', 'Emploi du temps'],
   ['occupation', 'Occupation'],
   ['maintenance', 'Maintenance'],
   ['achats', 'Achats'],
   ['planning', 'Planning des TP'],
-  ['eleves', 'Élèves'],
+  ['fiches', 'Fiches'],
+  ['eleves', 'Suivi des élèves'],
   ['admin', 'Administration'],
 ];
 
@@ -40,7 +44,9 @@ export function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <Gate />
+        <BrandingProvider>
+          <Gate />
+        </BrandingProvider>
       </AuthProvider>
     </ToastProvider>
   );
@@ -86,13 +92,24 @@ function Gate() {
   );
 }
 
+function Logos({ onDark = false }: { onDark?: boolean }) {
+  const { title, siteLogo, schoolLogo } = useBranding();
+  return (
+    <div className="logos">
+      <Img url={siteLogo} alt="Logo du site" width={240} />
+      <div className="brand">
+        <b>{title}</b>
+        <span className={onDark ? '' : 'muted small'}>Lycée La Mâche · bac pro MELEC</span>
+      </div>
+      <Img url={schoolLogo} alt="Logo du lycée" width={240} />
+    </div>
+  );
+}
+
 function Message({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="gate stack">
-      <div className="brand">
-        <b>Parc MELEC</b>
-        <span className="muted small">LYCÉE LA MÂCHE</span>
-      </div>
+      <Logos />
       <div className="panel stack">
         <h2>{title}</h2>
         {children}
@@ -219,10 +236,7 @@ function Shell() {
     <>
       <header className="top">
         <div className="top-in">
-          <div className="brand">
-            <b>Parc MELEC</b>
-            <span>Lycée La Mâche · bac pro MELEC</span>
-          </div>
+          <Logos onDark />
           <div className="who">
             {editName ? (
               <form className="inline" onSubmit={saveName}>
@@ -253,13 +267,14 @@ function Shell() {
         ) : (
           <>
             {current === 'accueil' && <Home go={go} />}
+            {current === 'semainier' && <Semainier />}
             {current === 'systemes' && <Systems />}
-            {current === 'salles' && <Rooms />}
             {current === 'edt' && <Timetable />}
             {current === 'occupation' && <Occupancy />}
             {current === 'maintenance' && <Maintenance />}
             {current === 'achats' && <Purchases />}
             {current === 'planning' && <Planning />}
+            {current === 'fiches' && <Fiches />}
             {current === 'eleves' && <Students />}
             {current === 'admin' && isAdmin && <Admin />}
           </>

@@ -175,7 +175,7 @@ function Week() {
 }
 
 function Catalogue() {
-  const { data, systemById } = useStore();
+  const { data, systemById, who } = useStore();
   const { canWrite, isAdmin } = useAuth();
   const act = useAct();
   const [formKey, setFormKey] = useState(0);
@@ -193,6 +193,10 @@ function Catalogue() {
     const row = {
       code: String(f.get('code')).trim() || null, title: String(f.get('title')).trim(), level: f.get('level'), domain: f.get('domain'),
       hours: Number(f.get('hours')) || null, system_ids: sys, competences: comp,
+      objective: String(f.get('objective')).trim() || null,
+      teacher_id: String(f.get('teacher_id')) || null,
+      teacher_label: String(f.get('teacher_id')) ? null : String(f.get('teacher_label')).trim() || null,
+      sequence_name: String(f.get('sequence_name')).trim() || null,
     };
     const ok = await act(() => (editing ? api.update('tps', { id: editing.id }, row) : api.insert('tps', row)), { ok: editing ? 'TP modifié.' : 'TP ajouté.', tables: ['tps'] });
     if (ok) { edit(null); setFormKey((k) => k + 1); }
@@ -210,6 +214,10 @@ function Catalogue() {
             <Field label="Niveau"><select className="in" name="level" defaultValue={editing?.level ?? 'Seconde'}><Options items={LEVELS.map((l) => [l, l])} /></select></Field>
             <Field label="Domaine"><select className="in" name="domain" defaultValue={editing?.domain ?? 'ind'}><Options items={Object.entries(DOMAINS)} /></select></Field>
             <Field label="Durée (h)"><input className="in" name="hours" type="number" min={0} step="0.5" defaultValue={editing?.hours ?? ''} /></Field>
+            <Field label="Enseignant (compte)"><select className="in" name="teacher_id" defaultValue={editing?.teacher_id ?? ''}><Options placeholder="Autre (saisir le nom)" items={data.profiles.filter((p) => p.active).map((p) => [p.id, who(p.id)])} /></select></Field>
+            <Field label="Nom de l’enseignant (si sans compte)"><input className="in" name="teacher_label" maxLength={60} defaultValue={editing?.teacher_label ?? ''} /></Field>
+            <Field label="Séquence"><input className="in" name="sequence_name" maxLength={120} defaultValue={editing?.sequence_name ?? ''} /></Field>
+            <Field label="Objectif" wide><textarea className="in" name="objective" maxLength={500} defaultValue={editing?.objective ?? ''} /></Field>
             <div className="f wide"><span className="lab">Systèmes utilisés</span>
               <div className="picks">{data.systems.map((s) => <label key={s.id} className="pick"><input type="checkbox" checked={sys.includes(s.id)} onChange={() => setSys(toggle(sys, s.id))} />{s.name}</label>)}</div></div>
             <div className="f wide"><span className="lab">Compétences travaillées</span>
@@ -223,10 +231,10 @@ function Catalogue() {
           <Seg<Level | ''> label="Niveau" value={level} onChange={setLevel} items={[['', 'Tous'], ...LEVELS.map((l) => [l, l] as [Level, string])]} /></div>
         {list.length === 0 ? <Empty>Aucun TP.</Empty> : (
           <div className="scroll"><table className="tbl">
-            <thead><tr><th>TP</th><th>Niveau</th><th className="num">Durée</th><th>Systèmes</th><th>Compétences</th>{canWrite && <th />}</tr></thead>
+            <thead><tr><th>TP</th><th>Niveau</th><th>Enseignant</th><th className="num">Durée</th><th>Systèmes</th><th>Compétences</th>{canWrite && <th />}</tr></thead>
             <tbody>{list.map((t) => (
               <tr key={t.id}>
-                <td><b>{t.code}</b> {t.title}</td><td>{t.level}</td><td className="num">{t.hours ? `${t.hours} h` : '—'}</td>
+                <td><b>{t.code}</b> {t.title}{t.objective && <span className="sub">{t.objective}</span>}</td><td>{t.level}</td><td>{t.teacher_id ? who(t.teacher_id) : t.teacher_label ?? '—'}</td><td className="num">{t.hours ? `${t.hours} h` : '—'}</td>
                 <td>{t.system_ids.map((id) => systemById.get(id)?.name).filter(Boolean).join(', ') || '—'}</td>
                 <td>{t.competences.join(', ') || '—'}</td>
                 {canWrite && <td><div className="row"><button className="btn ghost sm" onClick={() => { edit(t); window.scrollTo(0, 0); }}>Modifier</button>

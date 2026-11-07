@@ -76,7 +76,7 @@ function reset() {
   const R = (n: string) => rooms.find((r) => r.name === n)!.id as string;
 
   const sys = (name: string, ref: string | null, room: string | null, qty: number, state = 'service', notes: string | null = null) => ({
-    id: uid(), name, ref, domain: 'ind', room_id: room ? R(room) : null, qty, state, notes, created_by: ME.admin, created_at: now(),
+    id: uid(), name, ref, domain: 'ind', room_id: room ? R(room) : null, qty, state, notes, image_url: null, created_by: ME.admin, created_at: now(),
   });
   const systems = [
     sys('Capsuleuse Ravoux', '326-021', 'A101', 1, 'service', 'Fil rouge industriel (exemple).'),
@@ -88,7 +88,7 @@ function reset() {
   const S = (n: string) => systems.find((s) => s.name.startsWith(n))!.id as string;
 
   const tp = (code: string, title: string, level: string, hours: number | null, systemIds: string[], competences: string[]) => ({
-    id: uid(), code, title, level, domain: 'ind', hours, system_ids: systemIds, competences, created_at: now(),
+    id: uid(), code, title, level, domain: 'ind', hours, system_ids: systemIds, competences, objective: null, teacher_id: null, teacher_label: null, sequence_name: null, created_at: now(),
   });
   const tps = [
     tp('P1', 'Câblage avec fiches bananes sur platine à bornes repérées', 'Seconde', 4, [S('Armoire')], ['C1', 'C4', 'C5', 'C11']),
@@ -96,7 +96,25 @@ function reset() {
     tp('P3', 'Inversion du sens de rotation et verrouillage électrique', 'Seconde', 4, [S('Armoire')], ['C1', 'C4', 'C5', 'C11']),
     tp('TP5', 'Programmation de l’automate M221', 'Première', 5, [S('Banc API')], ['C6', 'C7']),
     tp('TP6', 'Programmation du relais Zelio', 'Première', 5, [S('Banc Zelio')], ['C6', 'C7']),
+    { ...tp('Industrie (1)', 'Activité rail – contacts', 'Seconde', 2, [], ['C1', 'C4', 'C5', 'C11']), domain: 'ind', teacher_id: ME.admin, objective: 'Identifier les bornes au multimètre et faire le lien avec la platine banane' },
+    { ...tp('Prod Ener (1)', 'Installation PV pour éclairage LED', 'Seconde', 11, [], ['C1', 'C3', 'C6']), domain: 'pen', teacher_label: 'Dupont', objective: 'Dimensionner et câbler une petite installation photovoltaïque' },
+    { ...tp('Atelier', 'Travailler en milieu professionnel', 'Seconde', 7, [], ['C2', 'C4', 'C5', 'C12']), domain: 'ate', teacher_label: 'Martin', objective: 'Mise en situation réelle dans l’atelier de production' },
+    { ...tp('REM Cours', 'Les bases de l’électricité', 'Seconde', null, [], ['C1', 'C3', 'C5']), domain: 'rem', teacher_id: ME.admin, objective: 'Principes physiques et calculs' },
   ];
+  const planning = (() => {
+    const out: Array<Record<string, unknown>> = [];
+    const wk = mondayOf(t0);
+    const tpId = (c: string) => tps.find((x) => x.code === c)!.id;
+    const plan: Array<[number, string, string]> = [
+      [0, '2PB1.1', 'REM Cours'], [0, '2PB1.2', 'REM Cours'], [0, '2PB2', 'REM Cours'],
+      [1, '2PB1.1', 'Prod Ener (1)'], [1, '2PB1.2', 'Industrie (1)'], [1, '2PB2', 'Atelier'],
+      [2, '2PB1.1', 'Prod Ener (1)'], [2, '2PB1.2', 'Industrie (1)'], [2, '2PB2', 'Atelier'],
+      [3, '2PB1.1', 'Atelier'], [3, '2PB1.2', 'Prod Ener (1)'], [3, '2PB2', 'Industrie (1)'],
+    ];
+    for (const [d, g, c] of plan) out.push({ day: iso(addDays(wk, d)), group_code: g, tp_id: tpId(c), label: null, note: null, updated_by: ME.admin, updated_at: now() });
+    out.push({ day: iso(addDays(wk, 7)), group_code: '2PB1.1', tp_id: null, label: 'Période d’observation', note: null, updated_by: ME.admin, updated_at: now() });
+    return out;
+  })();
   const TP = (c: string) => tps.find((x) => x.code === c)!.id as string;
 
   const slot = (roomName: string, group: string, who: string, weekday: number, start: string, end: string, label: string | null, tpCode: string | null, sysName: string | null) => ({
@@ -170,9 +188,24 @@ function reset() {
     rooms, systems, tps, timetable_slots: slots, sessions,
     maintenance: maint, maintenance_notes: [{ id: uid(), maintenance_id: maint[0].id, author_id: ME.prof, text: 'Pièce commandée chez le fournisseur.', created_at: now() }],
     purchases, students, progress,
+    tools: [
+      { id: uid(), name: 'Pince à dénuder automatique', ref: null, category: 'Outillage à main', qty: 8, room_id: rooms[0].id, state: 'ok', image_url: null, notes: null, created_at: now() },
+      { id: uid(), name: 'Multimètre numérique CAT III', ref: 'MX 53', category: 'Mesure', qty: 12, room_id: rooms[2].id, state: 'ok', image_url: null, notes: 'Piles à vérifier chaque trimestre', created_at: now() },
+      { id: uid(), name: 'Tournevis isolés 1000 V (jeu)', ref: null, category: 'Outillage à main', qty: 10, room_id: rooms[0].id, state: 'usage', image_url: null, notes: null, created_at: now() },
+    ],
+    settings: [
+      { key: 'site_title', value: 'Parc MELEC' }, { key: 'site_logo_url', value: '' }, { key: 'school_logo_url', value: '' },
+      { key: 'year_start', value: sy.from }, { key: 'year_end', value: sy.to }, { key: 'shown_days', value: '1,2,3,4' },
+    ],
+    calendar_periods: [
+      { id: uid(), kind: 'vacances', label: 'Toussaint', start_date: `${sy.from.slice(0, 4)}-10-17`, end_date: `${sy.from.slice(0, 4)}-11-01` },
+      { id: uid(), kind: 'ferie', label: 'Armistice', start_date: `${sy.from.slice(0, 4)}-11-11`, end_date: `${sy.from.slice(0, 4)}-11-11` },
+    ],
+    planning_cells: planning as Tbl,
+    fiches: [],
   };
   if (options.empty) {
-    for (const k of ['rooms', 'systems', 'tps', 'timetable_slots', 'sessions', 'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress']) T[k] = [];
+    for (const k of ['rooms', 'systems', 'tps', 'timetable_slots', 'sessions', 'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress', 'tools', 'calendar_periods', 'planning_cells', 'fiches']) T[k] = [];
   }
   signedIn = options.as !== 'signedout';
 }
@@ -180,6 +213,7 @@ reset();
 
 const PK: Record<string, string[]> = {
   progress: ['student_id', 'tp_id'], teacher_groups: ['profile_id', 'group_code'], groups: ['code'],
+  planning_cells: ['day', 'group_code'], settings: ['key'],
 };
 const pkOf = (table: string) => PK[table] ?? ['id'];
 const same = (table: string, a: Row, b: Row) => pkOf(table).every((k) => a[k] === b[k]);
@@ -189,7 +223,7 @@ const matches = (row: Row, match: Match) =>
 
 const notify = (table: string) => queueMicrotask(() => listeners.forEach((cb) => cb(table)));
 
-const ADMIN_ONLY = new Set(['rooms', 'teacher_groups']);
+const ADMIN_ONLY = new Set(['rooms', 'teacher_groups', 'tools', 'settings', 'calendar_periods']);
 
 function guard(table: string, op: 'insert' | 'update' | 'delete') {
   const p = currentProfile();
@@ -202,6 +236,7 @@ function guard(table: string, op: 'insert' | 'update' | 'delete') {
   if (ADMIN_ONLY.has(table) && role !== 'admin') return denied();
   if (role === 'lecture') return denied();
   if (op === 'delete' && ['systems', 'tps', 'maintenance', 'students'].includes(table) && role !== 'admin') return denied();
+  if (table === 'fiches' && op !== 'insert' && role !== 'admin') return undefined;
   if (table === 'purchases' && op === 'update' && role !== 'admin') throw new Error('Seul un gestionnaire peut changer le statut d’une demande.');
 }
 
@@ -218,6 +253,9 @@ function defaults(table: string, row: Row): Row {
     case 'sessions': Object.assign(base, { teacher_id: me, status: 'planned', created_by: me }); break;
     case 'rooms': Object.assign(base, { kind: 'salle', shared: false, active: true }); break;
     case 'progress': Object.assign(base, { updated_at: now(), updated_by: me }); break;
+    case 'tools': Object.assign(base, { qty: 1, state: 'ok', image_url: null }); break;
+    case 'planning_cells': Object.assign(base, { tp_id: null, label: null, note: null, updated_by: me, updated_at: now() }); break;
+    case 'fiches': Object.assign(base, { data: {}, created_by: me, updated_at: now() }); break;
   }
   const out = { ...base, ...row };
   if (pkOf(table).length === 1 && pkOf(table)[0] === 'id' && !out.id) out.id = uid();
@@ -258,6 +296,7 @@ function cascade(table: string, removed: Row[]) {
     T[t].forEach((r) => { if (ids.includes(r[col] as string)) { r[col] = null; changed = true; } });
     if (changed) notify(t);
   };
+  if (table === 'tps') nullify('planning_cells', 'tp_id');
   if (table === 'students') drop('progress', (r) => ids.includes(r.student_id));
   if (table === 'tps') drop('progress', (r) => ids.includes(r.tp_id));
   if (table === 'systems') drop('maintenance', (r) => ids.includes(r.system_id));
@@ -280,6 +319,8 @@ export const api: Api = {
   },
   async select<T>(table: string, q: Query = {}) {
     const p = currentProfile();
+    if (table === 'settings' && !(p && p.active))
+      return (T.settings ?? []).filter((r) => ['site_title', 'site_logo_url', 'school_logo_url'].includes(String(r.key))) as T[];
     if (table !== 'profiles' && !(p && p.active)) return [] as T[];
     let rows = (T[table] ?? []).filter((r) => !q.eq || matches(r, q.eq));
     if (table === 'profiles' && !(p && p.active)) rows = rows.filter((r) => r.id === p?.id);
@@ -291,6 +332,8 @@ export const api: Api = {
     guard(table, 'insert');
     const list = (Array.isArray(rows) ? rows : [rows]).map((r) => defaults(table, r));
     if (table === 'rooms' && list.some((r) => (T.rooms.some((x) => x.name === r.name)))) throw new Error('duplicate key value violates unique constraint "rooms_name_key"');
+    if (table === 'planning_cells' && list.some((r) => T.planning_cells.some((x) => x.day === r.day && x.group_code === r.group_code)))
+      throw new Error('duplicate key value violates unique constraint "planning_cells_pkey"');
     list.forEach((r) => checkConflicts(table, r));
     T[table] = [...(T[table] ?? []), ...list];
     notify(table);
