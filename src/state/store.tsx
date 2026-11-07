@@ -113,11 +113,25 @@ export function useAct() {
   const toast = useToast();
   const { reload } = useStore();
   return useCallback(
-    async (fn: () => Promise<unknown>, opts: { ok?: string; tables?: TableName[] } = {}) => {
+    async (fn: () => Promise<unknown>, opts: { ok?: string; tables?: TableName[]; undo?: () => Promise<unknown> } = {}) => {
       try {
         await fn();
         if (opts.tables?.length) await reload(opts.tables);
-        if (opts.ok) toast(opts.ok);
+        const undo = opts.undo;
+        if (opts.ok || undo) {
+          toast(opts.ok ?? 'Modifié.', 'ok', undo ? {
+            label: 'Annuler',
+            run: async () => {
+              try {
+                await undo();
+                if (opts.tables?.length) await reload(opts.tables);
+                toast('Action annulée.');
+              } catch (e) {
+                toast(friendlyError(e), 'bad');
+              }
+            },
+          } : undefined);
+        }
         return true;
       } catch (e) {
         toast(friendlyError(e), 'bad');

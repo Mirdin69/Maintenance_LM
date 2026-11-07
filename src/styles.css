@@ -288,3 +288,19 @@ tr.sel td { background: var(--sunken); }
 a.btn { text-decoration: none; display: inline-block; }
 .sheet { max-height: 70vh; }
 .sheet .tbl th { position: sticky; top: 0; }
+.toast-act { margin-left: 12px; }
+.dropzone { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 2px dashed var(--line, #cbd3e1); border-radius: 10px; padding: 10px; }
+.dropzone.over { background: color-mix(in srgb, var(--accent) 10%, transparent); border-color: var(--accent); }
+.search { position: relative; min-width: 180px; flex: 1; max-width: 340px; }
+.search .in { width: 100%; }
+.search-res { position: absolute; z-index: 30; left: 0; right: 0; top: 100%; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); max-height: 60vh; overflow: auto; min-width: 280px; }
+.search-res li { padding: 6px 8px; }
+.search-res button { all: unset; display: block; width: 100%; cursor: pointer; }
+.search-res li:hover { background: var(--sunken); border-radius: 6px; }
+.notes { position: relative; }
+.notes-list { left: auto; right: 0; min-width: 260px; }
+.badge { display: inline-block; margin-left: 6px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--bad-solid); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.modal-back { position: fixed; inset: 0; z-index: 50; background: rgba(10, 15, 30, .55); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 12px; overflow: auto; }
+.modal { width: min(560px, 100%); }
+.grip { cursor: grab; user-select: none; color: var(--muted); font-size: 12px; margin-right: 2px; }
+.cell-warn { color: var(--warn); font-size: 13px; margin-right: 2px; cursor: help; }

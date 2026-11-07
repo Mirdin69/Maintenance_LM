@@ -4,7 +4,7 @@ import { useAct, useStore } from '@/state/store';
 import { TOOL_STATES } from '@/lib/domain';
 import type { Tool } from '@/lib/types';
 import { AddPanel, ConfirmButton, Field, Options } from '@/components/ui';
-import { ImageHint } from '@/components/Img';
+import { ImageField } from '@/components/ImageField';
 import { ToolsList } from '@/components/Tools';
 
 export default function ToolsAdmin() {
@@ -45,10 +45,7 @@ export default function ToolsAdmin() {
           <Field label="Quantité"><input className="in" name="qty" type="number" min={0} defaultValue={editing?.qty ?? 1} /></Field>
           <Field label="Rangement"><select className="in" name="room_id" defaultValue={editing?.room_id ?? ''}><Options placeholder="Non précisé" items={data.rooms.map((r) => [r.id, r.name])} /></select></Field>
           <Field label="État"><select className="in" name="state" defaultValue={editing?.state ?? 'ok'}><Options items={Object.entries(TOOL_STATES).map(([k, v]) => [k, v.label])} /></select></Field>
-          <Field label="Image (lien du Drive partagé)" wide>
-            <input className="in" value={img} onChange={(e) => setImg(e.target.value)} placeholder="https://drive.google.com/file/d/…/view" />
-          </Field>
-          <ImageHint value={img} />
+          <ImageField label="Image de l’outil" value={img} onChange={setImg} />
           <Field label="Notes" wide><textarea className="in" name="notes" maxLength={500} defaultValue={editing?.notes ?? ''} /></Field>
           <div className="actions">
             <button className="btn" type="submit">{editing ? 'Enregistrer' : 'Ajouter l’outil'}</button>

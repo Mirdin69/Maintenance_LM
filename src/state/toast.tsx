@@ -1,17 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 type Kind = 'ok' | 'bad';
-type Show = (msg: string, kind?: Kind) => void;
+export interface ToastAction { label: string; run: () => void | Promise<void> }
+type Show = (msg: string, kind?: Kind, action?: ToastAction) => void;
 
 const Ctx = createContext<Show>(() => {});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toast, setToast] = useState<{ msg: string; kind: Kind } | null>(null);
+  const [toast, setToast] = useState<{ msg: string; kind: Kind; action?: ToastAction } | null>(null);
   const timer = useRef<number | undefined>(undefined);
-  const show = useCallback<Show>((msg, kind = 'ok') => {
-    setToast({ msg, kind });
+  const show = useCallback<Show>((msg, kind = 'ok', action) => {
+    setToast({ msg, kind, action });
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setToast(null), kind === 'bad' ? 7000 : 3500);
+    timer.current = window.setTimeout(() => setToast(null), action ? 9000 : kind === 'bad' ? 7000 : 3500);
   }, []);
   useEffect(() => () => window.clearTimeout(timer.current), []);
   return (
@@ -20,6 +21,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {toast && (
         <div className={'toast' + (toast.kind === 'bad' ? ' bad' : '')} role="status" aria-live="polite">
           {toast.msg}
+          {toast.action && (
+            <button type="button" className="btn sm toast-act" onClick={() => { const a = toast.action!; setToast(null); void a.run(); }}>{toast.action.label}</button>
+          )}
         </div>
       )}
     </Ctx.Provider>

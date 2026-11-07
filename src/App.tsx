@@ -18,6 +18,9 @@ import { BrandingProvider, useBranding } from '@/state/branding';
 import { Img } from '@/components/Img';
 import Students from '@/pages/Students';
 import Admin from '@/pages/Admin';
+import { Search } from '@/components/Search';
+import { Notifications } from '@/components/Notifications';
+import { ReportFault } from '@/components/ReportFault';
 
 type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'admin';
 
@@ -206,8 +209,9 @@ function Login() {
 }
 
 function Shell() {
-  const { profile, isAdmin, signOut, refreshProfile } = useAuth();
+  const { profile, isAdmin, canWrite, signOut, refreshProfile } = useAuth();
   const { loading, error } = useStore();
+  const [fault, setFault] = useState(false);
   const [tab, setTab] = useState<TabId>(fromHash);
   const [editName, setEditName] = useState(false);
 
@@ -238,6 +242,9 @@ function Shell() {
         <div className="top-in">
           <Logos onDark />
           <div className="who">
+            {!loading && <Search go={go} />}
+            {!loading && canWrite && <button className="btn sm" onClick={() => setFault(true)}>Signaler une panne</button>}
+            {!loading && <Notifications go={go} />}
             {editName ? (
               <form className="inline" onSubmit={saveName}>
                 <input className="in" name="name" aria-label="Votre nom affiché" defaultValue={profile?.full_name ?? ''} placeholder={displayName(profile)} maxLength={60} />
@@ -260,6 +267,7 @@ function Shell() {
           ))}
         </nav>
       </header>
+      {fault && <ReportFault onClose={() => setFault(false)} />}
       <main>
         {error && <div className="alert" role="alert">Chargement impossible : {error}</div>}
         {loading ? (

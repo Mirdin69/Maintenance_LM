@@ -9,6 +9,8 @@ import { Chip, Spinner, downloadBlob } from '@/components/ui';
 export function DocsEditor({ value, onChange }: { value: Doc[]; onChange: (d: Doc[]) => void }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [over, setOver] = useState(false);
+  const [progress, setProgress] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const set = (i: number, patch: Partial<Doc>) => onChange(value.map((d, j) => (j === i ? { ...d, ...patch } : d)));
 
@@ -21,6 +23,7 @@ export function DocsEditor({ value, onChange }: { value: Doc[]; onChange: (d: Do
       if (problem) { toast?.(problem, 'bad'); continue; }
       if (list.length >= 20) { toast?.('20 documents au maximum.', 'bad'); break; }
       try {
+        setProgress(`${Array.from(files).indexOf(file) + 1}/${files.length} : ${file.name}`);
         const path = newStoragePath(file.name);
         await api.storage.upload(path, file);
         list = [...list, { title: file.name, path }];
@@ -30,6 +33,7 @@ export function DocsEditor({ value, onChange }: { value: Doc[]; onChange: (d: Do
       }
     }
     setBusy(false);
+    setProgress('');
     if (input.current) input.current.value = '';
   };
 
@@ -47,7 +51,13 @@ export function DocsEditor({ value, onChange }: { value: Doc[]; onChange: (d: Do
           <button type="button" className="btn ghost sm" onClick={() => onChange(value.filter((_, j) => j !== i))}>Retirer</button>
         </div>
       ))}
-      <div className="row">
+      <div
+        className={'dropzone' + (over ? ' over' : '')}
+        onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => { e.preventDefault(); setOver(false); if (!busy) void upload(e.dataTransfer.files); }}
+      >
+        <span className="muted small">{busy ? `Dépôt en cours… ${progress}` : 'Glissez des fichiers ici, ou :'}</span>
         <label className="btn sm" style={{ cursor: busy ? 'wait' : 'pointer' }}>
           {busy ? 'Dépôt en cours…' : '+ Déposer un fichier'}
           <input ref={input} type="file" multiple accept={ACCEPT} disabled={busy || value.length >= 20} aria-label="Déposer un fichier"

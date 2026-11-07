@@ -6,17 +6,19 @@ import { DOMAINS, LEVELS, byText, levelOfGroup } from '@/lib/domain';
 import { GROUP_CODES } from '@/lib/domain';
 import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf, parseISO, schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { isoWeek, monthBlocks, periodOn, weekdaysFor } from '@/lib/calendar';
-import { SPECIAL_LABELS, cellKey, cellPatch, cellValue, hoursOf, indexCells, isMine } from '@/lib/semainier';
+import { SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, cellValue, copyWeekOps, hoursOf, indexCells, isMine, weekNeeds, type CellOp } from '@/lib/semainier';
+import { usePersisted } from '@/hooks/usePersisted';
 import type { Level, PlanningCell, Tp } from '@/lib/types';
 import { Chip, Empty, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
 
-type View = 'annee' | 'semaine' | 'mes';
+type View = 'annee' | 'semaine' | 'besoins' | 'mes';
+const VIEWS: readonly View[] = ['annee', 'semaine', 'besoins', 'mes'];
 
 export default function Semainier() {
   const { data, settings, who } = useStore();
   const { canWrite } = useAuth();
-  const [view, setView] = useState<View>('annee');
-  const [level, setLevel] = useState<Level>('Seconde');
+  const [view, setView] = usePersisted<View>('sem-view', 'annee', VIEWS);
+  const [level, setLevel] = usePersisted<Level>('sem-level', 'Seconde', LEVELS);
 
   const groups = GROUP_CODES.filter((g) => levelOfGroup(g) === level);
   const tps = useMemo(() => data.tps.filter((t) => t.level === level).sort(byText((t) => t.code ?? t.title)), [data.tps, level]);
@@ -33,11 +35,12 @@ export default function Semainier() {
     <>
       <PageHead tab="semainier" title="Semainier" />
       <div className="tools">
-        <Seg<View> label="Vue" value={view} onChange={setView} items={[['annee', 'Année'], ['semaine', 'Semaine'], ['mes', 'Mes cours']]} />
-        {view !== 'mes' && <Seg<Level> label="Niveau" value={level} onChange={setLevel} items={LEVELS.map((l) => [l, l])} />}
+        <Seg<View> label="Vue" value={view} onChange={setView} items={[['annee', 'Année'], ['semaine', 'Semaine'], ['besoins', 'Besoins matériel'], ['mes', 'Mes cours']]} />
+        {view !== 'mes' && view !== 'besoins' && <Seg<Level> label="Niveau" value={level} onChange={setLevel} items={LEVELS.map((l) => [l, l])} />}
       </div>
       {view === 'annee' && <Year groups={groups} tps={tps} cells={cells} weekdays={weekdays} from={from} to={to} level={level} canWrite={canWrite} teacherOf={teacherOf} />}
       {view === 'semaine' && <Week groups={groups} cells={cells} weekdays={weekdays} tpById={tpById} teacherOf={teacherOf} />}
+      {view === 'besoins' && <Needs />}
       {view === 'mes' && <Mine cells={data.planning_cells} tpById={tpById} />}
     </>
   );
@@ -61,14 +64,49 @@ function Year({ groups, tps, cells, weekdays, from, to, level, canWrite, teacher
   const [month, setMonth] = useState(() => (months.some((m) => m.key === thisMonth) ? thisMonth : ''));
   const shownMonths = month ? months.filter((m) => m.key === month) : months;
 
-  const change = (day: string, group: string, value: string) => {
-    const patch = cellPatch(value);
-    if (!patch.tp_id && !patch.label) {
-      const ex = cells.get(cellKey(day, group));
-      if (ex?.note) return void act(() => api.update('planning_cells', { day, group_code: group }, patch), { tables: ['planning_cells'] });
-      return void act(() => api.remove('planning_cells', { day, group_code: group }), { tables: ['planning_cells'] });
-    }
-    void act(() => api.upsert('planning_cells', [{ day, group_code: group, ...patch }], 'day,group_code'), { tables: ['planning_cells'] });
+  const warnings = useMemo(() => buildWarnings(data.planning_cells, tpById, new Map(data.systems.map((x) => [x.id, x]))), [data.planning_cells, tpById, data.systems]);
+
+  /** Écrit des cases et permet d'annuler l'ensemble d'un geste */
+  const apply = (ops: CellOp[], ok?: string) => {
+    if (!ops.length) return;
+    const before = ops.map((o) => ({ o, prev: cells.get(cellKey(o.day, o.group)) }));
+    const run = async () => {
+      for (const { o } of before) {
+        const patch = cellPatch(o.value);
+        const ex = cells.get(cellKey(o.day, o.group));
+        if (!patch.tp_id && !patch.label) {
+          if (ex?.note) await api.update('planning_cells', { day: o.day, group_code: o.group }, patch);
+          else if (ex) await api.remove('planning_cells', { day: o.day, group_code: o.group });
+        } else {
+          await api.upsert('planning_cells', [{ day: o.day, group_code: o.group, ...patch }], 'day,group_code');
+        }
+      }
+    };
+    const undo = async () => {
+      for (const { o, prev } of before) {
+        if (prev) await api.upsert('planning_cells', [{ day: prev.day, group_code: prev.group_code, tp_id: prev.tp_id, label: prev.label, note: prev.note }], 'day,group_code');
+        else await api.remove('planning_cells', { day: o.day, group_code: o.group });
+      }
+    };
+    void act(run, { ok, tables: ['planning_cells'], undo });
+  };
+  const change = (day: string, group: string, value: string) => apply([{ day, group, value }], 'Case modifiée.');
+
+  const drop = (e: React.DragEvent, day: string, group: string) => {
+    e.preventDefault();
+    const [sd, sg] = e.dataTransfer.getData('text/plain').split('|');
+    const value = cellValue(cells.get(cellKey(sd, sg)));
+    if (!sd || !sg || !value || (sd === day && sg === group)) return;
+    apply(e.shiftKey ? [{ day, group, value }, { day: sd, group: sg, value: '' }] : [{ day, group, value }], e.shiftKey ? 'Case déplacée.' : 'Case copiée.');
+  };
+
+  const [copyFrom, setCopyFrom] = useState(() => iso(mondayOf(new Date())));
+  const [copyTo, setCopyTo] = useState(() => iso(addDays(mondayOf(new Date()), 7)));
+  const [overwrite, setOverwrite] = useState(false);
+  const copyWeek = () => {
+    const ops = copyWeekOps(cells, groups, iso(mondayOf(parseISO(copyFrom))), iso(mondayOf(parseISO(copyTo))), { overwrite, blocked: (d) => !!periodOn(d, data.calendar_periods) });
+    if (!ops.length) return void act(() => Promise.reject(new Error('Rien à copier : la semaine source est vide, ou la cible est déjà remplie.')));
+    apply(ops, `${ops.length} case${ops.length > 1 ? 's' : ''} copiée${ops.length > 1 ? 's' : ''}.`);
   };
 
   const exportCsv = () => {
@@ -105,6 +143,18 @@ function Year({ groups, tps, cells, weekdays, from, to, level, canWrite, teacher
           <button className="btn ghost sm" onClick={() => window.print()}>Imprimer</button>
         </div>
       </div>
+      {canWrite && (
+        <details className="add no-print">
+          <summary>Copier une semaine vers une autre</summary>
+          <div className="add-body tools">
+            <label className="row">De la semaine du <input className="in" type="date" value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)} /></label>
+            <label className="row">vers la semaine du <input className="in" type="date" value={copyTo} onChange={(e) => setCopyTo(e.target.value)} /></label>
+            <label className="row"><input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} /> Remplacer les cases déjà remplies</label>
+            <button type="button" className="btn sm" onClick={copyWeek}>Copier ({level})</button>
+          </div>
+          <p className="muted small add-body">Copie lundi à vendredi des groupes de {level} ; les vacances et jours fériés de la cible sont ignorés. Astuce : glissez la poignée ⠿ d’une case sur une autre pour la copier (avec Maj : la déplacer).</p>
+        </details>
+      )}
       <div className="scroll">
         {shownMonths.map((m) => (
           <table key={m.key} className="sem">
@@ -126,7 +176,11 @@ function Year({ groups, tps, cells, weekdays, from, to, level, canWrite, teacher
                       const value = cellValue(c);
                       const known = !!c?.label && SPECIAL_LABELS.includes(c.label);
                       return (
-                        <td key={g} className={onlyMine && isMine(tp, profile) ? 'mine' : ''}>
+                        <td key={g} className={onlyMine && isMine(tp, profile) ? 'mine' : ''}
+                          onDragOver={canWrite ? (e) => e.preventDefault() : undefined} onDrop={canWrite ? (e) => drop(e, d, g) : undefined}>
+                          {canWrite && value && <span className="grip no-print" draggable aria-hidden="true" title="Glisser pour copier (Maj : déplacer)"
+                            onDragStart={(e) => { e.dataTransfer.setData('text/plain', `${d}|${g}`); e.dataTransfer.effectAllowed = 'copyMove'; }}>⠿</span>}
+                          {warnings.get(cellKey(d, g)) && <span className="cell-warn" role="img" aria-label={`Attention : ${warnings.get(cellKey(d, g))!.join(' ; ')}`} title={warnings.get(cellKey(d, g))!.join('\n')}>⚠</span>}
                           <select className={`pc ${tp ? `dom-${tp.domain}` : value ? 'lab' : 'empty'}`} value={value} disabled={!canWrite}
                             aria-label={`${g}, ${DAY_LONG[dow - 1]} ${fmtShort(d)}`} onChange={(e) => change(d, g, e.target.value)}>
                             <option value="">—</option>
@@ -249,5 +303,47 @@ function Mine({ cells, tpById }: { cells: PlanningCell[]; tpById: Map<string, Tp
         </section>
       )}
     </>
+  );
+}
+
+function Needs() {
+  const { data, systemById, tpById } = useStore();
+  const [start, setStart] = useState(() => iso(mondayOf(new Date())));
+  const days = [0, 1, 2, 3, 4].map((n) => iso(addDays(parseISO(start), n)));
+  const { systems, tools } = useMemo(() => weekNeeds(data.planning_cells, days, tpById), [data.planning_cells, tpById, start]);
+  const toolById = new Map(data.tools.map((t) => [t.id, t]));
+  const rows = (m: Map<string, Array<{ day: string; group: string; tp: string }>>, name: (id: string) => { label: string; qty: number; bad: boolean } | undefined, kind: string) =>
+    [...m.entries()].map(([id, uses]) => ({ id, kind, info: name(id), uses, groups: [...new Set(uses.map((u) => u.group))] })).filter((r) => r.info);
+  const all = [
+    ...rows(systems, (id) => { const x = systemById.get(id); return x && { label: x.name, qty: x.qty, bad: x.state !== 'service' }; }, 'Système'),
+    ...rows(tools, (id) => { const x = toolById.get(id); return x && { label: x.name, qty: x.qty, bad: x.state === 'hs' }; }, 'Outil'),
+  ].sort((a, b) => b.groups.length - a.groups.length || a.info!.label.localeCompare(b.info!.label, 'fr'));
+  const exportCsv = () => downloadBlob(`besoins-${start}.csv`, toCsv([['Type', 'Élément', 'Quantité disponible', 'Groupes', 'TP'], ...all.map((r) => [r.kind, r.info!.label, r.info!.qty, r.groups.join(' '), [...new Set(r.uses.map((u) => u.tp))].join(' ')])]));
+  return (
+    <section className="panel">
+      <div className="row between no-print">
+        <h2>Besoins en matériel, semaine du {fmtShort(days[0])}</h2>
+        <div className="row">
+          <button className="btn ghost sm" onClick={() => setStart(iso(addDays(parseISO(start), -7)))}>← Précédente</button>
+          <button className="btn ghost sm" onClick={() => setStart(iso(mondayOf(new Date())))}>Aujourd’hui</button>
+          <button className="btn ghost sm" onClick={() => setStart(iso(addDays(parseISO(start), 7)))}>Suivante →</button>
+          <button className="btn ghost sm" onClick={exportCsv}>Exporter en CSV</button>
+          <button className="btn ghost sm" onClick={() => window.print()}>Imprimer</button>
+        </div>
+      </div>
+      {all.length === 0 ? <Empty>Aucun TP de cette semaine n’a de système ou d’outil associé. Associez-les dans Planning des TP, Catalogue.</Empty> : (
+        <div className="scroll"><table className="tbl">
+          <thead><tr><th>Élément</th><th>Type</th><th className="num">Disponible</th><th>Groupes</th><th>TP</th></tr></thead>
+          <tbody>{all.map((r) => (
+            <tr key={r.kind + r.id}>
+              <td><b>{r.info!.label}</b>{r.info!.bad && <span className="chip bad" style={{ marginLeft: 6 }}>indisponible</span>}</td>
+              <td>{r.kind}</td><td className="num">{r.info!.qty}</td>
+              <td>{r.groups.join(', ')}{r.groups.length > 1 && <span className="chip warn" style={{ marginLeft: 6 }}>{r.groups.length} groupes</span>}</td>
+              <td>{[...new Set(r.uses.map((u) => u.tp))].join(', ')}</td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
+    </section>
   );
 }

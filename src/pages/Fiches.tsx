@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { api } from '@/lib/api';
+import { usePersisted } from '@/hooks/usePersisted';
 import { dropFiles } from '@/lib/docs';
 import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
@@ -25,7 +26,7 @@ const STD_ACTIVITIES: Activity[] = [
 export default function Fiches() {
   const { data, who } = useStore();
   const { canWrite, isAdmin, profile } = useAuth();
-  const [kind, setKind] = useState<FicheKind | ''>('');
+  const [kind, setKind] = usePersisted<FicheKind | ''>('fiche-kind', '', ['', 'sequence', 'seance']);
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ id?: string; kind: FicheKind } | null>(null);
 

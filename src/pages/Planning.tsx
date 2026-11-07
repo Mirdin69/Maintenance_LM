@@ -1,4 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { usePersisted } from '@/hooks/usePersisted';
+import Rotations from '@/pages/Rotations';
 import { api } from '@/lib/api';
 import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
@@ -11,17 +13,19 @@ import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg } f
 import { DocsEditor, DocsViewer } from '@/components/Docs';
 import { asDocs, cleanDocs, dropFiles, orphanPaths, type Doc } from '@/lib/docs';
 
-type Sub = 'week' | 'tps' | 'usage';
+type Sub = 'week' | 'tps' | 'usage' | 'rot';
+const SUBS: readonly Sub[] = ['week', 'tps', 'usage', 'rot'];
 
 export default function Planning() {
-  const [sub, setSub] = useState<Sub>('week');
+  const [sub, setSub] = usePersisted<Sub>('plan-sub', 'week', SUBS);
   return (
     <>
       <PageHead tab="planning" title="Planning des TP" />
-      <div className="tools"><Seg<Sub> label="Section" value={sub} onChange={setSub} items={[['week', 'Séances'], ['tps', 'Catalogue des TP'], ['usage', 'Utilisation des systèmes']]} /></div>
+      <div className="tools"><Seg<Sub> label="Section" value={sub} onChange={setSub} items={[['week', 'Séances'], ['tps', 'Catalogue des TP'], ['usage', 'Utilisation des systèmes'], ['rot', 'Rotations des groupes']]} /></div>
       {sub === 'week' && <Week />}
       {sub === 'tps' && <Catalogue />}
       {sub === 'usage' && <Usage />}
+      {sub === 'rot' && <Rotations />}
     </>
   );
 }
@@ -185,10 +189,11 @@ function Catalogue() {
   const [level, setLevel] = useState<Level | ''>('');
   const [sys, setSys] = useState<string[]>([]);
   const [comp, setComp] = useState<string[]>([]);
+  const [toolIds, setToolIds] = useState<string[]>([]);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [viewing, setViewing] = useState<string | null>(null);
 
-  const edit = (t: Tp | null) => { setEditing(t); setSys(t?.system_ids ?? []); setComp(t?.competences ?? []); setDocs(asDocs(t?.documents)); };
+  const edit = (t: Tp | null) => { setEditing(t); setSys(t?.system_ids ?? []); setComp(t?.competences ?? []); setToolIds(t?.tool_ids ?? []); setDocs(asDocs(t?.documents)); };
   const toggle = (arr: string[], v: string) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
@@ -196,7 +201,7 @@ function Catalogue() {
     const f = new FormData(e.currentTarget);
     const row = {
       code: String(f.get('code')).trim() || null, title: String(f.get('title')).trim(), level: f.get('level'), domain: f.get('domain'),
-      hours: Number(f.get('hours')) || null, system_ids: sys, competences: comp,
+      hours: Number(f.get('hours')) || null, system_ids: sys, competences: comp, tool_ids: toolIds, reusable: f.get('reusable') === 'on',
       objective: String(f.get('objective')).trim() || null,
       teacher_id: String(f.get('teacher_id')) || null,
       teacher_label: String(f.get('teacher_id')) ? null : String(f.get('teacher_label')).trim() || null,
@@ -228,6 +233,9 @@ function Catalogue() {
               <div className="picks">{data.systems.map((s) => <label key={s.id} className="pick"><input type="checkbox" checked={sys.includes(s.id)} onChange={() => setSys(toggle(sys, s.id))} />{s.name}</label>)}</div></div>
             <div className="f wide"><span className="lab">Compétences travaillées</span>
               <div className="picks">{Object.keys(COMPETENCES).map((c) => <label key={c} className="pick" title={COMPETENCES[c]}><input type="checkbox" checked={comp.includes(c)} onChange={() => setComp(toggle(comp, c))} />{c}</label>)}</div></div>
+            <div className="f wide"><span className="lab">Outils nécessaires</span>
+              <div className="picks">{data.tools.map((t) => <label key={t.id} className="pick"><input type="checkbox" checked={toolIds.includes(t.id)} onChange={() => setToolIds(toggle(toolIds, t.id))} />{t.name}</label>)}{data.tools.length === 0 && <span className="muted small">Aucun outil : un gestionnaire les ajoute dans Administration, Outils.</span>}</div></div>
+            <label className="row wide"><input type="checkbox" name="reusable" defaultChecked={editing?.reusable ?? false} /> Ressource réutilisable (visible dans la Banque de ressources)</label>
             <DocsEditor value={docs} onChange={setDocs} />
             <div className="actions"><button className="btn" type="submit">{editing ? 'Enregistrer' : 'Ajouter'}</button>{editing && <button className="btn ghost" type="button" onClick={() => edit(null)}>Annuler</button>}</div>
           </form>
@@ -246,6 +254,11 @@ function Catalogue() {
                 <td>{t.competences.join(', ') || '—'}</td>
                 <td>{asDocs(t.documents).length ? <button className="btn ghost sm" aria-pressed={viewing === t.id} onClick={() => setViewing(viewing === t.id ? null : t.id)}>{asDocs(t.documents).length} document{asDocs(t.documents).length > 1 ? 's' : ''}</button> : <span className="muted">—</span>}</td>
                 {canWrite && <td><div className="row"><button className="btn ghost sm" onClick={() => { edit(t); window.scrollTo(0, 0); }}>Modifier</button>
+                  <button className="btn ghost sm" title="Copie le TP (les fichiers déposés ne sont pas copiés, seulement les liens)" onClick={() => void act(() => api.insert('tps', {
+                    code: t.code ? `${t.code} (copie)` : null, title: t.title, level: t.level, domain: t.domain, hours: t.hours, system_ids: t.system_ids, tool_ids: t.tool_ids ?? [],
+                    competences: t.competences, objective: t.objective, teacher_id: t.teacher_id, teacher_label: t.teacher_label, sequence_name: t.sequence_name,
+                    documents: asDocs(t.documents).filter((d) => d.url), reusable: false,
+                  }), { ok: 'TP dupliqué.', tables: ['tps'] })}>Dupliquer</button>
                   {isAdmin && <ConfirmButton onConfirm={async () => { if (await act(() => api.remove('tps', { id: t.id }), { ok: 'TP supprimé.', tables: ['tps', 'progress', 'timetable_slots', 'sessions'] })) void dropFiles(orphanPaths(asDocs(t.documents), [])); }}>Supprimer</ConfirmButton>}</div></td>}
               </tr>))}</tbody>
           </table></div>

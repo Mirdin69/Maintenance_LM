@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
+import { usePersisted } from '@/hooks/usePersisted';
 import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
 import { DOMAINS, SYSTEM_STATES, byText } from '@/lib/domain';
 import type { Domain, System, SystemState } from '@/lib/types';
 import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
-import { Img, ImageHint } from '@/components/Img';
+import { Img } from '@/components/Img';
+import { ImageField } from '@/components/ImageField';
 import { ToolsList } from '@/components/Tools';
 
 export default function Systems() {
@@ -15,7 +17,7 @@ export default function Systems() {
   const [editing, setEditing] = useState<System | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [img, setImg] = useState('');
-  const [tab, setTab] = useState<'systemes' | 'outils'>('systemes');
+  const [tab, setTab] = usePersisted<'systemes' | 'outils'>('sys-tab', 'systemes', ['systemes', 'outils']);
 
   const systems = [...data.systems].sort(byText((s) => s.name));
   const rooms = data.rooms.filter((r) => r.active || r.id === editing?.room_id);
@@ -74,10 +76,7 @@ export default function Systems() {
                 <Options items={Object.entries(SYSTEM_STATES).map(([k, v]) => [k, v.label])} />
               </select>
             </Field>
-            <Field label="Image (lien du Drive partagé)" wide>
-              <input className="in" value={img} onChange={(e) => setImg(e.target.value)} placeholder="https://drive.google.com/file/d/…/view" />
-            </Field>
-            <ImageHint value={img} />
+            <ImageField label="Image du système" value={img} onChange={setImg} />
             <Field label="Notes" wide><textarea className="in" name="notes" maxLength={500} defaultValue={editing?.notes ?? ''} /></Field>
             <div className="actions">
               <button className="btn" type="submit">{editing ? 'Enregistrer' : 'Ajouter le système'}</button>
