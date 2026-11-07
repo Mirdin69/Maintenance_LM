@@ -236,3 +236,22 @@ describe('jours par niveau', () => {
     expect(weekdaysFor({}, 'Première')).toEqual([1, 2, 3, 4]);
   });
 });
+
+describe('import de TP collés', () => {
+  const prof = (id: string, email: string, full_name: string | null) => ({ id, email, full_name, role: 'admin', active: true, created_at: '', last_seen: null }) as never;
+  const text = 'Domaine\tEnseignant\tNom du TP\tObjectif\tCompétences\tDurée\nSécurité - Habilitation (1)\tVerwaerde\tFormation à l’habilitation électrique : préparation B1V \tÊtre capable d’évaluer un risque\tC1 - C2 - C10 - C11\t3';
+  it('retrouve les colonnes par leur en-tête, dans n’importe quel ordre', async () => {
+    const { parseTpPaste, buildTps } = await import('@/lib/importTp');
+    const rows = parseTpPaste(text);
+    expect(rows).toHaveLength(1);
+    const { ok, problems } = buildTps(rows, [prof('p1', 'alexandre.verwaerde@lamache.org', 'Alexandre V.'), prof('p2', 'marc.m@lamache.org', 'Marc M.')], []);
+    expect(problems).toEqual([]);
+    expect(ok[0]).toMatchObject({ title: 'Formation à l’habilitation électrique : préparation B1V', domain: 'hab', hours: 3, teacher_id: 'p1', competences: ['C1', 'C2', 'C10', 'C11'], level: 'Seconde' });
+  });
+  it('garde un nom partiel comme texte libre s’il est ambigu', async () => {
+    const { buildTps } = await import('@/lib/importTp');
+    const { ok } = buildTps([['', 'T', '', '', '', 'Martin', '', '', '', '']], [prof('a', 'a.martin@lamache.org', null), prof('b', 'b.martin@lamache.org', null)], []);
+    expect(ok[0].teacher_id).toBeNull();
+    expect(ok[0].teacher_label).toBe('Martin');
+  });
+});

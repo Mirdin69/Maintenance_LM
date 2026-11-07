@@ -7,7 +7,7 @@ import type { Level, Tp } from '@/lib/types';
 import { AddPanel, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
 import { DocsEditor, DocsViewer } from '@/components/Docs';
 import { PasteImport } from '@/components/PasteImport';
-import { TP_COLUMNS, buildTps } from '@/lib/importTp';
+import { TP_COLUMNS, buildTps, parseTpPaste } from '@/lib/importTp';
 import { asDocs, cleanDocs, dropFiles, orphanPaths, type Doc } from '@/lib/docs';
 
 export default function Catalogue() {
@@ -73,7 +73,7 @@ export default function Catalogue() {
         </AddPanel>
       )}
       {canWrite && (
-        <PasteImport summary="Coller une liste de TP depuis Excel" columns={TP_COLUMNS} max={300}
+        <PasteImport summary="Coller une liste de TP depuis Excel" columns={TP_COLUMNS} max={300} parse={parseTpPaste}
           notes={(rows) => buildTps(rows, data.profiles, data.systems).problems}
           onImport={async (rows) => {
             const { ok } = buildTps(rows, data.profiles, data.systems);

@@ -15,10 +15,13 @@ function level(v: string): Level | null {
   return LEVELS.find((l) => norm(l) === n) ?? null;
 }
 
+/** Sans parenthèses ni ponctuation : « Sécurité - Habilitation (1) » = « Sécurité, habilitation » */
+const loose = (x: string) => norm(x).replace(/\(.*?\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+
 function domain(v: string): Domain | null {
-  const n = norm(v);
+  const n = loose(v);
   if (!n) return 'ind';
-  const hit = (Object.entries(DOMAINS) as Array<[Domain, string]>).find(([k, label]) => k === n || norm(label) === n || norm(label).startsWith(n));
+  const hit = (Object.entries(DOMAINS) as Array<[Domain, string]>).find(([k, label]) => k === n || loose(label) === n || loose(label).startsWith(n) || n.startsWith(loose(label)));
   return hit ? hit[0] : null;
 }
 
@@ -42,7 +45,11 @@ export function buildTps(rows: string[][], profiles: Profile[], systems: System[
     if (!dm) return void problems.push(`${line} : domaine « ${r[3]} » inconnu, ligne ignorée.`);
     const h = num(r[4], 0);
     const who = (r[5] ?? '').trim();
-    const prof = who ? profiles.find((p) => p.active && (norm(displayName(p)) === norm(who) || p.email.toLowerCase() === who.toLowerCase())) : undefined;
+    const active = profiles.filter((p) => p.active);
+    const exact = who ? active.find((p) => norm(displayName(p)) === norm(who) || p.email.toLowerCase() === who.toLowerCase()) : undefined;
+    // Un nom partiel (« Verwaerde ») suffit s'il ne désigne qu'un seul compte
+    const partial = who && !exact ? active.filter((p) => norm(displayName(p) + ' ' + p.email.split('@')[0].replace(/[._-]+/g, ' ')).includes(norm(who))) : [];
+    const prof = exact ?? (partial.length === 1 ? partial[0] : undefined);
     const comps: string[] = [];
     for (const c of (r[8] ?? '').split(/[\s,;/+\-–—]+/).filter(Boolean)) {
       const k = c.toUpperCase();
@@ -62,4 +69,21 @@ export function buildTps(rows: string[][], profiles: Profile[], systems: System[
     });
   });
   return { ok, problems };
+}
+
+/** Noms d'en-tête reconnus (sans accents ni majuscules), pour chaque colonne de TP_COLUMNS */
+const ALIASES: string[][] = [
+  ['code', 'n', 'numero'], ['titre', 'nom', 'nom du tp', 'tp', 'intitule', 'libelle'], ['niveau', 'classe', 'annee'], ['domaine', 'famille'],
+  ['duree (h)', 'duree', 'heures', 'h', 'volume'], ['enseignant', 'enseignante', 'prof', 'professeur', 'auteur'], ['sequence', 'sequence pedagogique'],
+  ['objectif', 'objectifs'], ['competences', 'competence'], ['systemes', 'systeme'],
+];
+
+/** Lit le texte collé : si la première ligne est un en-tête, les colonnes sont retrouvées par leur nom, dans n'importe quel ordre ; sinon l'ordre de TP_COLUMNS est supposé. */
+export function parseTpPaste(text: string): string[][] {
+  const rows = text.split(/\r?\n/).map((l) => l.split(l.includes('\t') ? '\t' : ';').map((c) => c.trim())).filter((r) => r.some(Boolean));
+  if (!rows.length) return [];
+  const map = rows[0].map((c) => ALIASES.findIndex((a) => a.includes(norm(c))));
+  if (map.filter((i) => i >= 0).length < 2) return rows;
+  const at = (r: string[], col: number) => { const src = map.indexOf(col); return src >= 0 ? r[src] ?? '' : ''; };
+  return rows.slice(1).map((r) => TP_COLUMNS.map((_, col) => at(r, col)));
 }
