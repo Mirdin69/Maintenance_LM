@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 const migration = readFileSync(new URL('../supabase/migrations/0001_init.sql', import.meta.url), 'utf8');
 const migration2 = readFileSync(new URL('../supabase/migrations/0002_semainier.sql', import.meta.url), 'utf8');
 const migration3 = readFileSync(new URL('../supabase/migrations/0003_documents.sql', import.meta.url), 'utf8');
+const migration5 = readFileSync(new URL('../supabase/migrations/0005_ameliorations.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -64,6 +65,7 @@ beforeAll(async () => {
   await db.exec(migration2);
   await db.exec(migration3);
   await db.exec(migration4);
+  await db.exec(migration5);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -444,5 +446,73 @@ describe('migration 0004 : fichiers déposés', () => {
     await as('admin');
     await db.query("delete from storage.objects where name = 'docs/cccccccc/c.pdf'");
     expect(await sql('select name from storage.objects')).toHaveLength(0);
+  });
+});
+
+describe('migration 0005 : améliorations', () => {
+  it('rejoue la migration sans erreur', async () => {
+    await db.exec('reset role');
+    await db.exec(migration5);
+  });
+  it('génère les interventions préventives échues, sans doublon', async () => {
+    await as('admin');
+    const [sys] = await sql("insert into public.systems (name) values ('Banc prév') returning id");
+    await db.query("insert into public.maintenance_plans (system_id, title, every_days, next_due, checklist) values ($1, 'Contrôle annuel', 365, current_date - 10, '[\"Visuel\",\"Isolement\"]')", [sys.id]);
+    await as('prof');
+    const [r] = await sql('select public.generate_due_maintenance() as n');
+    expect(r.n).toBe(1);
+    const m = await sql("select kind, description, plan_id from public.maintenance where title = 'Contrôle annuel'");
+    expect(m).toHaveLength(1);
+    expect(m[0].kind).toBe('prev');
+    expect(m[0].description).toContain('- Isolement');
+    const [n2] = await sql('select public.generate_due_maintenance() as n');
+    expect(n2.n).toBe(0);
+    const [plan] = await sql("select next_due > current_date as future from public.maintenance_plans where title = 'Contrôle annuel'");
+    expect(plan.future).toBe(true);
+    await as('lecteur');
+    expect(await fails('select public.generate_due_maintenance()')).toMatch(/Droits insuffisants/);
+  });
+  it('journalise les modifications et ne les montre qu’aux gestionnaires', async () => {
+    await as('prof');
+    await db.query("insert into public.systems (name) values ('Système journal')");
+    await db.query("update public.systems set qty = 4 where name = 'Système journal'");
+    expect(await sql('select * from public.audit_log')).toHaveLength(0);
+    expect(await fails("insert into public.audit_log (table_name, op) values ('systems','INSERT')")).toMatch(/permission denied/);
+    await as('admin');
+    const rows = await sql("select op, old_data, new_data from public.audit_log where table_name = 'systems' and new_data->>'name' = 'Système journal' order by id");
+    expect(rows.map((r: any) => r.op)).toEqual(['INSERT', 'UPDATE']);
+    expect(rows[1].old_data.qty).toBe(1);
+    expect(await fails('update public.audit_log set op = \'DELETE\'')).toMatch(/permission denied/);
+    await as(null);
+    expect(await fails('select * from public.audit_log')).toMatch(/permission denied/);
+  });
+  it('PFMP : écriture pour enseignant, dates cohérentes, refus au lecteur et à l’anonyme', async () => {
+    await as('admin');
+    const [st] = await sql("insert into public.students (name, group_code) values ('Élève Test', '1PB1.1') returning id");
+    await as('prof');
+    const [co] = await sql("insert into public.companies (name) values ('Entreprise SA') returning id");
+    expect(await fails('insert into public.pfmp_periods (student_id, company_id, start_date, end_date) values ($1,$2, current_date, current_date + 14)', [st.id, co.id])).toBeNull();
+    expect(await fails('insert into public.pfmp_periods (student_id, start_date, end_date) values ($1, current_date, current_date - 1)', [st.id])).toMatch(/check/);
+    await as('lecteur');
+    expect(await sql('select * from public.pfmp_periods')).toHaveLength(1);
+    expect(await fails("insert into public.companies (name) values ('X')")).toMatch(/row-level security/);
+    await as(null);
+    expect(await fails('select * from public.companies')).toMatch(/permission denied/);
+  });
+  it('devis, photo de panne et images : adresses web seulement, bucket public limité', async () => {
+    await as('prof');
+    expect(await fails("update public.purchases set quote_url = 'javascript:alert(1)'")).toBeNull(); // aucune ligne, pas d'erreur
+    const [sys] = await sql("select id from public.systems limit 1");
+    expect(await fails("insert into public.maintenance (system_id, title, photo_url) values ($1, 'x', 'javascript:alert(1)')", [sys.id])).toMatch(/check/);
+    expect(await fails("insert into public.maintenance (system_id, title, photo_url) values ($1, 'x', 'https://a.fr/p.jpg')", [sys.id])).toBeNull();
+    await db.exec('reset role');
+    const [b] = await sql("select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'images'");
+    expect(b.public).toBe(true);
+    expect(Number(b.file_size_limit)).toBe(5242880);
+    expect(b.allowed_mime_types).not.toContain('image/svg+xml');
+    await as('lecteur');
+    expect(await fails("insert into storage.objects (bucket_id, name) values ('images', 'img/aaaaaaaa/a.png')")).toMatch(/row-level security/);
+    await as('prof');
+    expect(await fails("insert into storage.objects (bucket_id, name) values ('images', 'img/aaaaaaaa/a.png')")).toBeNull();
   });
 });

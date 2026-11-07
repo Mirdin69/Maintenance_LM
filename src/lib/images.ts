@@ -29,3 +29,20 @@ export function imageSrc(raw: string | null | undefined, width = 800): string | 
 
 /** Un dossier Drive n'est pas une image : on le signale pour aider à corriger */
 export const isDriveFolder = (raw: string) => /drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\//.test(raw);
+
+export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const IMAGE_ACCEPT = '.png,.jpg,.jpeg,.webp,.gif';
+export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+
+export function checkImage(f: { name: string; size: number; type?: string }): string | null {
+  if (!/\.(png|jpe?g|webp|gif)$/i.test(f.name) || (f.type && !IMAGE_TYPES.includes(f.type))) return `« ${f.name} » n’est pas une image PNG, JPEG, WebP ou GIF.`;
+  if (f.size > IMAGE_MAX_BYTES) return `« ${f.name} » dépasse 5 Mo.`;
+  if (f.size === 0) return `« ${f.name} » est vide.`;
+  return null;
+}
+
+/** Chemin de dépôt : img/<identifiant>/<nom nettoyé> */
+export function newImagePath(name: string): string {
+  const clean = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._ ()-]/g, '_').replace(/\.{2,}/g, '.').slice(-120) || 'image';
+  return `img/${crypto.randomUUID()}/${clean}`;
+}

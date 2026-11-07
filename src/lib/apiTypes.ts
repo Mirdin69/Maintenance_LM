@@ -29,6 +29,10 @@ export interface Api {
     download(path: string): Promise<Blob>;
     remove(paths: string[]): Promise<void>;
   };
+  /** Images (espace public « images ») : retourne l'adresse publique à enregistrer */
+  images: {
+    upload(file: File): Promise<string>;
+  };
   select<T>(table: string, q?: Query): Promise<T[]>;
   insert<T>(table: string, rows: Row | Row[]): Promise<T[]>;
   update(table: string, match: Match, patch: Row): Promise<void>;

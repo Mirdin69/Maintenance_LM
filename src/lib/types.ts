@@ -66,7 +66,9 @@ export interface Tp {
   teacher_id: string | null;
   teacher_label: string | null;
   sequence_name: string | null;
-  documents: Array<{ title: string; url: string }>;
+  documents: Array<{ title: string; url?: string; path?: string }>;
+  tool_ids: string[];
+  reusable: boolean;
   created_at: string;
 }
 
@@ -119,6 +121,8 @@ export interface Maintenance {
   due_date: string | null;
   status: 'open' | 'wip' | 'done';
   closed_at: string | null;
+  photo_url: string | null;
+  plan_id: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -143,6 +147,9 @@ export interface Purchase {
   system_id: string | null;
   justification: string | null;
   urgent: boolean;
+  supplier: string | null;
+  quote_ref: string | null;
+  quote_url: string | null;
   status: PurchaseStatus;
   requested_by: string | null;
   created_at: string;
@@ -208,11 +215,63 @@ export interface Fiche {
   level: Level | null;
   tp_id: string | null;
   sequence_id: string | null;
-  documents: Array<{ title: string; url: string }>;
+  documents: Array<{ title: string; url?: string; path?: string }>;
+  reusable: boolean;
   data: Record<string, unknown>;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface MaintenancePlan {
+  id: string;
+  system_id: string;
+  title: string;
+  description: string | null;
+  priority: 'n' | 'h' | 'u';
+  every_days: number;
+  next_due: string;
+  checklist: string[];
+  active: boolean;
+  created_at: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  address: string | null;
+  contact: string | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export type PfmpStatus = 'planned' | 'ongoing' | 'done';
+
+export interface PfmpPeriod {
+  id: string;
+  student_id: string;
+  company_id: string | null;
+  start_date: string;
+  end_date: string;
+  tutor: string | null;
+  visit_date: string | null;
+  visit_by: string | null;
+  evaluation: string | null;
+  status: PfmpStatus;
+  created_at: string;
+}
+
+export interface AuditEntry {
+  id: number;
+  at: string;
+  user_id: string | null;
+  table_name: string;
+  op: 'INSERT' | 'UPDATE' | 'DELETE';
+  row_key: string | null;
+  old_data: Record<string, unknown> | null;
+  new_data: Record<string, unknown> | null;
 }
 
 export interface DataSet {
@@ -233,6 +292,9 @@ export interface DataSet {
   calendar_periods: CalendarPeriod[];
   planning_cells: PlanningCell[];
   fiches: Fiche[];
+  maintenance_plans: MaintenancePlan[];
+  companies: Company[];
+  pfmp_periods: PfmpPeriod[];
 }
 
 export type TableName = keyof DataSet;

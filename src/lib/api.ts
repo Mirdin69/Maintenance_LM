@@ -1,3 +1,4 @@
+import { newImagePath } from './images';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Api, AuthUser, Match, Query, Row } from './apiTypes';
 
@@ -80,6 +81,15 @@ export const api: Api = {
       if (!paths.length) return;
       const { error } = await db().storage.from('documents').remove(paths);
       if (error) fail(error);
+    },
+  },
+
+  images: {
+    async upload(file) {
+      const path = newImagePath(file.name);
+      const { error } = await db().storage.from('images').upload(path, file, { contentType: file.type || undefined, upsert: false });
+      if (error) fail(error);
+      return db().storage.from('images').getPublicUrl(path).data.publicUrl;
     },
   },
 

@@ -88,7 +88,7 @@ function reset() {
   const S = (n: string) => systems.find((s) => s.name.startsWith(n))!.id as string;
 
   const tp = (code: string, title: string, level: string, hours: number | null, systemIds: string[], competences: string[]) => ({
-    id: uid(), code, title, level, domain: 'ind', hours, system_ids: systemIds, competences, objective: null, teacher_id: null, teacher_label: null, sequence_name: null, documents: [], created_at: now(),
+    id: uid(), code, title, level, domain: 'ind', hours, system_ids: systemIds, competences, objective: null, teacher_id: null, teacher_label: null, sequence_name: null, documents: [], tool_ids: [], reusable: false, created_at: now(),
   });
   const tps = [
     tp('P1', 'Câblage avec fiches bananes sur platine à bornes repérées', 'Seconde', 4, [S('Armoire')], ['C1', 'C4', 'C5', 'C11']),
@@ -169,13 +169,13 @@ function reset() {
   }
 
   const maint = [
-    { id: uid(), system_id: S('Banc Zelio'), kind: 'corr', title: 'Relais SR2 ne répond plus', description: 'Plus de communication avec le PC depuis lundi.', priority: 'u', due_date: day(4), status: 'wip', closed_at: null, created_by: ME.prof, created_at: now() },
-    { id: uid(), system_id: S('Capsuleuse'), kind: 'prev', title: 'Contrôle annuel des protections', description: null, priority: 'n', due_date: day(14), status: 'open', closed_at: null, created_by: ME.admin, created_at: now() },
-    { id: uid(), system_id: S('Banc API'), kind: 'corr', title: 'Câbles Ethernet à remplacer', description: null, priority: 'h', due_date: null, status: 'done', closed_at: now(), created_by: ME.admin, created_at: now() },
+    { id: uid(), system_id: S('Banc Zelio'), kind: 'corr', title: 'Relais SR2 ne répond plus', description: 'Plus de communication avec le PC depuis lundi.', priority: 'u', due_date: day(4), status: 'wip', closed_at: null, photo_url: null, plan_id: null, created_by: ME.prof, created_at: now() },
+    { id: uid(), system_id: S('Capsuleuse'), kind: 'prev', title: 'Contrôle annuel des protections', description: null, priority: 'n', due_date: day(14), status: 'open', closed_at: null, photo_url: null, plan_id: null, created_by: ME.admin, created_at: now() },
+    { id: uid(), system_id: S('Banc API'), kind: 'corr', title: 'Câbles Ethernet à remplacer', description: null, priority: 'h', due_date: null, status: 'done', closed_at: now(), photo_url: null, plan_id: null, created_by: ME.admin, created_at: now() },
   ];
   const purchases = [
-    { id: uid(), kind: 'mat', item: 'Contacteur 3P 25 A bobine 24 V', ref: 'LC1D25B7', qty: 6, unit_price: 38.5, system_id: S('Armoire'), justification: 'Remplacement avant TP P3', urgent: true, status: 'req', requested_by: ME.prof, created_at: now() },
-    { id: uid(), kind: 'conso', item: 'Embouts de câblage 1,5 mm² (boîte 500)', ref: null, qty: 3, unit_price: 14.9, system_id: null, justification: null, urgent: false, status: 'ord', requested_by: ME.admin, created_at: now() },
+    { id: uid(), kind: 'mat', item: 'Contacteur 3P 25 A bobine 24 V', ref: 'LC1D25B7', qty: 6, unit_price: 38.5, system_id: S('Armoire'), justification: 'Remplacement avant TP P3', urgent: true, supplier: null, quote_ref: null, quote_url: null, status: 'req', requested_by: ME.prof, created_at: now() },
+    { id: uid(), kind: 'conso', item: 'Embouts de câblage 1,5 mm² (boîte 500)', ref: null, qty: 3, unit_price: 14.9, system_id: null, justification: null, urgent: false, supplier: null, quote_ref: null, quote_url: null, status: 'ord', requested_by: ME.admin, created_at: now() },
   ];
 
   T = {
@@ -202,10 +202,10 @@ function reset() {
       { id: uid(), kind: 'ferie', label: 'Armistice', start_date: `${sy.from.slice(0, 4)}-11-11`, end_date: `${sy.from.slice(0, 4)}-11-11` },
     ],
     planning_cells: planning as Tbl,
-    fiches: [],
+    fiches: [], maintenance_plans: [], companies: [], pfmp_periods: [], audit_log: [],
   };
   if (options.empty) {
-    for (const k of ['rooms', 'systems', 'tps', 'timetable_slots', 'sessions', 'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress', 'tools', 'calendar_periods', 'planning_cells', 'fiches']) T[k] = [];
+    for (const k of ['rooms', 'systems', 'tps', 'timetable_slots', 'sessions', 'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress', 'tools', 'calendar_periods', 'planning_cells', 'fiches', 'maintenance_plans', 'companies', 'pfmp_periods']) T[k] = [];
   }
   signedIn = options.as !== 'signedout';
 }
@@ -223,7 +223,19 @@ const matches = (row: Row, match: Match) =>
 
 const notify = (table: string) => queueMicrotask(() => listeners.forEach((cb) => cb(table)));
 
-const ADMIN_ONLY = new Set(['rooms', 'teacher_groups', 'tools', 'settings', 'calendar_periods']);
+const ADMIN_ONLY = new Set(['rooms', 'teacher_groups', 'tools', 'settings', 'calendar_periods', 'audit_log']);
+const AUDITED: Record<string, string[]> = {
+  systems: ['id'], tps: ['id'], fiches: ['id'], maintenance: ['id'], maintenance_plans: ['id'], purchases: ['id'], rooms: ['id'], tools: ['id'],
+  students: ['id'], planning_cells: ['day', 'group_code'], companies: ['id'], pfmp_periods: ['id'], sessions: ['id'], timetable_slots: ['id'],
+};
+let auditSeq = 0;
+function audit(table: string, op: 'INSERT' | 'UPDATE' | 'DELETE', before: Row | null, after: Row | null) {
+  const keys = AUDITED[table];
+  if (!keys) return;
+  if (op === 'UPDATE' && JSON.stringify({ ...before, updated_at: 0 }) === JSON.stringify({ ...after, updated_at: 0 })) return;
+  const src = (after ?? before)!;
+  (T.audit_log ??= []).push({ id: ++auditSeq, at: now(), user_id: currentUser()?.id ?? null, table_name: table, op, row_key: keys.map((k) => src[k]).join('/'), old_data: before ? structuredClone(before) : null, new_data: after ? structuredClone(after) : null });
+}
 
 function guard(table: string, op: 'insert' | 'update' | 'delete') {
   const p = currentProfile();
@@ -245,17 +257,19 @@ function defaults(table: string, row: Row): Row {
   const base: Row = { created_at: now() };
   switch (table) {
     case 'systems': Object.assign(base, { domain: 'ind', qty: 1, state: 'service', created_by: me }); break;
-    case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [], documents: [] }); break;
-    case 'maintenance': Object.assign(base, { kind: 'corr', priority: 'n', status: 'open', closed_at: null, created_by: me }); break;
+    case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [], documents: [], tool_ids: [], reusable: false }); break;
+    case 'maintenance_plans': Object.assign(base, { priority: 'n', checklist: [], active: true }); break;
+    case 'pfmp_periods': Object.assign(base, { status: 'planned' }); break;
+    case 'maintenance': Object.assign(base, { kind: 'corr', priority: 'n', status: 'open', closed_at: null, photo_url: null, plan_id: null, created_by: me }); break;
     case 'maintenance_notes': Object.assign(base, { author_id: me }); break;
-    case 'purchases': Object.assign(base, { kind: 'mat', qty: 1, unit_price: 0, urgent: false, status: 'req', requested_by: me }); break;
+    case 'purchases': Object.assign(base, { kind: 'mat', qty: 1, unit_price: 0, urgent: false, supplier: null, quote_ref: null, quote_url: null, status: 'req', requested_by: me }); break;
     case 'timetable_slots': Object.assign(base, { created_by: me }); break;
     case 'sessions': Object.assign(base, { teacher_id: me, status: 'planned', created_by: me }); break;
     case 'rooms': Object.assign(base, { kind: 'salle', shared: false, active: true }); break;
     case 'progress': Object.assign(base, { updated_at: now(), updated_by: me }); break;
     case 'tools': Object.assign(base, { qty: 1, state: 'ok', image_url: null }); break;
     case 'planning_cells': Object.assign(base, { tp_id: null, label: null, note: null, updated_by: me, updated_at: now() }); break;
-    case 'fiches': Object.assign(base, { data: {}, documents: [], sequence_id: null, created_by: me, updated_at: now() }); break;
+    case 'fiches': Object.assign(base, { data: {}, documents: [], reusable: false, sequence_id: null, created_by: me, updated_at: now() }); break;
   }
   const out = { ...base, ...row };
   if (pkOf(table).length === 1 && pkOf(table)[0] === 'id' && !out.id) out.id = uid();
@@ -331,6 +345,14 @@ export const api: Api = {
     },
     async remove(paths) { paths.forEach((x) => FILES.delete(x)); },
   },
+  images: {
+    async upload(file) {
+      const p = currentProfile();
+      if (!p?.active || p.role === 'lecture') throw new Error('new row violates row-level security policy for table "objects"');
+      if (file.size > 5 * 1024 * 1024) throw new Error('The object exceeded the maximum allowed size');
+      return `https://demo.local/images/${crypto.randomUUID()}/${encodeURIComponent(file.name)}`;
+    },
+  },
   auth: {
     async user() { return currentUser(); },
     onChange(cb) { authListeners.add(cb); return () => authListeners.delete(cb); },
@@ -347,6 +369,7 @@ export const api: Api = {
     if (table === 'settings' && !(p && p.active))
       return (T.settings ?? []).filter((r) => ['site_title', 'site_logo_url', 'school_logo_url'].includes(String(r.key))) as T[];
     if (table !== 'profiles' && !(p && p.active)) return [] as T[];
+    if (table === 'audit_log' && p?.role !== 'admin') return [] as T[];
     let rows = (T[table] ?? []).filter((r) => !q.eq || matches(r, q.eq));
     if (table === 'profiles' && !(p && p.active)) rows = rows.filter((r) => r.id === p?.id);
     if (q.order) for (const [col, dir] of [...q.order].reverse())
@@ -361,6 +384,7 @@ export const api: Api = {
       throw new Error('duplicate key value violates unique constraint "planning_cells_pkey"');
     list.forEach((r) => checkConflicts(table, r));
     T[table] = [...(T[table] ?? []), ...list];
+    list.forEach((r) => audit(table, 'INSERT', null, r));
     notify(table);
     return structuredClone(list) as T[];
   },
@@ -373,6 +397,7 @@ export const api: Api = {
       checkConflicts(table, next, r);
       if (table === 'maintenance') next.closed_at = next.status === 'done' ? (r.status === 'done' ? r.closed_at : now()) : null;
       changed = true;
+      audit(table, 'UPDATE', r, next);
       return next;
     });
     if (changed) notify(table);
@@ -381,8 +406,8 @@ export const api: Api = {
     guard(table, 'update');
     for (const row of rows) {
       const i = T[table].findIndex((r) => same(table, r, row));
-      if (i >= 0) T[table][i] = { ...T[table][i], ...row };
-      else T[table].push(defaults(table, row));
+      if (i >= 0) { const prev = T[table][i]; T[table][i] = { ...prev, ...row }; audit(table, 'UPDATE', prev, T[table][i]); }
+      else { const d = defaults(table, row); T[table].push(d); audit(table, 'INSERT', null, d); }
     }
     notify(table);
   },
@@ -392,6 +417,7 @@ export const api: Api = {
     if (table === 'rooms' && removed.some((r) => T.timetable_slots.some((s) => s.room_id === r.id)))
       throw new Error('update or delete on table "rooms" violates foreign key constraint "timetable_slots_room_id_fkey"');
     T[table] = T[table].filter((r) => !matches(r, match));
+    removed.forEach((r) => audit(table, 'DELETE', r, null));
     cascade(table, removed);
     if (removed.length) notify(table);
   },
@@ -399,6 +425,25 @@ export const api: Api = {
     const p = currentProfile();
     if (fn === 'touch_me' && p) p.last_seen = now();
     if (fn === 'set_my_name' && p) { p.full_name = String(args?.p_name ?? '').trim() || null; notify('profiles'); }
+    if (fn === 'generate_due_maintenance') {
+      if (!p?.active || p.role === 'lecture') throw new Error('Droits insuffisants');
+      const today = iso(new Date());
+      let n = 0;
+      for (const plan of T.maintenance_plans ?? []) {
+        if (!plan.active || String(plan.next_due) > today) continue;
+        if (!T.maintenance.some((m) => m.plan_id === plan.id && m.status !== 'done')) {
+          T.maintenance.push({ id: uid(), system_id: plan.system_id, kind: 'prev', title: plan.title, description: [plan.description, ...((plan.checklist as string[]) ?? []).map((x) => `- ${x}`)].filter(Boolean).join('\n') || null,
+            priority: plan.priority, due_date: plan.next_due, status: 'open', closed_at: null, photo_url: null, plan_id: plan.id, created_by: p.id, created_at: now() });
+          n++;
+        }
+        let d = new Date(String(plan.next_due));
+        while (iso(d) <= today) d = addDays(d, Number(plan.every_days));
+        plan.next_due = iso(d);
+      }
+      if (n) { notify('maintenance'); }
+      notify('maintenance_plans');
+      return n;
+    }
     return null;
   },
   subscribe(_tables, cb) { listeners.add(cb); return () => listeners.delete(cb); },
