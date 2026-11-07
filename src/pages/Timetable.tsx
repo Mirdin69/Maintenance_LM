@@ -105,9 +105,7 @@ export default function Timetable() {
 
   return (
     <>
-      <PageHead title="Emploi du temps">
-        Les créneaux hebdomadaires qui se répètent sur une période (l’année par défaut). Les exceptions d’un jour précis (déplacement, annulation, réservation) se font dans « Planning des TP ».
-      </PageHead>
+      <PageHead tab="edt" title="Emploi du temps" />
       {canWrite && (
         <AddPanel summary={editing ? 'Modifier le créneau' : 'Ajouter un créneau'} open={!!editing}>
           <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>

@@ -17,7 +17,7 @@ export default function Planning() {
   const [sub, setSub] = useState<Sub>('week');
   return (
     <>
-      <PageHead title="Planning des TP">Les séances de la semaine, le catalogue des TP et l’utilisation annuelle des systèmes.</PageHead>
+      <PageHead tab="planning" title="Planning des TP" />
       <div className="tools"><Seg<Sub> label="Section" value={sub} onChange={setSub} items={[['week', 'Séances'], ['tps', 'Catalogue des TP'], ['usage', 'Utilisation des systèmes']]} /></div>
       {sub === 'week' && <Week />}
       {sub === 'tps' && <Catalogue />}

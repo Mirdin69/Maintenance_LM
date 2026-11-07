@@ -68,9 +68,7 @@ export default function Occupancy() {
 
   return (
     <>
-      <PageHead title="Occupation des salles">
-        Taux d’occupation de la semaine (8 h – 18 h) calculé à partir de l’emploi du temps et des séances ponctuelles, avec recherche d’une salle libre.
-      </PageHead>
+      <PageHead tab="occupation" title="Occupation des salles" />
       <section className="panel">
         <div className="row between">
           <h2>Semaine du {fmtShort(days[0])} au {fmtShort(days[4])}</h2>

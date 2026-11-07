@@ -112,6 +112,30 @@ describe('administration', () => {
   });
 });
 
+describe('textes des onglets et jours par niveau', () => {
+  it('modifie le commentaire d’un onglet et le retire de l’impression', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Textes' }));
+    const area = (await screen.findAllByLabelText(/sous le titre « Tableau de bord »/))[0];
+    await userEvent.clear(area);
+    await userEvent.type(area, 'Bienvenue à l’atelier');
+    const panel = area.closest('section') as HTMLElement;
+    await userEvent.click(within(panel).getByLabelText('Imprimer ce commentaire'));
+    await userEvent.click(within(panel).getByRole('button', { name: 'Enregistrer' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Accueil' }));
+    const p = await screen.findByText('Bienvenue à l’atelier');
+    expect(p.className).toContain('no-print');
+  });
+  it('règle les jours affichés séparément pour chaque niveau', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Calendrier' }));
+    const fri = async (l: string) => within(await screen.findByRole('group', { name: `Jours affichés ${l}` })).getByLabelText('vendredi');
+    await userEvent.click(await fri('Terminale'));
+    await waitFor(async () => expect(await fri('Terminale')).toBeChecked());
+    expect(await fri('Seconde')).not.toBeChecked();
+  });
+});
+
 describe('semainier', () => {
   it('affiche les TP affectés et permet de changer une case', async () => {
     await open('prof', 'semainier');

@@ -43,7 +43,7 @@ export default function Students() {
 
   return (
     <>
-      <PageHead title="Suivi des élèves">Cliquez sur une case pour faire évoluer la validation : non acquis, en cours, partiellement acquis, acquis, puis vide.</PageHead>
+      <PageHead tab="eleves" title="Suivi des élèves" />
       <div className="tools">
         <Field label="Groupe">
           <select className="in" value={group} onChange={(e) => setGroup(e.target.value)}>

@@ -50,9 +50,7 @@ export default function Systems() {
 
   return (
     <>
-      <PageHead title="Systèmes pédagogiques">
-        Le parc des systèmes, maquettes et bancs utilisés en TP, avec la salle où ils se trouvent. Ajoutez un système avant de lui rattacher une intervention, un achat ou une séance.
-      </PageHead>
+      <PageHead tab="systemes" title="Systèmes pédagogiques" />
       <div className="tools"><Seg<'systemes' | 'outils'> label="Section" value={tab} onChange={setTab} items={[['systemes', 'Systèmes'], ['outils', 'Outils']]} /></div>
       {tab === 'outils' && <section className="panel"><h2>Outils et équipements</h2><ToolsList /><p className="muted small">La liste est gérée par un gestionnaire (Administration, Outils).</p></section>}
       {tab === 'systemes' && canWrite && (

@@ -43,7 +43,7 @@ export default function Fiches() {
 
   return (
     <>
-      <PageHead title="Fiches de séquence et de séance">Préparez vos fiches (modèles issus de votre semainier), partagées avec les collègues et imprimables.</PageHead>
+      <PageHead tab="fiches" title="Fiches de séquence et de séance" />
       <div className="tools">
         <Seg<FicheKind | ''> label="Type" value={kind} onChange={setKind} items={[['', 'Toutes'], ['sequence', 'Séquences'], ['seance', 'Séances']]} />
         {canWrite && <>

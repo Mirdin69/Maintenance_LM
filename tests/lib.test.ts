@@ -226,3 +226,13 @@ describe('documents joints', () => {
     expect(hasPreview({ title: 'a', path: 'docs/abcdefgh12/a.doc' })).toBe(false);
   });
 });
+
+import { weekdaysFor } from '@/lib/calendar';
+describe('jours par niveau', () => {
+  it('utilise le réglage du niveau, sinon le réglage commun', () => {
+    const st = { shown_days: '1,2,3,4', shown_days_terminale: '1,2,3,4,5' };
+    expect(weekdaysFor(st, 'Terminale')).toEqual([1, 2, 3, 4, 5]);
+    expect(weekdaysFor(st, 'Seconde')).toEqual([1, 2, 3, 4]);
+    expect(weekdaysFor({}, 'Première')).toEqual([1, 2, 3, 4]);
+  });
+});

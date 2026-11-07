@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Tone } from '@/lib/domain';
+import { useStore } from '@/state/store';
+import { resolveIntro } from '@/lib/intros';
 
 export const Chip = ({ tone = 'idle', children, title }: { tone?: Tone; children: ReactNode; title?: string }) => (
   <span className={`chip ${tone}`} title={title}>
@@ -9,11 +11,14 @@ export const Chip = ({ tone = 'idle', children, title }: { tone?: Tone; children
 
 export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>;
 
-export function PageHead({ title, children }: { title: string; children?: ReactNode }) {
+export function PageHead({ title, tab, children }: { title: string; tab?: string; children?: ReactNode }) {
+  const { settings } = useStore();
+  const intro = tab ? resolveIntro(tab, settings) : null;
+  const body = intro ? intro.text : children;
   return (
     <div className="head">
       <h1>{title}</h1>
-      {children && <p>{children}</p>}
+      {body && <p className={intro && !intro.print ? 'no-print' : undefined}>{body}</p>}
     </div>
   );
 }

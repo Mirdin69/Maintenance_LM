@@ -3,7 +3,8 @@ import { api } from '@/lib/api';
 import { useAct, useStore } from '@/state/store';
 import { PERIOD_KINDS, byText } from '@/lib/domain';
 import { DAY_LONG, fmtDate, schoolYearOf } from '@/lib/dates';
-import { frenchHolidays, parseWeekdays } from '@/lib/calendar';
+import { LEVELS } from '@/lib/domain';
+import { daysKey, frenchHolidays, weekdaysFor } from '@/lib/calendar';
 import type { CalendarPeriod } from '@/lib/types';
 import { AddPanel, Chip, ConfirmButton, Empty, Field, Options } from '@/components/ui';
 
@@ -11,7 +12,6 @@ export default function CalendarAdmin() {
   const { data, settings } = useStore();
   const act = useAct();
   const [formKey, setFormKey] = useState(0);
-  const shown = parseWeekdays(settings.shown_days);
   const start = settings.year_start || '';
   const end = settings.year_end || '';
   const periods = [...data.calendar_periods].sort(byText((p) => p.start_date));
@@ -19,10 +19,11 @@ export default function CalendarAdmin() {
   const setSetting = (key: string, value: string) =>
     act(() => api.upsert('settings', [{ key, value }], 'key'), { ok: 'Enregistré.', tables: ['settings'] });
 
-  const toggleDay = (d: number) => {
+  const toggleDay = (level: string, d: number) => {
+    const shown = weekdaysFor(settings, level);
     const next = shown.includes(d) ? shown.filter((x) => x !== d) : [...shown, d].sort();
     if (!next.length) return;
-    void setSetting('shown_days', next.join(','));
+    void setSetting(daysKey(level), next.join(','));
   };
 
   const add = async (e: FormEvent<HTMLFormElement>) => {
@@ -50,12 +51,14 @@ export default function CalendarAdmin() {
         <div className="tools">
           <Field label="Rentrée"><input className="in" type="date" defaultValue={start} key={`s${start}`} onBlur={(e) => e.target.value && e.target.value !== start && void setSetting('year_start', e.target.value)} /></Field>
           <Field label="Fin d’année"><input className="in" type="date" defaultValue={end} key={`e${end}`} onBlur={(e) => e.target.value && e.target.value !== end && void setSetting('year_end', e.target.value)} /></Field>
-          <div className="f">
-            <span className="lab">Jours affichés dans le semainier</span>
-            <div className="picks">{DAY_LONG.slice(0, 5).map((d, i) => (
-              <label key={d} className="pick"><input type="checkbox" checked={shown.includes(i + 1)} onChange={() => toggleDay(i + 1)} />{d}</label>
-            ))}</div>
-          </div>
+          {LEVELS.map((l) => (
+            <div key={l} className="f">
+              <span className="lab">Jours affichés, {l}</span>
+              <div className="picks" role="group" aria-label={`Jours affichés ${l}`}>{DAY_LONG.slice(0, 5).map((d, i) => (
+                <label key={d} className="pick"><input type="checkbox" checked={weekdaysFor(settings, l).includes(i + 1)} onChange={() => toggleDay(l, i + 1)} />{d}</label>
+              ))}</div>
+            </div>
+          ))}
         </div>
       </section>
       <AddPanel summary="Ajouter des vacances, un jour férié ou une période">

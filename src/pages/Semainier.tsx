@@ -5,7 +5,7 @@ import { useAct, useStore } from '@/state/store';
 import { DOMAINS, LEVELS, byText, levelOfGroup } from '@/lib/domain';
 import { GROUP_CODES } from '@/lib/domain';
 import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf, parseISO, schoolYearBounds, schoolYearOf } from '@/lib/dates';
-import { isoWeek, monthBlocks, parseWeekdays, periodOn } from '@/lib/calendar';
+import { isoWeek, monthBlocks, periodOn, weekdaysFor } from '@/lib/calendar';
 import { SPECIAL_LABELS, cellKey, cellPatch, cellValue, hoursOf, indexCells, isMine } from '@/lib/semainier';
 import type { Level, PlanningCell, Tp } from '@/lib/types';
 import { Chip, Empty, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
@@ -22,7 +22,7 @@ export default function Semainier() {
   const tps = useMemo(() => data.tps.filter((t) => t.level === level).sort(byText((t) => t.code ?? t.title)), [data.tps, level]);
   const tpById = useMemo(() => new Map(data.tps.map((t) => [t.id, t])), [data.tps]);
   const cells = useMemo(() => indexCells(data.planning_cells), [data.planning_cells]);
-  const weekdays = parseWeekdays(settings.shown_days);
+  const weekdays = weekdaysFor(settings, level);
   const bounds = schoolYearBounds(schoolYearOf(new Date()));
   const from = settings.year_start || bounds.from;
   const to = settings.year_end || bounds.to;
@@ -31,9 +31,7 @@ export default function Semainier() {
 
   return (
     <>
-      <PageHead title="Semainier">
-        Ce que fait chaque groupe, jour par jour, sur l’année. Choisissez un TP dans la case pour l’affecter ; les vacances et jours fériés se règlent dans Administration, Calendrier.
-      </PageHead>
+      <PageHead tab="semainier" title="Semainier" />
       <div className="tools">
         <Seg<View> label="Vue" value={view} onChange={setView} items={[['annee', 'Année'], ['semaine', 'Semaine'], ['mes', 'Mes cours']]} />
         {view !== 'mes' && <Seg<Level> label="Niveau" value={level} onChange={setLevel} items={LEVELS.map((l) => [l, l])} />}

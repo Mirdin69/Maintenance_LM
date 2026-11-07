@@ -44,7 +44,7 @@ export default function Purchases() {
 
   return (
     <>
-      <PageHead title="Demandes d’achat">Matériel et consommables. Un enseignant peut modifier sa demande tant qu’elle n’est pas traitée ; un gestionnaire la valide, la commande puis la réceptionne.</PageHead>
+      <PageHead tab="achats" title="Demandes d’achat" />
       {canWrite && (
         <AddPanel summary="Nouvelle demande">
           <form className="form" key={formKey} onSubmit={submit}>

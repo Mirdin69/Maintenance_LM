@@ -7,8 +7,9 @@ import RoomsAdmin from './admin/RoomsAdmin';
 import ToolsAdmin from './admin/ToolsAdmin';
 import CalendarAdmin from './admin/CalendarAdmin';
 import Appearance from './admin/Appearance';
+import Texts from './admin/Texts';
 
-type Section = 'comptes' | 'eleves' | 'salles' | 'outils' | 'calendrier' | 'apparence';
+type Section = 'comptes' | 'eleves' | 'salles' | 'outils' | 'calendrier' | 'apparence' | 'textes';
 
 export default function Admin() {
   const { data } = useStore();
@@ -16,10 +17,10 @@ export default function Admin() {
   const pending = data.profiles.filter((p) => !p.active).length;
   return (
     <>
-      <PageHead title="Administration">Comptes, élèves, salles, outils, calendrier et apparence du site.</PageHead>
+      <PageHead tab="admin" title="Administration" />
       <div className="tools">
         <Seg<Section> label="Section" value={section} onChange={setSection} items={[
-          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'],
+          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'],
         ]} />
       </div>
       {section === 'comptes' && <AccountsAdmin />}
@@ -28,6 +29,7 @@ export default function Admin() {
       {section === 'outils' && <ToolsAdmin />}
       {section === 'calendrier' && <CalendarAdmin />}
       {section === 'apparence' && <Appearance />}
+      {section === 'textes' && <Texts />}
     </>
   );
 }

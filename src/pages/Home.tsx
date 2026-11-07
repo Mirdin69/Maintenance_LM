@@ -30,9 +30,7 @@ export default function Home({ go }: { go: (tab: string) => void }) {
 
   return (
     <>
-      <PageHead title="Tableau de bord">
-        L’état du parc, les salles utilisées aujourd’hui, les interventions et les achats en cours.
-      </PageHead>
+      <PageHead tab="accueil" title="Tableau de bord" />
       <div className="kpis">
         <Kpi onClick={() => go('systemes')} n={data.systems.length} label="systèmes" sub={down.length ? `${down.length} indisponible${down.length > 1 ? 's' : ''}` : 'tous en service'} alert={down.length > 0} />
         <Kpi onClick={() => go('occupation')} n={busyToday} label="salles occupées aujourd’hui" sub={`sur ${activeRooms.length} salle${activeRooms.length > 1 ? 's' : ''}`} />

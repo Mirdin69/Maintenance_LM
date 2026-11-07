@@ -45,7 +45,7 @@ export default function Maintenance() {
 
   return (
     <>
-      <PageHead title="Maintenance des systèmes">Interventions préventives et correctives, avec priorité, échéance et suivi.</PageHead>
+      <PageHead tab="maintenance" title="Maintenance des systèmes" />
       {canWrite && (
         <AddPanel summary="Déclarer une intervention">
           {data.systems.length === 0 ? <Empty>Ajoutez d’abord un système dans l’onglet Systèmes.</Empty> : (

@@ -88,3 +88,11 @@ export function parseWeekdays(raw: string | undefined, fallback = [1, 2, 3, 4]):
     .filter((n) => Number.isInteger(n) && n >= 1 && n <= 5);
   return list.length ? [...new Set(list)].sort() : fallback;
 }
+
+/** Clé du réglage des jours affichés pour un niveau (les clés n'acceptent que lettres et _) */
+export const LEVEL_KEY: Record<string, string> = { Seconde: 'seconde', Première: 'premiere', Terminale: 'terminale' };
+export const daysKey = (level: string) => `shown_days_${LEVEL_KEY[level] ?? 'seconde'}`;
+
+/** Jours affichés pour un niveau : réglage du niveau, sinon réglage commun, sinon lundi-jeudi */
+export const weekdaysFor = (settings: Record<string, string>, level: string) =>
+  parseWeekdays(settings[daysKey(level)] || settings.shown_days);
