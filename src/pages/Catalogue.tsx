@@ -6,6 +6,8 @@ import { COMPETENCES, DOMAINS, LEVELS } from '@/lib/domain';
 import type { Level, Tp } from '@/lib/types';
 import { AddPanel, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
 import { DocsEditor, DocsViewer } from '@/components/Docs';
+import { PasteImport } from '@/components/PasteImport';
+import { TP_COLUMNS, buildTps } from '@/lib/importTp';
 import { asDocs, cleanDocs, dropFiles, orphanPaths, type Doc } from '@/lib/docs';
 
 export default function Catalogue() {
@@ -69,6 +71,15 @@ export default function Catalogue() {
             <div className="actions"><button className="btn" type="submit">{editing ? 'Enregistrer' : 'Ajouter'}</button>{editing && <button className="btn ghost" type="button" onClick={() => edit(null)}>Annuler</button>}</div>
           </form>
         </AddPanel>
+      )}
+      {canWrite && (
+        <PasteImport summary="Coller une liste de TP depuis Excel" columns={TP_COLUMNS} max={300}
+          notes={(rows) => buildTps(rows, data.profiles, data.systems).problems}
+          onImport={async (rows) => {
+            const { ok } = buildTps(rows, data.profiles, data.systems);
+            if (!ok.length) return false;
+            return act(() => api.insert('tps', ok), { ok: `${ok.length} TP ajouté${ok.length > 1 ? 's' : ''}.`, tables: ['tps'] });
+          }} />
       )}
       <section className="panel">
         <div className="row between"><h2>Catalogue ({list.length})</h2>
