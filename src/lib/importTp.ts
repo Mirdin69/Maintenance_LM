@@ -44,7 +44,7 @@ export function buildTps(rows: string[][], profiles: Profile[], systems: System[
     const who = (r[5] ?? '').trim();
     const prof = who ? profiles.find((p) => p.active && (norm(displayName(p)) === norm(who) || p.email.toLowerCase() === who.toLowerCase())) : undefined;
     const comps: string[] = [];
-    for (const c of (r[8] ?? '').split(/[\s,;/+]+/).filter(Boolean)) {
+    for (const c of (r[8] ?? '').split(/[\s,;/+\-–—]+/).filter(Boolean)) {
       const k = c.toUpperCase();
       if (k in COMPETENCES) { if (!comps.includes(k)) comps.push(k); } else problems.push(`${line} : compétence « ${c} » inconnue, ignorée.`);
     }

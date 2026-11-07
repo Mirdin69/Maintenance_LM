@@ -496,7 +496,7 @@ describe('interface', () => {
     await userEvent.click(await screen.findByText('Coller une liste de TP depuis Excel'));
     const area = await screen.findByLabelText('Lignes à importer');
     await userEvent.click(area);
-    await userEvent.paste('Code\tTitre\tNiveau\tDomaine\tDurée (h)\tEnseignant\tSéquence\tObjectif\tCompétences\tSystèmes\nXT1\tTP importé un\t1ère\tTertiaire\t4\tMarc M.\tSéq A\tObjectif\tC1, C99\tSystème inexistant\nXT2\tTP importé deux\t\t\t\t\t\t\t\t\n\tSans niveau valide\tCM2\t\t\t\t\t\t\t');
+    await userEvent.paste('Code\tTitre\tNiveau\tDomaine\tDurée (h)\tEnseignant\tSéquence\tObjectif\tCompétences\tSystèmes\nXT1\tTP importé un\t1ère\tTertiaire\t4\tMarc M.\tSéq A\tObjectif\tC1-C3 - C99\tSystème inexistant\nXT2\tTP importé deux\t\t\t\t\t\t\t\t\n\tSans niveau valide\tCM2\t\t\t\t\t\t\t');
     expect(await screen.findByText(/compétence « C99 » inconnue/)).toBeInTheDocument();
     expect(screen.getByText(/niveau « CM2 » inconnu/)).toBeInTheDocument();
     await userEvent.click(await screen.findByRole('button', { name: /^Importer 3 lignes/ }));
@@ -504,7 +504,7 @@ describe('interface', () => {
       const t = (await api.select<{ code: string; level: string; domain: string; competences: string[]; teacher_id: string | null }>('tps')).filter((x) => x.code?.startsWith('XT'));
       expect(t).toHaveLength(2);
       const one = t.find((x) => x.code === 'XT1')!;
-      expect([one.level, one.domain, one.competences.join(','), !!one.teacher_id]).toEqual(['Première', 'ter', 'C1', true]);
+      expect([one.level, one.domain, one.competences.join(','), !!one.teacher_id]).toEqual(['Première', 'ter', 'C1,C3', true]);
     });
   });
 
