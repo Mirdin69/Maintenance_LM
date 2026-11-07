@@ -248,6 +248,14 @@ describe('import de TP collés', () => {
     expect(problems).toEqual([]);
     expect(ok[0]).toMatchObject({ title: 'Formation à l’habilitation électrique : préparation B1V', domain: 'hab', hours: 3, teacher_id: 'p1', competences: ['C1', 'C2', 'C10', 'C11'], level: 'Seconde' });
   });
+  it('accepte une durée « 7 h », un niveau « 2nd » et un titre absent', async () => {
+    const { parseTpPaste, buildTps } = await import('@/lib/importTp');
+    const t = 'Domaine\tEnseignant\tNiveau\tNom du TP\tObjectif\tCompétences\tDurée\nBatiment (1)\tSadky\t2nd\t\t\t\t11\nIndustrie (4)\tVerwaerde\t2nd\tInverseur\tObj\tC1 - C3 - C12\t7 h';
+    const { ok, problems } = buildTps(parseTpPaste(t), [], []);
+    expect(problems).toEqual([]);
+    expect(ok.map((x) => [x.title, x.domain, x.level, x.hours, x.teacher_label])).toEqual([['Batiment (1)', 'bat', 'Seconde', 11, 'Sadky'], ['Inverseur', 'ind', 'Seconde', 7, 'Verwaerde']]);
+    expect(ok[1].competences).toEqual(['C1', 'C3', 'C12']);
+  });
   it('garde un nom partiel comme texte libre s’il est ambigu', async () => {
     const { buildTps } = await import('@/lib/importTp');
     const { ok } = buildTps([['', 'T', '', '', '', 'Martin', '', '', '', '']], [prof('a', 'a.martin@lamache.org', null), prof('b', 'b.martin@lamache.org', null)], []);

@@ -37,13 +37,14 @@ export function buildTps(rows: string[][], profiles: Profile[], systems: System[
   const problems: string[] = [];
   rows.forEach((r, i) => {
     const line = `Ligne ${i + 1}`;
-    const title = (r[1] ?? '').trim();
+    // Sans nom de TP, le domaine (« Bâtiment (1) ») sert de titre provisoire
+    const title = (r[1] ?? '').trim() || (r[3] ?? '').trim();
     if (!title) return void problems.push(`${line} : titre manquant, ligne ignorée.`);
     const lv = level(r[2] ?? '');
     if (!lv) return void problems.push(`${line} : niveau « ${r[2]} » inconnu (Seconde, Première, Terminale), ligne ignorée.`);
     const dm = domain(r[3] ?? '');
     if (!dm) return void problems.push(`${line} : domaine « ${r[3]} » inconnu, ligne ignorée.`);
-    const h = num(r[4], 0);
+    const h = num((r[4] ?? '').replace(',', '.').match(/\d+(\.\d+)?/)?.[0], 0);
     const who = (r[5] ?? '').trim();
     const active = profiles.filter((p) => p.active);
     const exact = who ? active.find((p) => norm(displayName(p)) === norm(who) || p.email.toLowerCase() === who.toLowerCase()) : undefined;
