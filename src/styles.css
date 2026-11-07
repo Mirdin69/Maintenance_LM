@@ -35,14 +35,27 @@ a { color: var(--link); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .top { position: sticky; top: 0; z-index: 20; background: var(--navy); color: var(--on-navy); }
-.top-in { max-width: 1240px; margin: 0 auto; padding: 10px 16px 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+.top-in { max-width: 1240px; margin: 0 auto; padding: 6px 16px 0; display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
 .brand { display: flex; flex-direction: column; gap: 1px; }
 .brand b { font-size: 1.05rem; letter-spacing: 0.02em; }
 .brand span { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; }
-.who { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; min-width: 0; flex-wrap: wrap; }
-.who .btn { background: transparent; border-color: rgba(255, 255, 255, 0.4); color: var(--on-navy); }
-.nav { max-width: 1240px; margin: 0 auto; padding: 6px 16px 0; display: flex; gap: 2px; overflow-x: auto; }
-.nav button { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--on-navy); padding: 9px 13px; font-size: 0.88rem; white-space: nowrap; opacity: 0.82; cursor: pointer; }
+.userbar { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; min-width: 0; flex: 1; justify-content: flex-end; }
+.userbar .fault-btn, .userbar .user-btn, .userbar .alerts-wrap > .btn { background: transparent; border-color: rgba(255, 255, 255, 0.4); color: var(--on-navy); white-space: nowrap; }
+.userbar .fault-btn:hover, .userbar .user-btn:hover, .userbar .alerts-wrap > .btn:hover { background: rgba(255, 255, 255, .12); }
+.search-res, .user-pop { color: var(--ink); }
+.userbar .search { flex: 1; max-width: 300px; min-width: 120px; }
+.userbar .search .in { padding: 4px 10px; background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.35); color: var(--on-navy); }
+.userbar .search .in::placeholder { color: rgba(255,255,255,.7); }
+.usermenu { position: relative; }
+.user-btn { display: inline-flex; align-items: center; gap: 6px; }
+.avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: bold; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+.user-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.user-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: 260px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.25); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.user-id { display: flex; flex-direction: column; gap: 3px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.menu-item { all: unset; box-sizing: border-box; cursor: pointer; padding: 8px 10px; border-radius: 6px; width: 100%; }
+.menu-item:hover, .menu-item:focus-visible { background: var(--sunken); }
+.nav { max-width: 1240px; margin: 0 auto; padding: 2px 16px 0; display: flex; gap: 2px; overflow-x: auto; }
+.nav button { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--on-navy); padding: 6px 13px; font-size: 0.88rem; white-space: nowrap; opacity: 0.82; cursor: pointer; }
 .nav button[aria-current='page'] { opacity: 1; border-bottom-color: var(--accent); font-weight: bold; }
 .nav button:hover { opacity: 1; }
 
@@ -235,7 +248,7 @@ tr.sel td { background: var(--sunken); }
 .thumb { max-width: 140px; max-height: 100px; border-radius: 6px; border: 1px solid var(--line); object-fit: cover; background: var(--sunken); }
 .thumb.sm { width: 44px; height: 44px; max-width: 44px; max-height: 44px; flex: none; }
 .logos { display: flex; align-items: center; gap: 10px; }
-.logos img { height: 38px; width: auto; max-width: 120px; object-fit: contain; background: #fff; border-radius: 6px; padding: 2px; }
+.logos img { height: 30px; width: auto; max-width: 120px; object-fit: contain; background: #fff; border-radius: 6px; padding: 2px; }
 .logos .brand { gap: 0; }
 .gate .logos { justify-content: center; margin-bottom: 4px; }
 .sys-card { display: flex; gap: 10px; align-items: flex-start; }
@@ -307,9 +320,17 @@ a.btn { text-decoration: none; display: inline-block; }
 
 /* Téléphone : barre d'en-tête et tableaux plus compacts */
 @media (max-width: 720px) {
-  .top-in { flex-wrap: wrap; gap: 8px; }
-  .who { flex-wrap: wrap; width: 100%; gap: 6px; }
-  .search { max-width: none; flex-basis: 100%; order: -1; }
+  .top-in { flex-wrap: wrap; gap: 6px; }
+  .userbar { flex: 1 0 100%; flex-wrap: wrap; width: 100%; gap: 6px; justify-content: flex-start; }
+  .logos .brand span { display: none; }
+  .userbar .search { max-width: none; flex-basis: 100%; order: -1; }
+  .fault-btn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .userbar > * { flex: 0 0 auto; }
+  .userbar > .fault-btn { flex: 1 1 0; }
+  .userbar > .search { flex: 1 0 100%; }
+  .userbar .btn, .user-btn { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
+  .save-ind { display: none; }
+  .user-name { display: none; }
   .nav { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
   main { padding: 12px 10px; }
   .kpis { grid-template-columns: 1fr 1fr; }
@@ -359,7 +380,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .crumbs { max-width: 1240px; margin: 0 auto; padding: 8px 16px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; }
 .crumbs a { color: var(--link); }
 .subnav { max-width: 1240px; margin: 0 auto; padding: 0 16px; display: flex; gap: 2px; overflow-x: auto; background: transparent; }
-.subnav button { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--on-navy); padding: 6px 12px; font-size: .84rem; white-space: nowrap; opacity: .8; cursor: pointer; }
+.subnav button { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--on-navy); padding: 4px 12px; font-size: .84rem; white-space: nowrap; opacity: .8; cursor: pointer; }
 .subnav button[aria-current='page'] { opacity: 1; border-bottom-color: var(--accent); font-weight: bold; }
 .subnav button:hover { opacity: 1; }
 .top .subnav { background: rgba(0, 0, 0, .12); max-width: none; padding: 0; }

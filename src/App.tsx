@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { AuthProvider, useAuth } from '@/state/auth';
 import { StoreProvider, useStore } from '@/state/store';
@@ -226,12 +226,55 @@ function PrintHead() {
   );
 }
 
+/** Compte : nom, rôle, changement du nom affiché et déconnexion, regroupés dans un menu */
+function UserMenu() {
+  const { profile, isAdmin, signOut, refreshProfile } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [edit, setEdit] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', away);
+    window.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', away); window.removeEventListener('keydown', esc); };
+  }, [open]);
+  const saveName = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await api.rpc('set_my_name', { p_name: String(new FormData(e.currentTarget).get('name') ?? '') });
+    await refreshProfile();
+    setEdit(false);
+  };
+  return (
+    <div className="usermenu" ref={ref}>
+      <button type="button" className="btn sm user-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="avatar" aria-hidden="true">{displayName(profile).trim().charAt(0).toUpperCase()}</span>
+        <span className="user-name">{displayName(profile)}</span> <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="user-pop" role="menu">
+          <div className="user-id"><b>{displayName(profile)}</b><span className="muted small">{profile?.email}</span><Chip tone={isAdmin ? 'ok' : 'idle'}>{ROLES[profile!.role]}</Chip></div>
+          {edit ? (
+            <form className="stack" onSubmit={saveName}>
+              <input className="in" name="name" aria-label="Votre nom affiché" autoFocus defaultValue={profile?.full_name ?? ''} placeholder={displayName(profile)} maxLength={60} />
+              <div className="row"><button className="btn sm" type="submit">Enregistrer</button><button className="btn ghost sm" type="button" onClick={() => setEdit(false)}>Annuler</button></div>
+            </form>
+          ) : (
+            <button type="button" role="menuitem" className="menu-item" onClick={() => setEdit(true)}>Modifier mon nom affiché</button>
+          )}
+          <button type="button" role="menuitem" className="menu-item" onClick={() => void signOut()}>Se déconnecter</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Shell() {
-  const { profile, isAdmin, canWrite, signOut, refreshProfile } = useAuth();
+  const { isAdmin, canWrite } = useAuth();
   const { loading, error } = useStore();
   const [fault, setFault] = useState(false);
   const [tab, setTab] = useState<TabId>(fromHash);
-  const [editName, setEditName] = useState(false);
 
   useEffect(() => {
     const on = () => setTab(fromHash());
@@ -259,36 +302,18 @@ function Shell() {
   const saveState = useSaveState();
   const crumbs = [fam && fam.id !== 'accueil' ? fam.label : null, current !== 'accueil' && pageLabel !== fam?.label ? pageLabel : null].filter((x): x is string => !!x);
 
-  const saveName = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const name = String(new FormData(e.currentTarget).get('name') ?? '');
-    await api.rpc('set_my_name', { p_name: name });
-    await refreshProfile();
-    setEditName(false);
-  };
 
   return (
     <>
       <header className="top">
         <div className="top-in">
           <Logos onDark />
-          <div className="who">
+          <div className="userbar">
             {!loading && <Search go={go} />}
-            {!loading && canWrite && <button className="btn sm" onClick={() => setFault(true)}>Signaler une panne</button>}
+            {!loading && canWrite && <button className="btn sm fault-btn" onClick={() => setFault(true)}><span aria-hidden="true">⚠</span> Signaler une panne</button>}
             {!loading && <Notifications go={go} />}
-            {editName ? (
-              <form className="inline" onSubmit={saveName}>
-                <input className="in" name="name" aria-label="Votre nom affiché" defaultValue={profile?.full_name ?? ''} placeholder={displayName(profile)} maxLength={60} />
-                <button className="btn sm" type="submit">OK</button>
-              </form>
-            ) : (
-              <button className="btn sm" onClick={() => setEditName(true)} title="Modifier le nom affiché">
-                {displayName(profile)}
-              </button>
-            )}
             <span className={'save-ind ' + saveState} aria-live="polite">{saveState === 'saving' ? 'Enregistrement…' : saveState === 'saved' ? '✓ Enregistré' : saveState === 'failed' ? '⚠ Échec de l’enregistrement' : ''}</span>
-            <Chip tone={isAdmin ? 'ok' : 'idle'}>{ROLES[profile!.role]}</Chip>
-            <button className="btn sm" onClick={() => void signOut()}>Se déconnecter</button>
+            <UserMenu />
           </div>
         </div>
         <nav className="nav" aria-label="Sections">
