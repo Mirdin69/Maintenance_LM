@@ -18,11 +18,13 @@ import { BrandingProvider, useBranding } from '@/state/branding';
 import { Img } from '@/components/Img';
 import Students from '@/pages/Students';
 import Admin from '@/pages/Admin';
+import Pfmp from '@/pages/Pfmp';
+import Bank from '@/pages/Bank';
 import { Search } from '@/components/Search';
 import { Notifications } from '@/components/Notifications';
 import { ReportFault } from '@/components/ReportFault';
 
-type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'admin';
+type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'admin';
 
 const TABS: Array<[TabId, string]> = [
   ['accueil', 'Accueil'],
@@ -35,6 +37,8 @@ const TABS: Array<[TabId, string]> = [
   ['planning', 'Planning des TP'],
   ['fiches', 'Fiches'],
   ['eleves', 'Suivi des élèves'],
+  ['pfmp', 'PFMP'],
+  ['banque', 'Banque'],
   ['admin', 'Administration'],
 ];
 
@@ -284,6 +288,8 @@ function Shell() {
             {current === 'planning' && <Planning />}
             {current === 'fiches' && <Fiches />}
             {current === 'eleves' && <Students />}
+            {current === 'pfmp' && <Pfmp />}
+            {current === 'banque' && <Bank />}
             {current === 'admin' && isAdmin && <Admin />}
           </>
         )}

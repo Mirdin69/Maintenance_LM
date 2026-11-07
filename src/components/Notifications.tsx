@@ -42,7 +42,7 @@ export function Notifications({ go }: { go: (tab: string) => void }) {
   const notes = useNotes();
   const [open, setOpen] = useState(false);
   return (
-    <div className="notes no-print">
+    <div className="alerts-wrap no-print">
       <button type="button" className="btn sm" aria-expanded={open} aria-label={`Alertes (${notes.length})`} onClick={() => setOpen(!open)}>
         Alertes{notes.length > 0 && <span className="badge">{notes.length}</span>}
       </button>

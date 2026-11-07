@@ -297,7 +297,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .search-res li { padding: 6px 8px; }
 .search-res button { all: unset; display: block; width: 100%; cursor: pointer; }
 .search-res li:hover { background: var(--sunken); border-radius: 6px; }
-.notes { position: relative; }
+.alerts-wrap { position: relative; }
 .notes-list { left: auto; right: 0; min-width: 260px; }
 .badge { display: inline-block; margin-left: 6px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--bad-solid); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
 .modal-back { position: fixed; inset: 0; z-index: 50; background: rgba(10, 15, 30, .55); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 12px; overflow: auto; }

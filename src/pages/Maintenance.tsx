@@ -1,4 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { usePersisted } from '@/hooks/usePersisted';
+import MaintenancePlans from '@/pages/MaintenancePlans';
+import { Img } from '@/components/Img';
 import { api } from '@/lib/api';
 import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
@@ -10,12 +13,20 @@ import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg } f
 type Filter = 'open' | 'all' | 'done';
 
 export default function Maintenance() {
-  const { data, systemById, who } = useStore();
+  const { data, systemById, who, reload } = useStore();
   const { canWrite, isAdmin, profile } = useAuth();
   const act = useAct();
   const [filter, setFilter] = useState<Filter>('open');
+  const [sub, setSub] = usePersisted<'liste' | 'prev'>('maint-sub', 'liste', ['liste', 'prev']);
   const [formKey, setFormKey] = useState(0);
   const today = iso(new Date());
+
+  // À l'ouverture, un enseignant ou un gestionnaire déclenche les contrôles préventifs échus
+  const dueCount = data.maintenance_plans.filter((p) => p.active && p.next_due <= today).length;
+  useEffect(() => {
+    if (!canWrite || !dueCount) return;
+    api.rpc('generate_due_maintenance').then(() => reload(['maintenance', 'maintenance_plans'])).catch(() => {});
+  }, [canWrite, dueCount, reload]);
 
   const list = data.maintenance
     .filter((m) => (filter === 'all' ? true : filter === 'done' ? m.status === 'done' : m.status !== 'done'))
@@ -46,6 +57,8 @@ export default function Maintenance() {
   return (
     <>
       <PageHead tab="maintenance" title="Maintenance des systèmes" />
+      <div className="tools"><Seg<'liste' | 'prev'> label="Section" value={sub} onChange={setSub} items={[['liste', 'Interventions'], ['prev', 'Contrôles récurrents']]} /></div>
+      {sub === 'prev' ? <MaintenancePlans /> : <>
       {canWrite && (
         <AddPanel summary="Déclarer une intervention">
           {data.systems.length === 0 ? <Empty>Ajoutez d’abord un système dans l’onglet Systèmes.</Empty> : (
@@ -86,7 +99,8 @@ export default function Maintenance() {
                     {m.due_date && <> · échéance {fmtDate(m.due_date)}{late ? ' (dépassée)' : ''}</>}
                     {m.closed_at && <> · clôturée le {fmtStamp(m.closed_at)}</>}
                   </p>
-                  {m.description && <p>{m.description}</p>}
+                  {m.description && <p style={{ whiteSpace: 'pre-line' }}>{m.description}</p>}
+                  <Img url={m.photo_url} alt={`Photo : ${m.title}`} className="thumb" width={400} />
                   {notes.length > 0 && (
                     <div className="notes">{notes.map((n) => <p key={n.id}><b>{who(n.author_id)}</b> ({fmtStamp(n.created_at)}) : {n.text}</p>)}</div>
                   )}
@@ -110,6 +124,7 @@ export default function Maintenance() {
           </div>
         )}
       </section>
+      </>}
     </>
   );
 }

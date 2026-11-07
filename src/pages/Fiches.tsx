@@ -72,10 +72,12 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
   fiche?: Fiche; kind: FicheKind; editable: boolean; canEdit: boolean; onEdit: () => void; onClose: () => void; onSaved: (id: string) => void; onOpen: (id: string) => void;
 }) {
   const { data } = useStore();
+  const { canWrite } = useAuth();
   const act = useAct();
   const [docs, setDocs] = useState<Doc[]>(() => asDocs(fiche?.documents));
   const [sequenceId, setSequenceId] = useState(fiche?.sequence_id ?? '');
   const [title, setTitle] = useState(fiche?.title ?? '');
+  const [reusable, setReusable] = useState(fiche?.reusable ?? false);
   const [level, setLevel] = useState<Level | ''>(fiche?.level ?? '');
   const [d, setD] = useState<Data>(() => (fiche?.data as Data) ?? (kind === 'seance' ? { activites: STD_ACTIVITIES } : { seances: ['', ''] }));
   const set = (patch: Data) => setD((x) => ({ ...x, ...patch }));
@@ -83,7 +85,7 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
 
   const save = async () => {
     if (!title.trim()) return void act(() => Promise.reject(new Error('Donnez un titre à la fiche.')));
-    const row = { kind, title: title.trim(), level: level || null, data: d, documents: cleanDocs(docs), sequence_id: kind === 'seance' ? sequenceId || null : null };
+    const row = { kind, title: title.trim(), level: level || null, data: d, documents: cleanDocs(docs), reusable, sequence_id: kind === 'seance' ? sequenceId || null : null };
     let id = fiche?.id;
     const ok = await act(async () => {
       if (id) await api.update('fiches', { id }, row);
@@ -111,10 +113,19 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
         {ro && canEdit && <button className="btn sm" onClick={onEdit}>Modifier</button>}
         {editable && <button className="btn sm" onClick={() => void save()}>Enregistrer</button>}
         <button className="btn ghost sm" onClick={() => window.print()}>Imprimer</button>
+        {fiche && canWrite && <button className="btn ghost sm" title="Copie la fiche (les fichiers déposés ne sont pas copiés, seulement les liens)" onClick={async () => {
+          let newId = '';
+          const ok = await act(async () => {
+            const [row] = await api.insert<Fiche>('fiches', { kind: fiche.kind, title: `${fiche.title} (copie)`, level: fiche.level, data: fiche.data, documents: asDocs(fiche.documents).filter((x) => x.url), reusable: false, sequence_id: fiche.sequence_id });
+            newId = row.id;
+          }, { ok: 'Fiche dupliquée.', tables: ['fiches'] });
+          if (ok && newId) onOpen(newId);
+        }}>Dupliquer</button>}
         {fiche && canEdit && <ConfirmButton onConfirm={async () => { if (await act(() => api.remove('fiches', { id: fiche.id }), { ok: 'Fiche supprimée.', tables: ['fiches'] })) { void dropFiles(orphanPaths(asDocs(fiche.documents), [])); onClose(); } }}>Supprimer</ConfirmButton>}
       </div>
       <section className="panel form fiche-sheet">
         <Field label="Titre *" wide>{ro ? <b>{title}</b> : <input className="in" value={title} maxLength={160} onChange={(e) => setTitle(e.target.value)} />}</Field>
+        {!ro && <label className="row wide"><input type="checkbox" checked={reusable} onChange={(e) => setReusable(e.target.checked)} /> Ressource réutilisable (visible dans la Banque de ressources)</label>}
         <Field label="Niveau">{ro ? <span>{level || '—'}</span> : <select className="in" value={level} onChange={(e) => setLevel(e.target.value as Level | '')}><Options placeholder="Non précisé" items={LEVELS.map((l) => [l, l])} /></select>}</Field>
         {kind === 'sequence' ? <>
           {text('Discipline', 'discipline', 1, false)}
