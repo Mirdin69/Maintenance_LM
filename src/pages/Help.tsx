@@ -8,10 +8,10 @@ const GUIDE: Array<{ title: string; body: string[] }> = [
   { title: 'Planifier', body: [
     'Semainier : une ligne par jour, une colonne par groupe. Choisissez un TP ou une activité dans la case ; l’enregistrement est immédiat et « Annuler » apparaît juste après. Glissez la poignée ⠿ pour copier une case (avec Maj : la déplacer) ; « Copier une semaine » recopie toute une semaine vers une autre.',
     'Les ⚠ signalent un système hors service ou demandé par deux groupes le même jour. « Besoins matériel » liste, pour une semaine, les systèmes et outils à préparer.',
-    'Emploi du temps et Occupation : les créneaux par salle et les conflits. Planning des TP : séances, catalogue des TP, utilisation des systèmes et rotations des groupes.',
+    'Emploi du temps et Occupation : les créneaux par salle et les conflits. Planning des TP : séances, utilisation des systèmes et rotations des groupes.',
   ] },
   { title: 'Pédagogie', body: [
-    'Fiches : fiches séquence et séance, avec documents joints. Une séance se rattache à sa séquence. « Dupliquer » repart d’une fiche existante.',
+    'Catalogue des TP : tous les TP par niveau, avec objectif, enseignant, systèmes, outils, compétences et documents. Fiches : fiches séquence et séance, avec documents joints. Une séance se rattache à sa séquence. « Dupliquer » repart d’une fiche existante.',
     'Banque : les TP et fiches cochés « Ressource réutilisable ». Suivi des élèves : acquisition par TP ou par compétence. PFMP : entreprises, périodes, visites.',
     'Documents : déposez des PDF, Word, Excel, PowerPoint ou OpenDocument (10 Mo au plus) ou collez un lien Drive. L’aperçu s’affiche pour les PDF, .docx et .xlsx.',
   ] },

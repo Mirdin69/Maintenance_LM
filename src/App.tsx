@@ -20,19 +20,20 @@ import Students from '@/pages/Students';
 import Admin from '@/pages/Admin';
 import Pfmp from '@/pages/Pfmp';
 import Bank from '@/pages/Bank';
+import Catalogue from '@/pages/Catalogue';
 import Help from '@/pages/Help';
 import { useSaveState } from '@/state/saving';
 import { Search } from '@/components/Search';
 import { Notifications } from '@/components/Notifications';
 import { ReportFault } from '@/components/ReportFault';
 
-type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'aide' | 'admin';
+type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'catalogue' | 'aide' | 'admin';
 
 /** Rubriques de la barre d'onglets ; chaque rubrique regroupe des pages */
 const FAMILIES: Array<{ id: string; label: string; tabs: Array<[TabId, string]>; admin?: boolean }> = [
   { id: 'accueil', label: 'Accueil', tabs: [['accueil', 'Accueil']] },
   { id: 'planifier', label: 'Planifier', tabs: [['semainier', 'Semainier'], ['edt', 'Emploi du temps'], ['occupation', 'Occupation'], ['planning', 'Planning des TP']] },
-  { id: 'pedagogie', label: 'Pédagogie', tabs: [['fiches', 'Fiches'], ['banque', 'Banque'], ['eleves', 'Suivi des élèves'], ['pfmp', 'PFMP']] },
+  { id: 'pedagogie', label: 'Pédagogie', tabs: [['fiches', 'Fiches'], ['catalogue', 'Catalogue des TP'], ['banque', 'Banque'], ['eleves', 'Suivi des élèves'], ['pfmp', 'PFMP']] },
   { id: 'atelier', label: 'Atelier', tabs: [['maintenance', 'Maintenance'], ['achats', 'Achats']] },
   { id: 'aide', label: 'Aide', tabs: [['aide', 'Aide et à propos']] },
   { id: 'admin', label: 'Administration', tabs: [['admin', 'Administration']], admin: true },
@@ -330,6 +331,7 @@ function Shell() {
             {current === 'fiches' && <Fiches />}
             {current === 'eleves' && <Students />}
             {current === 'pfmp' && <Pfmp />}
+            {current === 'catalogue' && <Catalogue />}
             {current === 'banque' && <Bank />}
             {current === 'aide' && <Help />}
             {current === 'admin' && isAdmin && <Admin />}

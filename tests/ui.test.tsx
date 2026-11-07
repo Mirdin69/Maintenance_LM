@@ -179,8 +179,7 @@ describe('fiches', () => {
 
 describe('documents et séquences', () => {
   it('joint un document à un TP et affiche son aperçu Drive', async () => {
-    await open('admin', 'planning');
-    await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
+    await open('admin', 'catalogue');
     await userEvent.click(await screen.findByText('Ajouter un TP'));
     await userEvent.type(screen.getByLabelText(/Titre \*/), 'TP avec document');
     await userEvent.click(screen.getByRole('button', { name: '+ Ajouter un lien' }));
@@ -203,8 +202,7 @@ describe('documents et séquences', () => {
     wb.addWorksheet('Suivi').addRows([['Nom', 'Note'], ['Dupont', 'Valeur-12']]);
     const xlsx = new File([await wb.xlsx.writeBuffer()], 'suivi.xlsx');
     const pdf = new File(['%PDF-1.4'], 'cours.pdf', { type: 'application/pdf' });
-    await open('admin', 'planning');
-    await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
+    await open('admin', 'catalogue');
     await userEvent.click(await screen.findByText('Ajouter un TP'));
     await userEvent.type(screen.getByLabelText(/Titre \*/), 'TP fichiers');
     await userEvent.upload(screen.getByLabelText('Déposer un fichier'), [pdf, xlsx]);
@@ -219,8 +217,7 @@ describe('documents et séquences', () => {
     expect(await screen.findByText('Valeur-12')).toBeInTheDocument();
   });
   it('refuse un fichier au mauvais format', async () => {
-    await open('admin', 'planning');
-    await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
+    await open('admin', 'catalogue');
     await userEvent.click(await screen.findByText('Ajouter un TP'));
     await userEvent.upload(screen.getByLabelText('Déposer un fichier'), new File(['x'], 'virus.exe'), { applyAccept: false });
     expect(await screen.findByRole('status')).toBeInTheDocument();
@@ -405,8 +402,7 @@ describe('nouvelles fonctions', () => {
   });
 
   it('duplique un TP', async () => {
-    await open('prof', 'planning');
-    await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
+    await open('prof', 'catalogue');
     await userEvent.click((await screen.findAllByRole('button', { name: 'Dupliquer' }))[0]);
     expect(await screen.findByText('TP dupliqué.')).toBeInTheDocument();
     expect((await api.select<{ code: string }>('tps')).some((t) => /\(copie\)/.test(t.code ?? ''))).toBe(true);
