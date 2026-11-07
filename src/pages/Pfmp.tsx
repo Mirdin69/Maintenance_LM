@@ -61,7 +61,7 @@ function Periods() {
   return (
     <>
       {canWrite && (
-        <AddPanel summary={editing ? 'Modifier la période' : 'Ajouter une période de PFMP'} open={!!editing}>
+        <AddPanel summary={editing ? 'Modifier la période' : 'Ajouter une période de PFMP'} open={!!editing} onClose={() => setEditing(null)}>
           {data.students.length === 0 ? <Empty>Aucun élève : un gestionnaire peut les ajouter dans Administration, Élèves.</Empty> : (
             <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
               <Field label="Groupe (filtre)"><select className="in" value={formGroup} onChange={(e) => setFormGroup(e.target.value)}><Options placeholder="Tous" items={GROUP_CODES.map((g) => [g, g])} /></select></Field>
@@ -131,7 +131,7 @@ function Companies() {
   return (
     <>
       {canWrite && (
-        <AddPanel summary={editing ? 'Modifier l’entreprise' : 'Ajouter une entreprise'} open={!!editing}>
+        <AddPanel summary={editing ? 'Modifier l’entreprise' : 'Ajouter une entreprise'} open={!!editing} onClose={() => setEditing(null)}>
           <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
             <Field label="Nom *" wide><input className="in" name="name" required maxLength={120} defaultValue={editing?.name} /></Field>
             <Field label="Adresse" wide><input className="in" name="address" maxLength={200} defaultValue={editing?.address ?? ''} /></Field>

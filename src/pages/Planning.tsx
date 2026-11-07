@@ -218,7 +218,7 @@ function Catalogue() {
   return (
     <>
       {canWrite && (
-        <AddPanel summary={editing ? 'Modifier le TP' : 'Ajouter un TP'} open={!!editing}>
+        <AddPanel summary={editing ? 'Modifier le TP' : 'Ajouter un TP'} open={!!editing} onClose={() => edit(null)}>
           <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
             <Field label="Code"><input className="in" name="code" maxLength={20} defaultValue={editing?.code ?? ''} placeholder="TP5" /></Field>
             <Field label="Titre *" wide><input className="in" name="title" required maxLength={160} defaultValue={editing?.title} /></Field>

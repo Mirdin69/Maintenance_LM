@@ -56,7 +56,7 @@ export default function Systems() {
       <div className="tools"><Seg<'systemes' | 'outils'> label="Section" value={tab} onChange={setTab} items={[['systemes', 'Systèmes'], ['outils', 'Outils']]} /></div>
       {tab === 'outils' && <section className="panel"><h2>Outils et équipements</h2><ToolsList /><p className="muted small">La liste est gérée par un gestionnaire (Administration, Outils).</p></section>}
       {tab === 'systemes' && canWrite && (
-        <AddPanel summary={editing ? 'Modifier le système' : 'Ajouter un système'} open={!!editing}>
+        <AddPanel summary={editing ? 'Modifier le système' : 'Ajouter un système'} open={!!editing} onClose={() => setEditing(null)}>
           <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
             <Field label="Nom du système *"><input className="in" name="name" required maxLength={120} defaultValue={editing?.name} placeholder="Capsuleuse Ravoux" /></Field>
             <Field label="Référence / n° d’inventaire"><input className="in" name="ref" maxLength={80} defaultValue={editing?.ref ?? ''} placeholder="326-021" /></Field>

@@ -107,7 +107,7 @@ export default function Timetable() {
     <>
       <PageHead tab="edt" title="Emploi du temps" />
       {canWrite && (
-        <AddPanel summary={editing ? 'Modifier le créneau' : 'Ajouter un créneau'} open={!!editing}>
+        <AddPanel summary={editing ? 'Modifier le créneau' : 'Ajouter un créneau'} open={!!editing} onClose={() => setEditing(null)}>
           <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
             <Field label="Salle *">
               <select className="in" required value={draft.room} onChange={(e) => setDraft({ ...draft, room: e.target.value })}>

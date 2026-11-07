@@ -36,7 +36,7 @@ export default function ToolsAdmin() {
   return (
     <>
       <p className="muted">Liste des outils et équipements de l’atelier, visible par tous les enseignants dans l’onglet Systèmes.</p>
-      <AddPanel summary={editing ? `Modifier ${editing.name}` : 'Ajouter un outil'} open={!!editing}>
+      <AddPanel summary={editing ? `Modifier ${editing.name}` : 'Ajouter un outil'} open={!!editing} onClose={() => setEditing(null)}>
         <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
           <Field label="Nom *"><input className="in" name="name" required maxLength={120} defaultValue={editing?.name} /></Field>
           <Field label="Référence"><input className="in" name="ref" maxLength={80} defaultValue={editing?.ref ?? ''} /></Field>

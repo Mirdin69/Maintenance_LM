@@ -39,7 +39,7 @@ export default function MaintenancePlans() {
   return (
     <>
       {canWrite && (
-        <AddPanel summary={editing ? 'Modifier le contrôle' : 'Ajouter un contrôle récurrent'} open={!!editing}>
+        <AddPanel summary={editing ? 'Modifier le contrôle' : 'Ajouter un contrôle récurrent'} open={!!editing} onClose={() => setEditing(null)}>
           {data.systems.length === 0 ? <Empty>Ajoutez d’abord un système.</Empty> : (
             <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
               <Field label="Système *"><select className="in" name="system_id" required defaultValue={editing?.system_id ?? ''}><Options placeholder="Choisir…" items={data.systems.map((s) => [s.id, s.name])} /></select></Field>

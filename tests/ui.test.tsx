@@ -339,7 +339,7 @@ describe('nouvelles fonctions', () => {
     expect(await screen.findByText('Système éphémère')).toBeInTheDocument();
     const btn = screen.getAllByRole('button', { name: 'Annuler' })[0];
     await userEvent.click(btn);
-    await userEvent.click(btn);
+    await userEvent.click(await screen.findByRole('button', { name: 'Confirmer' }));
     await waitFor(async () => expect((await api.select<{ name: string }>('systems')).some((s) => s.name === 'Système éphémère')).toBe(false));
   });
 

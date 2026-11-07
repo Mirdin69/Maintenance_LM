@@ -39,5 +39,11 @@ export function friendlyError(e: unknown): string {
   if (/foreign key/i.test(msg)) return 'Impossible : cet élément est encore utilisé ailleurs (emploi du temps, séances, systèmes…).';
   if (/duplicate key/i.test(msg)) return 'Cet élément existe déjà.';
   if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return 'Connexion impossible. Vérifiez votre réseau et réessayez.';
+  if (/violates check constraint|invalid input/i.test(msg)) return 'Une valeur n’est pas acceptée (trop longue, vide ou hors limites). Vérifiez les champs et réessayez.';
+  if (/not-null|null value/i.test(msg)) return 'Un champ obligatoire est vide.';
+  if (/JWT|session|not authenticated/i.test(msg)) return 'Votre session a expiré. Rechargez la page et reconnectez-vous.';
+  if (/exceeded the maximum|too large|payload/i.test(msg)) return 'Fichier trop volumineux.';
+  if (/mime|not allowed/i.test(msg)) return 'Ce type de fichier n’est pas accepté.';
+  if (/timeout|timed out/i.test(msg)) return 'Le serveur met trop de temps à répondre. Réessayez dans un instant.';
   return msg;
 }

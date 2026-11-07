@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { Tone } from '@/lib/domain';
 import { useStore } from '@/state/store';
 import { resolveIntro } from '@/lib/intros';
@@ -9,7 +9,12 @@ export const Chip = ({ tone = 'idle', children, title }: { tone?: Tone; children
   </span>
 );
 
-export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>;
+export const Empty = ({ children, to }: { children: ReactNode; to?: { href: string; label: string } }) => (
+  <div className="empty">
+    {children}
+    {to && <div><a className="btn sm" href={to.href}>{to.label}</a></div>}
+  </div>
+);
 
 export function PageHead({ title, tab, children }: { title: string; tab?: string; children?: ReactNode }) {
   const { settings } = useStore();
@@ -33,49 +38,70 @@ export function Field({ label, children, wide }: { label: string; children: Reac
   );
 }
 
-/** Panneau repliable pour les formulaires d'ajout */
-export function AddPanel({ summary, open, children }: { summary: string; open?: boolean; children: ReactNode }) {
+/** Formulaire d'ajout ou de modification dans un panneau latéral : la liste reste visible à côté */
+export function AddPanel({ summary, open, onClose, children }: { summary: string; open?: boolean; onClose?: () => void; children: ReactNode }) {
   const [isOpen, setOpen] = useState(!!open);
   useEffect(() => setOpen(!!open), [open]);
+  const close = () => { setOpen(false); onClose?.(); };
+  useEffect(() => {
+    if (!isOpen) return;
+    const on = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  });
   return (
-    <details className="add" open={isOpen} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-      <summary>{summary}</summary>
-      {isOpen && <div className="add-body">{children}</div>}
-    </details>
+    <>
+      <div className="no-print"><button type="button" className="btn add-open" aria-haspopup="dialog" aria-expanded={isOpen} onClick={() => setOpen(true)}>{summary}</button></div>
+      {isOpen && (
+        <div className="drawer-back no-print" onClick={close}>
+          <aside className="drawer" role="dialog" aria-modal="true" aria-label={summary} onClick={(e) => e.stopPropagation()}>
+            <div className="row between drawer-head">
+              <b>{summary}</b>
+              <button type="button" className="btn ghost sm" aria-label="Fermer le formulaire" onClick={close}>✕</button>
+            </div>
+            <div className="add-body">{children}</div>
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
 
-/** Bouton qui demande une seconde pression pour confirmer (aucune boîte de dialogue du navigateur) */
+/** Suppression en deux temps : une fenêtre dit ce qui sera perdu, puis demande confirmation */
 export function ConfirmButton({
-  onConfirm, children, warn = 'Confirmer', className = 'btn del sm', disabled,
+  onConfirm, children, warn = 'Confirmer', className = 'btn del sm', disabled, detail,
 }: {
   onConfirm: () => void | Promise<void>;
   children: ReactNode;
   warn?: string;
   className?: string;
   disabled?: boolean;
+  detail?: string;
 }) {
-  const [armed, setArmed] = useState(false);
-  const timer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const [ask, setAsk] = useState(false);
+  useEffect(() => {
+    if (!ask) return;
+    const on = (e: KeyboardEvent) => { if (e.key === 'Escape') setAsk(false); };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  }, [ask]);
   return (
-    <button
-      type="button"
-      className={className + (armed ? ' armed' : '')}
-      disabled={disabled}
-      onClick={() => {
-        if (!armed) {
-          setArmed(true);
-          timer.current = window.setTimeout(() => setArmed(false), 4000);
-          return;
-        }
-        window.clearTimeout(timer.current);
-        setArmed(false);
-        void onConfirm();
-      }}
-    >
-      {armed ? warn : children}
-    </button>
+    <>
+      <button type="button" className={className} disabled={disabled} aria-haspopup="dialog" onClick={() => setAsk(true)}>{children}</button>
+      {ask && (
+        <div className="modal-back no-print" onClick={() => setAsk(false)}>
+          <div className="modal panel" role="alertdialog" aria-modal="true" aria-label="Confirmation" onClick={(e) => e.stopPropagation()}>
+            <h2>Confirmer l’action ?</h2>
+            <p>{detail ?? 'Cette action est définitive pour l’élément concerné.'}</p>
+            <p className="muted small">Un gestionnaire peut retrouver la plupart des suppressions dans Administration, Historique.</p>
+            <div className="actions">
+              <button type="button" className="btn del" autoFocus onClick={() => { setAsk(false); void onConfirm(); }}>{warn}</button>
+              <button type="button" className="btn ghost" onClick={() => setAsk(false)}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

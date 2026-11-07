@@ -1,3 +1,4 @@
+import { saving } from './saving';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { displayName } from '@/lib/domain';
@@ -116,9 +117,11 @@ export function useAct() {
   const { reload } = useStore();
   return useCallback(
     async (fn: () => Promise<unknown>, opts: { ok?: string; tables?: TableName[]; undo?: () => Promise<unknown> } = {}) => {
+      saving.start();
       try {
         await fn();
         if (opts.tables?.length) await reload(opts.tables);
+        saving.end(true);
         const undo = opts.undo;
         if (opts.ok || undo) {
           toast(opts.ok ?? 'Modifié.', 'ok', undo ? {
@@ -136,6 +139,7 @@ export function useAct() {
         }
         return true;
       } catch (e) {
+        saving.end(false);
         toast(friendlyError(e), 'bad');
         return false;
       }

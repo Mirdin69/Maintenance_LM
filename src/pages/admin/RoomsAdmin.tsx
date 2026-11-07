@@ -45,7 +45,7 @@ export default function RoomsAdmin() {
     <>
       <p className="muted">Les lieux d’enseignement. Une salle « partagée » (grand atelier, par exemple) peut accueillir plusieurs groupes en même temps sans signaler de conflit.</p>
       {isAdmin && (
-        <AddPanel summary={editing ? `Modifier la salle ${editing.name}` : 'Ajouter une salle'} open={!!editing}>
+        <AddPanel summary={editing ? `Modifier la salle ${editing.name}` : 'Ajouter une salle'} open={!!editing} onClose={() => setEditing(null)}>
           <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
             <Field label="Nom *"><input className="in" name="name" required maxLength={60} defaultValue={editing?.name} placeholder="Atelier B12" /></Field>
             <Field label="Bâtiment"><input className="in" name="building" maxLength={60} defaultValue={editing?.building ?? ''} /></Field>

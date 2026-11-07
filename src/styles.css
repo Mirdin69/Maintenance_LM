@@ -23,7 +23,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
-  font: 14px/1.45 Arial, Helvetica, sans-serif;
+  font: calc(14px * var(--scale, 1))/1.45 Arial, Helvetica, sans-serif;
 }
 h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
 h1 { font-size: 1.45rem; }
@@ -321,4 +321,74 @@ a.btn { text-decoration: none; display: inline-block; }
   .modal { border-radius: 0; min-height: 100vh; }
   .search-res { position: fixed; left: 8px; right: 8px; top: auto; max-height: 50vh; }
   .notes-list { position: fixed; left: 8px; right: 8px; }
+}
+
+/* Thème sombre choisi à la main */
+:root[data-theme='dark'] {
+    --bg: #0d1322; --surface: #151d33; --sunken: #1c2744; --line: #2a3558; --ink: #e6eaf5; --muted: #9aa6c4;
+    --navy: #2a4a8a; --on-navy: #ffffff; --link: #9fb8f0; --accent: #f0a06a;
+    --ok: #a8d983; --ok-bg: #1f3418; --warn: #f2b37f; --warn-bg: #40250f; --bad: #ff8f9e; --bad-bg: #4a1822; --bad-solid: #c93a55;
+    --info: #cba8f0; --info-bg: #331f4d; --idle: #b4bed6; --idle-bg: #222d4c; --pa: #d8e27a; --pa-bg: #38400f;
+    --h1: #1e2b52; --h2: #2f4686; --h3: #4c6dba; --h4: #9db8f5; --h4ink: #0d1322;
+    --l-2: #1d3158; --l-2-line: #5b84c9; --l-1: #43280f; --l-1-line: #c9803f; --l-t: #1f3418; --l-t-line: #6a9a45;
+    color-scheme: dark;
+}
+  :root[data-theme='dark'] .dom-ind { --cbg: #243a5e; --cfg: #d6e4fa; }
+  :root[data-theme='dark'] .dom-ter { --cbg: #35294f; --cfg: #e0d8f5; }
+  :root[data-theme='dark'] .dom-bat { --cbg: #5a3820; --cfg: #fbe0cb; }
+  :root[data-theme='dark'] .dom-tra { --cbg: #343a45; --cfg: #e2e5ea; }
+  :root[data-theme='dark'] .dom-ate { --cbg: #27442a; --cfg: #d8efd5; }
+  :root[data-theme='dark'] .dom-ann { --cbg: #524512; --cfg: #f6e8b4; }
+  :root[data-theme='dark'] .dom-pen { --cbg: #1f4a45; --cfg: #cdeee9; }
+  :root[data-theme='dark'] .dom-ten { --cbg: #552334; --cfg: #f6d6de; }
+  :root[data-theme='dark'] .dom-hab { --cbg: #5a2622; --cfg: #f8d2cd; }
+  :root[data-theme='dark'] .dom-rem { --cbg: #40392a; --cfg: #e8e0d0; }
+
+:root[data-size='large'] { --scale: 1.2; }
+
+/* Panneau latéral des formulaires */
+.drawer-back { position: fixed; inset: 0; z-index: 45; background: rgba(10, 15, 30, .45); display: flex; justify-content: flex-end; }
+.drawer { width: min(560px, 100%); height: 100%; overflow: auto; background: var(--surface); border-left: 1px solid var(--line); box-shadow: -8px 0 28px rgba(0,0,0,.25); padding: 14px 16px 28px; }
+.drawer-head { position: sticky; top: -14px; background: var(--surface); padding: 6px 0 10px; z-index: 1; }
+.add-open { margin-bottom: 12px; }
+@media (min-width: 1100px) { .drawer-back { background: transparent; pointer-events: none; } .drawer { pointer-events: auto; } }
+
+/* Indicateur d'enregistrement et fil d'Ariane */
+.save-ind { font-size: 12px; color: var(--on-navy); opacity: .9; min-width: 92px; text-align: right; }
+.save-ind.failed { color: #ffd0d6; font-weight: bold; }
+.crumbs { max-width: 1240px; margin: 0 auto; padding: 8px 16px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; }
+.crumbs a { color: var(--link); }
+.subnav { max-width: 1240px; margin: 0 auto; padding: 0 16px; display: flex; gap: 2px; overflow-x: auto; background: transparent; }
+.subnav button { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--on-navy); padding: 6px 12px; font-size: .84rem; white-space: nowrap; opacity: .8; cursor: pointer; }
+.subnav button[aria-current='page'] { opacity: 1; border-bottom-color: var(--accent); font-weight: bold; }
+.subnav button:hover { opacity: 1; }
+.top .subnav { background: rgba(0, 0, 0, .12); max-width: none; padding: 0; }
+.top .subnav-in { max-width: 1240px; margin: 0 auto; padding: 0 16px; display: flex; gap: 2px; overflow-x: auto; }
+
+/* Semainier : en-têtes et colonne des dates figés au défilement */
+table.sem thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); }
+table.sem tbody td:first-child, table.sem tbody th:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+table.sem .dom, .dom { font-weight: bold; }
+.day-pager { display: none; }
+@media (max-width: 720px) { .day-pager { display: flex; } }
+
+/* Écrans tactiles : grandes zones à toucher */
+@media (pointer: coarse) {
+  .btn, .seg button, .nav button, .subnav button { min-height: 44px; }
+  .btn.sm { padding-block: 10px; }
+  .in, select.in { min-height: 44px; }
+  .pick { padding: 10px 12px; }
+  .pick input, label input[type='checkbox'] { width: 22px; height: 22px; }
+  button.mk { min-width: 44px; min-height: 44px; }
+}
+
+/* Impression : en-tête du lycée, pas de ligne coupée */
+.print-head { display: none; }
+@media print {
+  .print-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 2px solid #1f3864; padding-bottom: 6px; margin-bottom: 10px; font-size: 12px; }
+  .print-head img { max-height: 40px; }
+  tr, .card, .doc { break-inside: avoid; }
+  thead { display: table-header-group; }
+  .top, .crumbs, .subnav, .drawer-back, .modal-back, .toast { display: none !important; }
+  @page { margin: 12mm; }
 }
