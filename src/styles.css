@@ -304,3 +304,21 @@ a.btn { text-decoration: none; display: inline-block; }
 .modal { width: min(560px, 100%); }
 .grip { cursor: grab; user-select: none; color: var(--muted); font-size: 12px; margin-right: 2px; }
 .cell-warn { color: var(--warn); font-size: 13px; margin-right: 2px; cursor: help; }
+
+/* Téléphone : barre d'en-tête et tableaux plus compacts */
+@media (max-width: 720px) {
+  .top-in { flex-wrap: wrap; gap: 8px; }
+  .who { flex-wrap: wrap; width: 100%; gap: 6px; }
+  .search { max-width: none; flex-basis: 100%; order: -1; }
+  .nav { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  main { padding: 12px 10px; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .cols { grid-template-columns: 1fr; }
+  .tools { gap: 8px; }
+  .btn { min-height: 40px; }
+  .in { min-height: 40px; font-size: 16px; }
+  .modal-back { padding: 0; }
+  .modal { border-radius: 0; min-height: 100vh; }
+  .search-res { position: fixed; left: 8px; right: 8px; top: auto; max-height: 50vh; }
+  .notes-list { position: fixed; left: 8px; right: 8px; }
+}

@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '@/state/store';
+import { useAuth } from '@/state/auth';
+import { buildWarnings, isMine } from '@/lib/semainier';
 import { buildOccurrences } from '@/lib/occupancy';
 import { addDays, fmtShort, iso, mondayOf, minToHM } from '@/lib/dates';
 import { PRIORITIES, MAINT_STATUS, PURCHASE_STATUS, SYSTEM_STATES, eur } from '@/lib/domain';
@@ -8,6 +10,13 @@ import { Chip, Empty, PageHead } from '@/components/ui';
 export default function Home({ go }: { go: (tab: string) => void }) {
   const { data, roomById, systemById, tpById, who } = useStore();
   const today = iso(new Date());
+  const { profile, canWrite } = useAuth();
+  const mineToday = data.planning_cells
+    .filter((c) => c.day === today && c.tp_id && isMine(tpById.get(c.tp_id), profile))
+    .sort((a, b) => a.group_code.localeCompare(b.group_code));
+  const warnings = buildWarnings(data.planning_cells, tpById, systemById);
+  const myMaint = data.maintenance.filter((m) => m.created_by === profile?.id && m.status !== 'done');
+  const myBuys = data.purchases.filter((p) => p.requested_by === profile?.id && p.status === 'req');
   const monday = mondayOf(new Date());
   const weekFrom = iso(monday);
   const weekTo = iso(addDays(monday, 6));
@@ -31,6 +40,31 @@ export default function Home({ go }: { go: (tab: string) => void }) {
   return (
     <>
       <PageHead tab="accueil" title="Tableau de bord" />
+      {canWrite && (
+        <section className="panel" aria-label="Ma journée">
+          <h2>Ma journée</h2>
+          {mineToday.length ? (
+            <div className="stack">
+              {mineToday.map((c) => {
+                const tp = tpById.get(c.tp_id!)!;
+                const w = warnings.get(`${c.day}|${c.group_code}`);
+                return (
+                  <div key={c.group_code} className="row between">
+                    <div><b>{c.group_code}</b> · {tp.code ?? tp.title}<span className="muted small"> {tp.title}</span>{tp.objective && <span className="muted small"> · {tp.objective}</span>}</div>
+                    {w && <span className="chip warn" title={w.join('\n')}>⚠ {w[0]}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : <p className="muted">Aucun de vos cours au semainier aujourd’hui.</p>}
+          {(myMaint.length > 0 || myBuys.length > 0) && (
+            <p className="muted small">
+              {myMaint.length > 0 && <>{myMaint.length} intervention{myMaint.length > 1 ? 's' : ''} déclarée{myMaint.length > 1 ? 's' : ''} par vous encore ouverte{myMaint.length > 1 ? 's' : ''}. </>}
+              {myBuys.length > 0 && <>{myBuys.length} demande{myBuys.length > 1 ? 's' : ''} d’achat en attente de validation.</>}
+            </p>
+          )}
+        </section>
+      )}
       <div className="kpis">
         <Kpi onClick={() => go('systemes')} n={data.systems.length} label="systèmes" sub={down.length ? `${down.length} indisponible${down.length > 1 ? 's' : ''}` : 'tous en service'} alert={down.length > 0} />
         <Kpi onClick={() => go('occupation')} n={busyToday} label="salles occupées aujourd’hui" sub={`sur ${activeRooms.length} salle${activeRooms.length > 1 ? 's' : ''}`} />

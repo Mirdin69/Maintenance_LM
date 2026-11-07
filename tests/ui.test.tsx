@@ -98,7 +98,7 @@ describe('administration', () => {
     const title = await screen.findByLabelText('Titre du site');
     await userEvent.clear(title);
     await userEvent.type(title, 'Atelier La Mâche');
-    await userEvent.type(screen.getByLabelText(/Logo du lycée/), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view?usp=sharing');
+    await userEvent.type(screen.getByLabelText('Logo du lycée'), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view?usp=sharing');
     await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
     await waitFor(() => expect(screen.getAllByText('Atelier La Mâche').length).toBeGreaterThan(0));
     const img = document.querySelector('img[alt="Logo du lycée"]') as HTMLImageElement;

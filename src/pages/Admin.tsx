@@ -8,8 +8,11 @@ import ToolsAdmin from './admin/ToolsAdmin';
 import CalendarAdmin from './admin/CalendarAdmin';
 import Appearance from './admin/Appearance';
 import Texts from './admin/Texts';
+import BudgetAdmin from './admin/BudgetAdmin';
+import History from './admin/History';
+import BilanAdmin from './admin/BilanAdmin';
 
-type Section = 'comptes' | 'eleves' | 'salles' | 'outils' | 'calendrier' | 'apparence' | 'textes';
+type Section = 'comptes' | 'eleves' | 'salles' | 'outils' | 'calendrier' | 'apparence' | 'textes' | 'budget' | 'historique' | 'bilan';
 
 export default function Admin() {
   const { data } = useStore();
@@ -20,7 +23,7 @@ export default function Admin() {
       <PageHead tab="admin" title="Administration" />
       <div className="tools">
         <Seg<Section> label="Section" value={section} onChange={setSection} items={[
-          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'],
+          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'],
         ]} />
       </div>
       {section === 'comptes' && <AccountsAdmin />}
@@ -30,6 +33,9 @@ export default function Admin() {
       {section === 'calendrier' && <CalendarAdmin />}
       {section === 'apparence' && <Appearance />}
       {section === 'textes' && <Texts />}
+      {section === 'budget' && <BudgetAdmin />}
+      {section === 'historique' && <History />}
+      {section === 'bilan' && <BilanAdmin />}
     </>
   );
 }
