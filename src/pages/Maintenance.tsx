@@ -96,7 +96,9 @@ export default function Maintenance() {
                   </div>
                   <p className="muted small">
                     {systemById.get(m.system_id)?.name} · déclarée par {who(m.created_by)} le {fmtStamp(m.created_at)}
-                    {m.due_date && <> · échéance {fmtDate(m.due_date)}{late ? ' (dépassée)' : ''}</>}
+                    {m.due_date && !canWrite && <> · échéance {fmtDate(m.due_date)}{late ? ' (dépassée)' : ''}</>}
+                    {canWrite && <> · échéance <input className="in" type="date" aria-label={`Échéance de ${m.title}`} value={m.due_date ?? ''} style={{ width: 150, minHeight: 0, padding: '2px 6px' }}
+                      onChange={(e) => void act(() => api.update('maintenance', { id: m.id }, { due_date: e.target.value || null }), { tables: ['maintenance'] })} />{late ? ' (dépassée)' : ''}</>}
                     {m.closed_at && <> · clôturée le {fmtStamp(m.closed_at)}</>}
                   </p>
                   {m.description && <p style={{ whiteSpace: 'pre-line' }}>{m.description}</p>}

@@ -259,7 +259,7 @@ function Catalogue() {
                     competences: t.competences, objective: t.objective, teacher_id: t.teacher_id, teacher_label: t.teacher_label, sequence_name: t.sequence_name,
                     documents: asDocs(t.documents).filter((d) => d.url), reusable: false,
                   }), { ok: 'TP dupliqué.', tables: ['tps'] })}>Dupliquer</button>
-                  {isAdmin && <ConfirmButton onConfirm={async () => { if (await act(() => api.remove('tps', { id: t.id }), { ok: 'TP supprimé.', tables: ['tps', 'progress', 'timetable_slots', 'sessions'] })) void dropFiles(orphanPaths(asDocs(t.documents), [])); }}>Supprimer</ConfirmButton>}</div></td>}
+                  {isAdmin && <ConfirmButton detail={`Supprimer le TP « ${t.title} » ? ${data.sessions.filter((x) => x.tp_id === t.id).length} séance(s), ${data.timetable_slots.filter((x) => x.tp_id === t.id).length} créneau(x) et le suivi des élèves associés seront supprimés, ainsi que les fichiers déposés.`} onConfirm={async () => { if (await act(() => api.remove('tps', { id: t.id }), { ok: 'TP supprimé.', tables: ['tps', 'progress', 'timetable_slots', 'sessions'] })) void dropFiles(orphanPaths(asDocs(t.documents), [])); }}>Supprimer</ConfirmButton>}</div></td>}
               </tr>))}</tbody>
           </table></div>
         )}

@@ -5,7 +5,9 @@ import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
 import { DOMAINS, SYSTEM_STATES, byText } from '@/lib/domain';
 import type { Domain, System, SystemState } from '@/lib/types';
-import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
+import { AddPanel, Chip, ConfirmButton, Empty, Field, InlineNumber, Options, PageHead, Seg } from '@/components/ui';
+import { PasteImport } from '@/components/PasteImport';
+import { num } from '@/lib/paste';
 import { Img } from '@/components/Img';
 import { ImageField } from '@/components/ImageField';
 import { ToolsList } from '@/components/Tools';
@@ -85,6 +87,11 @@ export default function Systems() {
           </form>
         </AddPanel>
       )}
+      {tab === 'systemes' && canWrite && (
+        <PasteImport summary="Coller une liste depuis Excel" columns={['Nom', 'Référence', 'Postes']} onImport={(rows) => act(
+          () => api.insert('systems', rows.map((r) => ({ name: r[0].slice(0, 120), ref: r[1] ? r[1].slice(0, 80) : null, qty: Math.min(99, Math.max(1, Math.round(num(r[2], 1)))) }))),
+          { ok: `${rows.length} système${rows.length > 1 ? 's' : ''} ajouté${rows.length > 1 ? 's' : ''}.`, tables: ['systems'] })} />
+      )}
       {tab === 'systemes' && <section className="panel">
         <h2>Parc actuel</h2>
         {systems.length === 0 ? (
@@ -110,7 +117,7 @@ export default function Systems() {
                     </td>
                     <td>{DOMAINS[s.domain]}</td>
                     <td>{s.room_id ? roomById.get(s.room_id)?.name : <span className="muted">—</span>}</td>
-                    <td className="num">{s.qty}</td>
+                    <td className="num">{canWrite ? <InlineNumber value={s.qty} min={1} max={99} label={`Postes de ${s.name}`} onSave={(n) => void act(() => api.update('systems', { id: s.id }, { qty: n }), { tables: ['systems'] })} /> : s.qty}</td>
                     <td>
                       {canWrite ? (
                         <select className="in" style={{ minWidth: 140 }} aria-label={`État de ${s.name}`} value={s.state}
@@ -127,7 +134,7 @@ export default function Systems() {
                         <div className="row">
                           <button className="btn ghost sm" onClick={() => { setEditing(s); setImg(s.image_url ?? ''); window.scrollTo(0, 0); }}>Modifier</button>
                           {isAdmin && (
-                            <ConfirmButton warn={linked(s) ? `Confirmer (${linked(s)} lien${linked(s) > 1 ? 's' : ''})` : 'Confirmer'}
+                            <ConfirmButton detail={`Supprimer « ${s.name} » ? ${linked(s) ? `${linked(s)} intervention(s) ou créneau(x) qui l’utilisent seront aussi supprimés.` : 'Aucune intervention ni créneau n’y est lié.'}`} warn={linked(s) ? `Confirmer (${linked(s)} lien${linked(s) > 1 ? 's' : ''})` : 'Confirmer'}
                               onConfirm={() => void act(() => api.remove('systems', { id: s.id }), { ok: 'Système supprimé.', tables: ['systems', 'maintenance', 'timetable_slots', 'sessions', 'purchases'] })}>
                               Supprimer
                             </ConfirmButton>

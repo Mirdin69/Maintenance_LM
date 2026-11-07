@@ -8,6 +8,7 @@ import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf,
 import { isoWeek, monthBlocks, periodOn, weekdaysFor } from '@/lib/calendar';
 import { SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, cellValue, copyWeekOps, hoursOf, indexCells, isMine, weekNeeds, type CellOp } from '@/lib/semainier';
 import { usePersisted } from '@/hooks/usePersisted';
+import { useMedia } from '@/hooks/useMedia';
 import type { Level, PlanningCell, Tp } from '@/lib/types';
 import { Chip, Empty, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
 
@@ -212,13 +213,25 @@ function Week({ groups, cells, weekdays, tpById, teacherOf }: CommonProps & { tp
   const { profile } = useAuth();
   const [start, setStart] = useState(() => iso(mondayOf(new Date())));
   const [onlyMine, setOnlyMine] = useState(false);
-  const days = weekdays.map((n) => iso(addDays(parseISO(start), n - 1)));
-  const end = days[days.length - 1];
+  const narrow = useMedia('(max-width: 720px)');
+  const [focus, setFocus] = useState(() => Math.max(0, weekdays.indexOf(Math.min(Math.max(new Date().getDay(), 1), 5))));
+  const allDays = weekdays.map((n) => iso(addDays(parseISO(start), n - 1)));
+  const f = Math.min(focus, allDays.length - 1);
+  // Sur téléphone : un jour à la fois
+  const days = narrow ? [allDays[f]] : allDays;
+  const end = allDays[allDays.length - 1];
 
   return (
     <section className="panel">
+      {narrow && (
+        <div className="row between day-pager no-print">
+          <button className="btn sm" disabled={f === 0} aria-label="Jour précédent" onClick={() => setFocus(f - 1)}>‹</button>
+          <b>{DAY_LONG[isoDow(parseISO(allDays[f])) - 1]} {fmtShort(allDays[f])}</b>
+          <button className="btn sm" disabled={f >= allDays.length - 1} aria-label="Jour suivant" onClick={() => setFocus(f + 1)}>›</button>
+        </div>
+      )}
       <div className="row between no-print">
-        <h2>Semaine {isoWeek(start)}, du {fmtShort(days[0])} au {fmtShort(end)}</h2>
+        <h2>Semaine {isoWeek(start)}, du {fmtShort(allDays[0])} au {fmtShort(end)}</h2>
         <div className="row">
           <button className="btn ghost sm" onClick={() => setStart(iso(addDays(parseISO(start), -7)))}>← Précédente</button>
           <button className="btn ghost sm" onClick={() => setStart(iso(mondayOf(new Date())))}>Aujourd’hui</button>
@@ -227,7 +240,7 @@ function Week({ groups, cells, weekdays, tpById, teacherOf }: CommonProps & { tp
         </div>
       </div>
       <label className="row no-print"><input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} /> Mes cours seulement</label>
-      <h2 className="only-print">Emploi du temps, semaine {isoWeek(start)} du {fmtDate(days[0])} au {fmtDate(end)}</h2>
+      <h2 className="only-print">Emploi du temps, semaine {isoWeek(start)} du {fmtDate(allDays[0])} au {fmtDate(end)}</h2>
       <div className="stack">
         {groups.map((g) => (
           <div key={g} className="scroll">

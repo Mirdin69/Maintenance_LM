@@ -39,7 +39,7 @@ export default function Bank() {
       </div>
       <section className="panel stack">
         <h2>{list.length} ressource{list.length > 1 ? 's' : ''}</h2>
-        {list.length === 0 ? <Empty>Rien à afficher. Cochez « Ressource réutilisable » sur un TP ou une fiche pour l’ajouter ici.</Empty> : list.map((i) => (
+        {list.length === 0 ? <Empty to={{ href: '#fiches', label: 'Aller aux fiches' }}>Rien à afficher. Cochez « Ressource réutilisable » sur un TP ou une fiche pour l’ajouter ici.</Empty> : list.map((i) => (
           <article key={i.kind + i.id} className="card">
             <div className="row between">
               <h3>{i.title}</h3>

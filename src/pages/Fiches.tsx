@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { usePersisted } from '@/hooks/usePersisted';
 import { dropFiles } from '@/lib/docs';
@@ -80,7 +80,7 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
   const [reusable, setReusable] = useState(fiche?.reusable ?? false);
   const [level, setLevel] = useState<Level | ''>(fiche?.level ?? '');
   const [d, setD] = useState<Data>(() => (fiche?.data as Data) ?? (kind === 'seance' ? { activites: STD_ACTIVITIES } : { seances: ['', ''] }));
-  const set = (patch: Data) => setD((x) => ({ ...x, ...patch }));
+  const set = (patch: Data) => { touched.current = true; setD((x) => ({ ...x, ...patch })); };
   const comps = d.competences ?? [];
 
   const save = async () => {
@@ -92,8 +92,25 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
       else id = ((await api.insert<Fiche>('fiches', row))[0] as Fiche).id;
     }, { ok: 'Fiche enregistrée.', tables: ['fiches'] });
     if (ok && fiche) void dropFiles(orphanPaths(asDocs(fiche.documents), row.documents));
+    if (ok) clearDraft();
     if (ok && id) onSaved(id);
   };
+
+  // Brouillon : conservé dans ce navigateur pendant la saisie, proposé à la réouverture
+  const draftKey = `parc:draft:fiche:${fiche?.id ?? `new-${kind}`}`;
+  const [draft, setDraft] = useState<{ title: string; level: Level | ''; d: Data; sequenceId: string } | null>(() => {
+    try { const raw = window.localStorage.getItem(draftKey); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  });
+  const touched = useRef(false);
+  useEffect(() => {
+    if (!editable || !touched.current) return;
+    const t = window.setTimeout(() => {
+      try { window.localStorage.setItem(draftKey, JSON.stringify({ title, level, d, sequenceId })); } catch { /* ignoré */ }
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [title, level, d, sequenceId, editable, draftKey]);
+  const markTouched = () => { touched.current = true; };
+  const clearDraft = () => { try { window.localStorage.removeItem(draftKey); } catch { /* ignoré */ } setDraft(null); };
 
   const ro = !editable;
   const sequences = data.fiches.filter((x) => x.kind === 'sequence').sort((a, b) => a.title.localeCompare(b.title, 'fr'));
@@ -121,10 +138,17 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
           }, { ok: 'Fiche dupliquée.', tables: ['fiches'] });
           if (ok && newId) onOpen(newId);
         }}>Dupliquer</button>}
-        {fiche && canEdit && <ConfirmButton onConfirm={async () => { if (await act(() => api.remove('fiches', { id: fiche.id }), { ok: 'Fiche supprimée.', tables: ['fiches'] })) { void dropFiles(orphanPaths(asDocs(fiche.documents), [])); onClose(); } }}>Supprimer</ConfirmButton>}
+        {fiche && canEdit && <ConfirmButton detail={`Supprimer la fiche « ${fiche.title} » ?${seances.length ? ` ${seances.length} séance(s) y sont rattachées et seront détachées.` : ''} Les fichiers déposés sont supprimés.`} onConfirm={async () => { if (await act(() => api.remove('fiches', { id: fiche.id }), { ok: 'Fiche supprimée.', tables: ['fiches'] })) { void dropFiles(orphanPaths(asDocs(fiche.documents), [])); onClose(); } }}>Supprimer</ConfirmButton>}
       </div>
+      {editable && draft && (
+        <div className="alert soft no-print" role="status">
+          Un brouillon non enregistré de cette fiche existe sur cet appareil.
+          <button className="btn sm" style={{ marginLeft: 8 }} onClick={() => { setTitle(draft.title); setLevel(draft.level); setD(draft.d); setSequenceId(draft.sequenceId); setDraft(null); touched.current = true; }}>Restaurer le brouillon</button>
+          <button className="btn ghost sm" style={{ marginLeft: 4 }} onClick={clearDraft}>Ignorer</button>
+        </div>
+      )}
       <section className="panel form fiche-sheet">
-        <Field label="Titre *" wide>{ro ? <b>{title}</b> : <input className="in" value={title} maxLength={160} onChange={(e) => setTitle(e.target.value)} />}</Field>
+        <Field label="Titre *" wide>{ro ? <b>{title}</b> : <input className="in" value={title} maxLength={160} onChange={(e) => { markTouched(); setTitle(e.target.value); }} />}</Field>
         {!ro && <label className="row wide"><input type="checkbox" checked={reusable} onChange={(e) => setReusable(e.target.checked)} /> Ressource réutilisable (visible dans la Banque de ressources)</label>}
         <Field label="Niveau">{ro ? <span>{level || '—'}</span> : <select className="in" value={level} onChange={(e) => setLevel(e.target.value as Level | '')}><Options placeholder="Non précisé" items={LEVELS.map((l) => [l, l])} /></select>}</Field>
         {kind === 'sequence' ? <>

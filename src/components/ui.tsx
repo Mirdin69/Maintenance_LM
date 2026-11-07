@@ -162,3 +162,16 @@ export function toCsv(rows: Array<Array<string | number | null | undefined>>): B
     .join('\r\n');
   return new Blob(['﻿' + body], { type: 'text/csv;charset=utf-8' });
 }
+
+/** Nombre modifiable directement dans un tableau : enregistré en quittant le champ */
+export function InlineNumber({ value, min = 0, max = 9999, label, onSave, step = 1 }: { value: number; min?: number; max?: number; label: string; onSave: (v: number) => void | Promise<void>; step?: number }) {
+  const [v, setV] = useState(String(value));
+  useEffect(() => setV(String(value)), [value]);
+  const commit = () => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < min || n > max) { setV(String(value)); return; }
+    if (n !== value) void onSave(n);
+  };
+  return <input className="in inline-num" type="number" inputMode="decimal" min={min} max={max} step={step} aria-label={label} value={v}
+    onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />;
+}

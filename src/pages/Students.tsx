@@ -84,7 +84,7 @@ export default function Students() {
       ) : (
       <section className="panel">
         <h2>{group} · {students.length} élève{students.length > 1 ? 's' : ''}</h2>
-        {students.length === 0 ? <Empty>Aucun élève dans ce groupe. Un gestionnaire peut en ajouter dans Administration.</Empty> : tps.length === 0 ? <Empty>Aucun TP défini pour ce niveau. Ajoutez-en dans Planning des TP, Catalogue.</Empty> : (
+        {students.length === 0 ? <Empty to={{ href: '#admin', label: 'Ouvrir l’administration' }}>Aucun élève dans ce groupe. Un gestionnaire peut en ajouter dans Administration, Élèves.</Empty> : tps.length === 0 ? <Empty>Aucun TP défini pour ce niveau. Ajoutez-en dans Planning des TP, Catalogue.</Empty> : (
           <div className="scroll">
             <table className="mx">
               <thead><tr><th className="nm">Élève</th>{tps.map((t) => <th key={t.id} title={t.title}>{t.code ?? t.title.slice(0, 6)}</th>)}<th>Acquis</th></tr></thead>

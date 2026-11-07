@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '@/state/store';
 import { useAuth } from '@/state/auth';
+import { useNotes } from '@/components/Notifications';
 import { buildWarnings, isMine } from '@/lib/semainier';
 import { buildOccurrences } from '@/lib/occupancy';
 import { addDays, fmtShort, iso, mondayOf, minToHM } from '@/lib/dates';
@@ -10,7 +11,8 @@ import { Chip, Empty, PageHead } from '@/components/ui';
 export default function Home({ go }: { go: (tab: string) => void }) {
   const { data, roomById, systemById, tpById, who } = useStore();
   const today = iso(new Date());
-  const { profile, canWrite } = useAuth();
+  const { profile, canWrite, isAdmin } = useAuth();
+  const notes = useNotes();
   const mineToday = data.planning_cells
     .filter((c) => c.day === today && c.tp_id && isMine(tpById.get(c.tp_id), profile))
     .sort((a, b) => a.group_code.localeCompare(b.group_code));
@@ -40,6 +42,16 @@ export default function Home({ go }: { go: (tab: string) => void }) {
   return (
     <>
       <PageHead tab="accueil" title="Tableau de bord" />
+      {isAdmin && (
+        <section className="panel" aria-label="À traiter">
+          <h2>À traiter</h2>
+          {notes.length ? (
+            <div className="stack">{notes.map((n) => (
+              <div key={n.key} className="row between"><span className={`chip ${n.tone === 'info' ? 'idle' : n.tone}`}>{n.text}</span><button className="btn ghost sm" onClick={() => go(n.tab)}>Ouvrir</button></div>
+            ))}</div>
+          ) : <p className="muted">Rien en attente.</p>}
+        </section>
+      )}
       {canWrite && (
         <section className="panel" aria-label="Ma journée">
           <h2>Ma journée</h2>

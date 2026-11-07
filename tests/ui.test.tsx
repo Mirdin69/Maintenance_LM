@@ -424,3 +424,86 @@ describe('nouvelles fonctions', () => {
     expect(window.localStorage.getItem('parc:sem-level')).toBe('Terminale');
   });
 });
+
+describe('interface', () => {
+  it('regroupe les pages par rubrique avec fil d’Ariane', async () => {
+    await open('admin', 'accueil');
+    const nav = within(await screen.findByRole('navigation', { name: 'Sections' }));
+    expect(nav.getAllByRole('button').map((b) => b.textContent)).toEqual(['Accueil', 'Planifier', 'Pédagogie', 'Atelier', 'Aide', 'Administration']);
+    await userEvent.click(nav.getByRole('button', { name: 'Atelier' }));
+    const sub = within(await screen.findByRole('navigation', { name: 'Pages de la rubrique' }));
+    await userEvent.click(sub.getByRole('button', { name: 'Achats' }));
+    const crumbs = screen.getByLabelText('Fil d’Ariane');
+    expect(crumbs).toHaveTextContent('Atelier');
+    expect(crumbs).toHaveTextContent('Achats');
+    await userEvent.click(nav.getByRole('button', { name: 'Atelier' }));
+    expect(window.location.hash).toBe('#achats');
+  });
+
+  it('la page Aide change le thème et la taille du texte', async () => {
+    await open('prof', 'aide');
+    await userEvent.selectOptions(await screen.findByLabelText('Thème'), 'dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    await userEvent.selectOptions(screen.getByLabelText('Taille du texte'), 'large');
+    expect(document.documentElement.getAttribute('data-size')).toBe('large');
+    await userEvent.selectOptions(screen.getByLabelText('Thème'), 'auto');
+    await userEvent.selectOptions(screen.getByLabelText('Taille du texte'), 'normal');
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+    expect(screen.getByText('Questions fréquentes')).toBeInTheDocument();
+  });
+
+  it('les formulaires s’ouvrent dans un panneau latéral fermé par Échap', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Ajouter un système' }));
+    expect(await screen.findByRole('dialog', { name: 'Ajouter un système' })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('la suppression demande une confirmation qui détaille les conséquences', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Supprimer' }))[0]);
+    const dlg = await screen.findByRole('alertdialog');
+    expect(dlg).toHaveTextContent(/Supprimer «/);
+    await userEvent.click(within(dlg).getByRole('button', { name: 'Annuler' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect((await api.select('systems')).length).toBeGreaterThan(0);
+  });
+
+  it('modifie le nombre de postes directement dans la liste et affiche l’enregistrement', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    const input = (await screen.findAllByLabelText(/^Postes de /))[0] as HTMLInputElement;
+    const name = input.getAttribute('aria-label')!.replace('Postes de ', '');
+    await userEvent.clear(input);
+    await userEvent.type(input, '7{Enter}');
+    await waitFor(async () => expect((await api.select<{ name: string; qty: number }>('systems')).find((s) => s.name === name)!.qty).toBe(7));
+    expect(await screen.findByText('✓ Enregistré')).toBeInTheDocument();
+  });
+
+  it('importe des systèmes collés depuis Excel', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    await userEvent.click(await screen.findByText('Coller une liste depuis Excel'));
+    const area = await screen.findByLabelText('Lignes à importer');
+    await userEvent.click(area);
+    await userEvent.paste('Nom\tRéférence\tPostes\nBanc collé\tZ9\t3\nAutre banc\t\t2');
+    await userEvent.click(await screen.findByRole('button', { name: /^Importer 2 lignes/ }));
+    await waitFor(async () => expect((await api.select<{ name: string; qty: number }>('systems')).filter((s) => ['Banc collé', 'Autre banc'].includes(s.name))).toHaveLength(2));
+  });
+
+  it('propose de restaurer le brouillon d’une fiche', async () => {
+    window.localStorage.setItem('parc:draft:fiche:new-seance', JSON.stringify({ title: 'Brouillon séance', level: '', d: { activites: [] }, sequenceId: '' }));
+    await open('prof', 'fiches');
+    await userEvent.click(await screen.findByRole('button', { name: '+ Fiche séance' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Restaurer le brouillon' }));
+    expect(await screen.findByDisplayValue('Brouillon séance')).toBeInTheDocument();
+  });
+
+  it('l’accueil d’un gestionnaire liste ce qui est à traiter', async () => {
+    await open('admin', 'accueil');
+    expect(await screen.findByRole('region', { name: 'À traiter' })).toBeInTheDocument();
+  });
+});

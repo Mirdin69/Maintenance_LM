@@ -100,3 +100,14 @@ describe('images', () => {
     expect(newImagePath('Photo é#1.JPG')).toMatch(/^img\/[0-9a-f-]{36}\/Photo e_1\.JPG$/);
   });
 });
+
+import { parsePaste, num } from '@/lib/paste';
+describe('collage depuis Excel', () => {
+  it('ignore l’en-tête, accepte tabulations et point-virgule, lit les nombres français', () => {
+    expect(parsePaste('Nom\tRéférence\tPostes\nBanc A\tR1\t4\n\nBanc B\t\t2', ['Nom', 'Référence', 'Postes'])).toEqual([['Banc A', 'R1', '4'], ['Banc B', '', '2']]);
+    expect(parsePaste('Banc;R;3', ['Nom'])).toEqual([['Banc', 'R', '3']]);
+    expect(num('1 234,5', 0)).toBe(1234.5);
+    expect(num('abc', 7)).toBe(7);
+    expect(num(undefined, 1)).toBe(1);
+  });
+});

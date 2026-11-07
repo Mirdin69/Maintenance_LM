@@ -5,7 +5,9 @@ import { useAct, useStore } from '@/state/store';
 import { PURCHASE_STATUS, eur } from '@/lib/domain';
 import { fmtStamp } from '@/lib/dates';
 import type { PurchaseStatus } from '@/lib/types';
-import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
+import { PasteImport } from '@/components/PasteImport';
+import { num } from '@/lib/paste';
+import { AddPanel, Chip, ConfirmButton, Empty, Field, InlineNumber, Options, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
 
 type Filter = 'active' | 'all';
 
@@ -65,6 +67,11 @@ export default function Purchases() {
           </form>
         </AddPanel>
       )}
+      {canWrite && (
+        <PasteImport summary="Coller des demandes depuis Excel" columns={['Désignation', 'Quantité', 'Prix unitaire', 'Référence']} onImport={(rows) => act(
+          () => api.insert('purchases', rows.map((r) => ({ item: r[0].slice(0, 160), qty: Math.min(999, Math.max(1, Math.round(num(r[1], 1)))), unit_price: Math.max(0, num(r[2], 0)), ref: r[3] ? r[3].slice(0, 80) : null, kind: 'mat', status: 'req' }))),
+          { ok: `${rows.length} demande${rows.length > 1 ? 's' : ''} ajoutée${rows.length > 1 ? 's' : ''}.`, tables: ['purchases'] })} />
+      )}
       <BudgetBar />
       <section className="panel">
         <div className="row between">
@@ -89,7 +96,7 @@ export default function Purchases() {
                         {p.justification && <span className="sub">{p.justification}</span>}
                         {(p.supplier || p.quote_ref || p.quote_url) && <span className="sub">{[p.supplier, p.quote_ref ? `devis ${p.quote_ref}` : null].filter(Boolean).join(' · ')}{p.quote_url && <> · <a href={p.quote_url} target="_blank" rel="noopener noreferrer">voir le devis</a></>}</span>}
                       </td>
-                      <td className="num">{p.qty}</td>
+                      <td className="num">{isAdmin || own ? <InlineNumber value={p.qty} min={1} max={999} label={`Quantité de ${p.item}`} onSave={(n) => void act(() => api.update('purchases', { id: p.id }, { qty: n }), { tables: ['purchases'] })} /> : p.qty}</td>
                       <td className="num">{eur(p.qty * Number(p.unit_price))}</td>
                       <td>{who(p.requested_by)}<span className="sub">{fmtStamp(p.created_at)}</span></td>
                       <td>

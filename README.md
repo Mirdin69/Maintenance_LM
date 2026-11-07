@@ -84,3 +84,11 @@ npm run build
 - **Suivi des élèves** : vue par compétence. **PFMP** : entreprises, périodes, visites. **Banque** de ressources réutilisables.
 - **Achats** : fournisseur, devis, budget de l'année (Administration, Budget). **Maintenance** : contrôles récurrents créés automatiquement à l'échéance.
 - **Bilan** de l'année (Administration, Bilan) : export CSV et impression.
+
+## Interface
+
+- Barre d'onglets en rubriques (Planifier, Pédagogie, Atelier, Aide, Administration) avec fil d'Ariane et bouton « Imprimer cette page » (en-tête avec le logo du lycée et la date).
+- Formulaires dans un panneau latéral ; suppressions avec une fenêtre qui détaille les conséquences ; indicateur « Enregistré » dans l'en-tête.
+- Modification directe dans les listes (postes, quantités, échéances), collage de listes depuis Excel (systèmes, achats), brouillons des fiches conservés sur l'appareil.
+- Page Aide et à propos : guide, questions fréquentes, thème (automatique, clair, sombre) et taille du texte.
+- Téléphone et tablette : semaine du semainier jour par jour, grandes zones à toucher. Un test vérifie le contraste (WCAG AA) des couleurs du thème clair et sombre.

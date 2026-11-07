@@ -62,7 +62,7 @@ function Periods() {
     <>
       {canWrite && (
         <AddPanel summary={editing ? 'Modifier la période' : 'Ajouter une période de PFMP'} open={!!editing} onClose={() => setEditing(null)}>
-          {data.students.length === 0 ? <Empty>Aucun élève : un gestionnaire peut les ajouter dans Administration, Élèves.</Empty> : (
+          {data.students.length === 0 ? <Empty to={{ href: '#admin', label: 'Ouvrir l’administration' }}>Aucun élève : un gestionnaire peut les ajouter dans Administration, Élèves.</Empty> : (
             <form className="form" key={`${editing?.id ?? 'new'}-${formKey}`} onSubmit={submit}>
               <Field label="Groupe (filtre)"><select className="in" value={formGroup} onChange={(e) => setFormGroup(e.target.value)}><Options placeholder="Tous" items={GROUP_CODES.map((g) => [g, g])} /></select></Field>
               <Field label="Élève *"><select className="in" name="student_id" required defaultValue={editing?.student_id ?? ''}><Options placeholder="Choisir…" items={candidates.map((s) => [s.id, `${s.name} (${s.group_code})`])} /></select></Field>

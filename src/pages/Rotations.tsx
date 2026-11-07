@@ -35,7 +35,7 @@ export default function Rotations() {
       </div>
       <div className="f no-print"><span className="lab">Systèmes de la rotation</span>
         <div className="picks">{data.systems.map((s) => <label key={s.id} className="pick"><input type="checkbox" checked={picked.includes(s.id)} onChange={() => toggle(s.id)} />{s.name} ({s.qty} poste{s.qty > 1 ? 's' : ''})</label>)}</div></div>
-      {students.length === 0 ? <Empty>Aucun élève dans {group}. Un gestionnaire peut les ajouter dans Administration, Élèves.</Empty>
+      {students.length === 0 ? <Empty to={{ href: '#admin', label: 'Ouvrir l’administration' }}>Aucun élève dans {group}. Un gestionnaire peut les ajouter dans Administration, Élèves.</Empty>
         : stations.length === 0 ? <Empty>Cochez au moins un système.</Empty> : (
           <>
             <div className="scroll"><table className="tbl">

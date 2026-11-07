@@ -395,3 +395,4 @@ table.sem .dom, .dom { font-weight: bold; }
 .faq { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
 .faq summary { cursor: pointer; font-weight: bold; }
 .faq[open] summary { margin-bottom: 8px; }
+.inline-num { width: 76px; text-align: right; }
