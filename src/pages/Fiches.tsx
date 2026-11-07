@@ -6,6 +6,8 @@ import { COMPETENCES, DOMAINS, LEVELS } from '@/lib/domain';
 import { fmtStamp } from '@/lib/dates';
 import type { Fiche, FicheKind, Level } from '@/lib/types';
 import { ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
+import { DocsEditor, DocsViewer } from '@/components/Docs';
+import { asDocs, cleanDocs, type Doc } from '@/lib/docs';
 
 interface Activity { activite: string; professeur: string; eleve: string; outils: string }
 interface Data {
@@ -34,6 +36,7 @@ export default function Fiches() {
     const editable = !!draft && (!f || isAdmin || f.created_by === profile?.id);
     return <Editor fiche={f} kind={draft?.kind ?? f!.kind} editable={editable && canWrite}
       canEdit={!!f && canWrite && (isAdmin || f.created_by === profile?.id)} onEdit={() => f && setDraft({ id: f.id, kind: f.kind })}
+      onOpen={(id) => { setDraft(null); setOpenId(id); }}
       onClose={() => { setDraft(null); setOpenId(null); }} onSaved={(id) => { setDraft(null); setOpenId(id); }} />;
   }
 
@@ -50,10 +53,10 @@ export default function Fiches() {
       <section className="panel">
         {list.length === 0 ? <Empty>Aucune fiche pour le moment.</Empty> : (
           <div className="scroll"><table className="tbl">
-            <thead><tr><th>Titre</th><th>Type</th><th>Niveau</th><th>Auteur</th><th>Modifiée</th><th /></tr></thead>
+            <thead><tr><th>Titre</th><th>Type</th><th>Séquence</th><th>Niveau</th><th>Auteur</th><th>Modifiée</th><th /></tr></thead>
             <tbody>{list.map((f) => (
               <tr key={f.id}>
-                <td><b>{f.title}</b></td><td>{KIND[f.kind]}</td><td>{f.level ?? '—'}</td><td>{who(f.created_by)}</td><td>{fmtStamp(f.updated_at)}</td>
+                <td><b>{f.title}</b>{asDocs(f.documents).length > 0 && <span className="sub">{asDocs(f.documents).length} document(s) joint(s)</span>}</td><td>{KIND[f.kind]}</td><td>{f.kind === 'seance' ? data.fiches.find((x) => x.id === f.sequence_id)?.title ?? '—' : `${data.fiches.filter((x) => x.sequence_id === f.id).length} séance(s)`}</td><td>{f.level ?? '—'}</td><td>{who(f.created_by)}</td><td>{fmtStamp(f.updated_at)}</td>
                 <td><button className="btn ghost sm" onClick={() => setOpenId(f.id)}>Ouvrir</button></td>
               </tr>))}</tbody>
           </table></div>
@@ -63,10 +66,13 @@ export default function Fiches() {
   );
 }
 
-function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved }: {
-  fiche?: Fiche; kind: FicheKind; editable: boolean; canEdit: boolean; onEdit: () => void; onClose: () => void; onSaved: (id: string) => void;
+function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOpen }: {
+  fiche?: Fiche; kind: FicheKind; editable: boolean; canEdit: boolean; onEdit: () => void; onClose: () => void; onSaved: (id: string) => void; onOpen: (id: string) => void;
 }) {
+  const { data } = useStore();
   const act = useAct();
+  const [docs, setDocs] = useState<Doc[]>(() => asDocs(fiche?.documents));
+  const [sequenceId, setSequenceId] = useState(fiche?.sequence_id ?? '');
   const [title, setTitle] = useState(fiche?.title ?? '');
   const [level, setLevel] = useState<Level | ''>(fiche?.level ?? '');
   const [d, setD] = useState<Data>(() => (fiche?.data as Data) ?? (kind === 'seance' ? { activites: STD_ACTIVITIES } : { seances: ['', ''] }));
@@ -75,7 +81,7 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved }: {
 
   const save = async () => {
     if (!title.trim()) return void act(() => Promise.reject(new Error('Donnez un titre à la fiche.')));
-    const row = { kind, title: title.trim(), level: level || null, data: d };
+    const row = { kind, title: title.trim(), level: level || null, data: d, documents: cleanDocs(docs), sequence_id: kind === 'seance' ? sequenceId || null : null };
     let id = fiche?.id;
     const ok = await act(async () => {
       if (id) await api.update('fiches', { id }, row);
@@ -85,6 +91,9 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved }: {
   };
 
   const ro = !editable;
+  const sequences = data.fiches.filter((x) => x.kind === 'sequence').sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+  const linkedSeq = data.fiches.find((x) => x.id === (fiche?.sequence_id ?? sequenceId));
+  const seances = fiche ? data.fiches.filter((x) => x.sequence_id === fiche.id).sort((a, b) => a.title.localeCompare(b.title, 'fr', { numeric: true })) : [];
   const text = (label: string, key: keyof Data, rows = 2, wide = true) => (
     <Field label={label} wide={wide}>
       {ro ? <div className="pre">{(d[key] as string) || '—'}</div> : <textarea className="in" rows={rows} maxLength={4000} value={(d[key] as string) ?? ''} onChange={(e) => set({ [key]: e.target.value })} />}
@@ -114,7 +123,17 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved }: {
           {text('Contexte pédagogique', 'contexte', 3)}
         </> : <>
           {text('Numéro de séance', 'numero', 1, false)}
-          {text('Séquence', 'sequence', 1)}
+          {ro ? (
+            <div className="f wide"><span className="lab">Fiche séquence liée</span>
+              {linkedSeq ? <button type="button" className="btn ghost sm" onClick={() => onOpen(linkedSeq.id)}>{linkedSeq.title}</button> : <span>—</span>}
+            </div>
+          ) : (
+            <Field label="Fiche séquence liée" wide>
+              <select className="in" value={sequenceId} onChange={(e) => setSequenceId(e.target.value)}>
+                <Options placeholder="Aucune" items={sequences.map((x) => [x.id, `${x.title}${x.level ? ` (${x.level})` : ''}`])} />
+              </select>
+            </Field>
+          )}
           <Field label="Domaine d’activité">{ro ? <span>{d.domaine || '—'}</span> : <select className="in" value={d.domaine ?? ''} onChange={(e) => set({ domaine: e.target.value })}><Options placeholder="Choisir" items={Object.values(DOMAINS).map((x) => [x, x])} /></select>}</Field>
           {text('Objectifs', 'objectifs', 3)}
           {text('Prérequis', 'prerequis')}
@@ -154,6 +173,23 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved }: {
                 </tr>))}</tbody>
             </table></div>
             {!ro && <button type="button" className="btn ghost sm" onClick={() => set({ activites: [...(d.activites ?? []), { activite: '', professeur: '', eleve: '', outils: '' }] })}>+ Ajouter une ligne</button>}
+          </div>
+        )}
+        {ro ? (
+          <div className="f wide"><span className="lab">Documents joints</span><DocsViewer docs={docs} /></div>
+        ) : (
+          <DocsEditor value={docs} onChange={setDocs} />
+        )}
+        {kind === 'sequence' && fiche && (
+          <div className="f wide">
+            <span className="lab">Fiches séance rattachées ({seances.length})</span>
+            {seances.length === 0 ? <span className="muted">Aucune. Créez une fiche séance et choisissez cette séquence.</span> : (
+              <div className="docs">{seances.map((x) => (
+                <div key={x.id} className="doc"><span className="doc-t">{x.title}</span>
+                  {asDocs(x.documents).length > 0 && <span className="muted small">{asDocs(x.documents).length} document(s)</span>}
+                  <button type="button" className="btn ghost sm no-print" onClick={() => onOpen(x.id)}>Ouvrir</button></div>
+              ))}</div>
+            )}
           </div>
         )}
       </section>

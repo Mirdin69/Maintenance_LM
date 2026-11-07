@@ -278,3 +278,11 @@ tr.sel td { background: var(--sunken); }
   .pc { appearance: none; -webkit-appearance: none; border: 0; }
   .sem th, .wk thead th { position: static; }
 }
+
+.docrow { flex-wrap: wrap; }
+.docrow .in { flex: 1; min-width: 160px; }
+.docs { display: flex; flex-direction: column; gap: 6px; }
+.doc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.doc-t { font-weight: 700; overflow-wrap: anywhere; }
+.preview iframe { width: 100%; height: 70vh; min-height: 360px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+a.btn { text-decoration: none; display: inline-block; }

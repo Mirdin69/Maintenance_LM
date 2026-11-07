@@ -41,7 +41,8 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Semainier** : vue année (une case par groupe et par jour, choix du TP dans une liste), vue semaine (domaine, enseignant, TP, objectif, compétences), vue « Mes cours ». Export CSV et impression. Les TP se créent dans Planning des TP, Catalogue, avec leur domaine, enseignant et objectif.
 - **Fiches** séquence et séance : saisie, partage entre collègues, impression.
 - **Images** des systèmes, outils et logos : collez le lien de partage d'un fichier du Drive, réglé sur « Tous les utilisateurs disposant du lien ». Si votre Drive est limité à l'établissement, les images ne s'afficheront que pour les personnes connectées à leur compte Google du lycée dans le même navigateur.
-- Appliquez **`supabase/migrations/0002_semainier.sql`** après `0001_init.sql`.
+- **Documents joints** (Word, PDF, Excel) sur les TP et les fiches : collez le lien de partage du fichier du Drive ; un bouton « Aperçu » l'affiche dans la page (aperçu limité à Google Drive/Docs, sinon lien « Ouvrir »). Une fiche séance se rattache à une fiche séquence.
+- Appliquez dans l'ordre **`0002_semainier.sql`** puis **`0003_documents.sql`**, après `0001_init.sql`.
 
 ## Salles et occupation
 

@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 const migration = readFileSync(new URL('../supabase/migrations/0001_init.sql', import.meta.url), 'utf8');
 const migration2 = readFileSync(new URL('../supabase/migrations/0002_semainier.sql', import.meta.url), 'utf8');
+const migration3 = readFileSync(new URL('../supabase/migrations/0003_documents.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
 // Simulation minimale de l'authentification Supabase
@@ -52,6 +53,7 @@ beforeAll(async () => {
   await db.exec(authStub);
   await db.exec(migration);
   await db.exec(migration2);
+  await db.exec(migration3);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -368,5 +370,26 @@ describe('migration 0002 : réglages, outils, semainier, fiches', () => {
     expect((await sql('select title from public.fiches where id = $1', [f.id]))[0].title).toBe('Corrigée');
     await as('lecteur');
     expect(await fails("insert into public.fiches (kind, title) values ('sequence', 'x')")).toMatch(/row-level security/);
+  });
+});
+
+describe('migration 0003 : documents et fiches liées', () => {
+  it('accepte des documents Drive, refuse les liens non web', async () => {
+    await as('admin');
+    expect(await fails(`update public.tps set documents = '[{"title":"Sujet","url":"https://drive.google.com/file/d/abcdefghij1/view"}]' where code = 'Prod Ener (1)' or true`)).toBeNull();
+    expect(await fails(`update public.tps set documents = '[{"title":"x","url":"javascript:alert(1)"}]'`)).toMatch(/check/);
+    expect(await fails(`update public.tps set documents = '{"url":"https://a.fr"}'`)).toMatch(/check/);
+    expect(await fails(`update public.tps set documents = '["https://a.fr"]'`)).toMatch(/check/);
+    const many = JSON.stringify(Array.from({ length: 21 }, () => ({ title: 't', url: 'https://a.fr/x.pdf' })));
+    expect(await fails('update public.tps set documents = $1::jsonb', [many])).toMatch(/check/);
+  });
+  it('une séance se rattache à une séquence, pas à une autre séance', async () => {
+    await as('prof');
+    const [seq] = await sql(`insert into public.fiches (kind, title) values ('sequence', 'Séquence moteur') returning id`);
+    const [sea] = await sql(`insert into public.fiches (kind, title, sequence_id, documents) values ('seance', 'Séance 1', $1, '[{"title":"Fiche.docx","url":"https://drive.google.com/file/d/abcdefghij2/view"}]') returning id`, [seq.id]);
+    expect(await fails(`insert into public.fiches (kind, title, sequence_id) values ('seance', 'Séance 2', $1)`, [sea.id])).toMatch(/séquence/);
+    expect(await fails(`insert into public.fiches (kind, title, sequence_id) values ('sequence', 'Séquence B', $1)`, [seq.id])).toMatch(/séance/);
+    await db.query('delete from public.fiches where id = $1', [seq.id]);
+    expect((await sql('select sequence_id from public.fiches where id = $1', [sea.id]))[0].sequence_id).toBeNull();
   });
 });

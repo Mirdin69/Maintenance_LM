@@ -152,6 +152,45 @@ describe('fiches', () => {
   });
 });
 
+describe('documents et séquences', () => {
+  it('joint un document à un TP et affiche son aperçu Drive', async () => {
+    await open('admin', 'planning');
+    await userEvent.click(await screen.findByRole('button', { name: 'Catalogue des TP' }));
+    await userEvent.click(await screen.findByText('Ajouter un TP'));
+    await userEvent.type(screen.getByLabelText(/Titre \*/), 'TP avec document');
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter un document' }));
+    await userEvent.type(screen.getByLabelText('Titre du document 1'), 'Sujet.docx');
+    await userEvent.type(screen.getByLabelText('Lien du document 1'), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view');
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter' }));
+    const btn = await screen.findByRole('button', { name: '1 document' });
+    await userEvent.click(btn);
+    await userEvent.click(await screen.findByRole('button', { name: 'Aperçu' }));
+    const frame = document.querySelector('iframe') as HTMLIFrameElement;
+    expect(frame.src).toBe('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/preview');
+    expect(frame.getAttribute('sandbox')).toContain('allow-scripts');
+    expect(screen.getByText('Word')).toBeInTheDocument();
+  });
+  it('relie une fiche séance à une fiche séquence avec un document', async () => {
+    await open('prof', 'fiches');
+    await userEvent.click(await screen.findByRole('button', { name: '+ Fiche séquence' }));
+    await userEvent.type(screen.getByLabelText(/Titre \*/), 'Séquence moteur');
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    await userEvent.click(await screen.findByRole('button', { name: /Retour à la liste/ }));
+    await userEvent.click(await screen.findByRole('button', { name: '+ Fiche séance' }));
+    await userEvent.type(screen.getByLabelText(/Titre \*/), 'Séance 1 moteur');
+    await userEvent.selectOptions(screen.getByLabelText('Fiche séquence liée'), screen.getByRole('option', { name: 'Séquence moteur' }));
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter un document' }));
+    await userEvent.type(screen.getByLabelText('Titre du document 1'), 'Fiche séance.pdf');
+    await userEvent.type(screen.getByLabelText('Lien du document 1'), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view');
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(await screen.findByRole('button', { name: 'Séquence moteur' })).toBeInTheDocument();
+    expect(screen.getByText('PDF')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Séquence moteur' }));
+    expect(await screen.findByText(/Fiches séance rattachées \(1\)/)).toBeInTheDocument();
+    expect(screen.getAllByText('Séance 1 moteur').length).toBeGreaterThan(0);
+  });
+});
+
 describe('élèves', () => {
   it('fait évoluer une validation au clic', async () => {
     await open('admin', 'eleves');

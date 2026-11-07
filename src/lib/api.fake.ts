@@ -88,7 +88,7 @@ function reset() {
   const S = (n: string) => systems.find((s) => s.name.startsWith(n))!.id as string;
 
   const tp = (code: string, title: string, level: string, hours: number | null, systemIds: string[], competences: string[]) => ({
-    id: uid(), code, title, level, domain: 'ind', hours, system_ids: systemIds, competences, objective: null, teacher_id: null, teacher_label: null, sequence_name: null, created_at: now(),
+    id: uid(), code, title, level, domain: 'ind', hours, system_ids: systemIds, competences, objective: null, teacher_id: null, teacher_label: null, sequence_name: null, documents: [], created_at: now(),
   });
   const tps = [
     tp('P1', 'Câblage avec fiches bananes sur platine à bornes repérées', 'Seconde', 4, [S('Armoire')], ['C1', 'C4', 'C5', 'C11']),
@@ -245,7 +245,7 @@ function defaults(table: string, row: Row): Row {
   const base: Row = { created_at: now() };
   switch (table) {
     case 'systems': Object.assign(base, { domain: 'ind', qty: 1, state: 'service', created_by: me }); break;
-    case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [] }); break;
+    case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [], documents: [] }); break;
     case 'maintenance': Object.assign(base, { kind: 'corr', priority: 'n', status: 'open', closed_at: null, created_by: me }); break;
     case 'maintenance_notes': Object.assign(base, { author_id: me }); break;
     case 'purchases': Object.assign(base, { kind: 'mat', qty: 1, unit_price: 0, urgent: false, status: 'req', requested_by: me }); break;
@@ -255,7 +255,7 @@ function defaults(table: string, row: Row): Row {
     case 'progress': Object.assign(base, { updated_at: now(), updated_by: me }); break;
     case 'tools': Object.assign(base, { qty: 1, state: 'ok', image_url: null }); break;
     case 'planning_cells': Object.assign(base, { tp_id: null, label: null, note: null, updated_by: me, updated_at: now() }); break;
-    case 'fiches': Object.assign(base, { data: {}, created_by: me, updated_at: now() }); break;
+    case 'fiches': Object.assign(base, { data: {}, documents: [], sequence_id: null, created_by: me, updated_at: now() }); break;
   }
   const out = { ...base, ...row };
   if (pkOf(table).length === 1 && pkOf(table)[0] === 'id' && !out.id) out.id = uid();
@@ -263,6 +263,13 @@ function defaults(table: string, row: Row): Row {
 }
 
 function checkConflicts(table: string, row: Row, previous?: Row) {
+  if (table === 'fiches' && row.sequence_id) {
+    if (row.kind !== 'seance') throw new Error('Seule une fiche séance peut être rattachée à une séquence.');
+    const target = (T.fiches ?? []).find((f) => f.id === row.sequence_id);
+    if (!target || target.kind !== 'sequence') throw new Error('La fiche rattachée doit être une fiche séquence.');
+  }
+  if ((table === 'fiches' || table === 'tps') && Array.isArray(row.documents) && row.documents.some((d: { url?: string }) => !/^https?:\/\//i.test(d?.url ?? '')))
+    throw new Error('violates check constraint "documents_check"');
   const slots = T.timetable_slots as unknown as Slot[];
   const sessions = T.sessions as unknown as Session[];
   const rooms = T.rooms as unknown as Room[];
@@ -297,6 +304,7 @@ function cascade(table: string, removed: Row[]) {
     if (changed) notify(t);
   };
   if (table === 'tps') nullify('planning_cells', 'tp_id');
+  if (table === 'fiches') nullify('fiches', 'sequence_id');
   if (table === 'students') drop('progress', (r) => ids.includes(r.student_id));
   if (table === 'tps') drop('progress', (r) => ids.includes(r.tp_id));
   if (table === 'systems') drop('maintenance', (r) => ids.includes(r.system_id));

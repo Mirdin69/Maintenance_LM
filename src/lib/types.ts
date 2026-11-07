@@ -66,6 +66,7 @@ export interface Tp {
   teacher_id: string | null;
   teacher_label: string | null;
   sequence_name: string | null;
+  documents: Array<{ title: string; url: string }>;
   created_at: string;
 }
 
@@ -206,6 +207,8 @@ export interface Fiche {
   title: string;
   level: Level | null;
   tp_id: string | null;
+  sequence_id: string | null;
+  documents: Array<{ title: string; url: string }>;
   data: Record<string, unknown>;
   created_by: string | null;
   created_at: string;

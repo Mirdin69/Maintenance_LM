@@ -191,3 +191,27 @@ describe('semainier', () => {
     expect(cellValue(undefined)).toBe('');
   });
 });
+
+import { cleanDocs, docKind, embedUrl } from '@/lib/docs';
+
+describe('documents joints', () => {
+  const id = '1AbCdEfGhIjKlMnOpQrSt';
+  it('reconnaît Word, PDF, Excel', () => {
+    expect(docKind({ title: 'Sujet.docx', url: `https://drive.google.com/file/d/${id}/view` })).toBe('word');
+    expect(docKind({ title: 'Cours.PDF', url: 'https://x.fr/a' })).toBe('pdf');
+    expect(docKind({ title: 'Suivi', url: 'https://x.fr/f.xlsx?dl=1' })).toBe('excel');
+    expect(docKind({ title: 'Doc', url: `https://docs.google.com/spreadsheets/d/${id}/edit` })).toBe('excel');
+    expect(docKind({ title: 'Doc', url: `https://docs.google.com/document/d/${id}/edit` })).toBe('word');
+    expect(docKind({ title: 'Autre', url: 'https://x.fr/a' })).toBe('other');
+  });
+  it('n’intègre en aperçu que Google Drive / Docs', () => {
+    expect(embedUrl(`https://drive.google.com/file/d/${id}/view?usp=sharing`)).toBe(`https://drive.google.com/file/d/${id}/preview`);
+    expect(embedUrl(`https://docs.google.com/document/d/${id}/edit`)).toBe(`https://docs.google.com/document/d/${id}/preview`);
+    expect(embedUrl(`https://docs.google.com/spreadsheets/d/${id}/edit#gid=0`)).toBe(`https://docs.google.com/spreadsheets/d/${id}/preview`);
+    expect(embedUrl('https://site-inconnu.example/doc.pdf')).toBeNull();
+    expect(embedUrl('javascript:alert(1)')).toBeNull();
+  });
+  it('nettoie la saisie', () => {
+    expect(cleanDocs([{ title: ' ', url: 'https://a.fr/x.pdf' }, { title: 'x', url: 'ftp://a' }, { title: 'y', url: '' }])).toEqual([{ title: 'Document', url: 'https://a.fr/x.pdf' }]);
+  });
+});

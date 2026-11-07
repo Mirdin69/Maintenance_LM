@@ -8,6 +8,8 @@ import { buildOccurrences, systemUsage, type Occ } from '@/lib/occupancy';
 import { sessionConflicts } from '@/lib/conflicts';
 import type { Level, Tp } from '@/lib/types';
 import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
+import { DocsEditor, DocsViewer } from '@/components/Docs';
+import { asDocs, cleanDocs, type Doc } from '@/lib/docs';
 
 type Sub = 'week' | 'tps' | 'usage';
 
@@ -183,8 +185,10 @@ function Catalogue() {
   const [level, setLevel] = useState<Level | ''>('');
   const [sys, setSys] = useState<string[]>([]);
   const [comp, setComp] = useState<string[]>([]);
+  const [docs, setDocs] = useState<Doc[]>([]);
+  const [viewing, setViewing] = useState<string | null>(null);
 
-  const edit = (t: Tp | null) => { setEditing(t); setSys(t?.system_ids ?? []); setComp(t?.competences ?? []); };
+  const edit = (t: Tp | null) => { setEditing(t); setSys(t?.system_ids ?? []); setComp(t?.competences ?? []); setDocs(asDocs(t?.documents)); };
   const toggle = (arr: string[], v: string) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
@@ -197,6 +201,7 @@ function Catalogue() {
       teacher_id: String(f.get('teacher_id')) || null,
       teacher_label: String(f.get('teacher_id')) ? null : String(f.get('teacher_label')).trim() || null,
       sequence_name: String(f.get('sequence_name')).trim() || null,
+      documents: cleanDocs(docs),
     };
     const ok = await act(() => (editing ? api.update('tps', { id: editing.id }, row) : api.insert('tps', row)), { ok: editing ? 'TP modifié.' : 'TP ajouté.', tables: ['tps'] });
     if (ok) { edit(null); setFormKey((k) => k + 1); }
@@ -222,6 +227,7 @@ function Catalogue() {
               <div className="picks">{data.systems.map((s) => <label key={s.id} className="pick"><input type="checkbox" checked={sys.includes(s.id)} onChange={() => setSys(toggle(sys, s.id))} />{s.name}</label>)}</div></div>
             <div className="f wide"><span className="lab">Compétences travaillées</span>
               <div className="picks">{Object.keys(COMPETENCES).map((c) => <label key={c} className="pick" title={COMPETENCES[c]}><input type="checkbox" checked={comp.includes(c)} onChange={() => setComp(toggle(comp, c))} />{c}</label>)}</div></div>
+            <DocsEditor value={docs} onChange={setDocs} />
             <div className="actions"><button className="btn" type="submit">{editing ? 'Enregistrer' : 'Ajouter'}</button>{editing && <button className="btn ghost" type="button" onClick={() => edit(null)}>Annuler</button>}</div>
           </form>
         </AddPanel>
@@ -231,16 +237,23 @@ function Catalogue() {
           <Seg<Level | ''> label="Niveau" value={level} onChange={setLevel} items={[['', 'Tous'], ...LEVELS.map((l) => [l, l] as [Level, string])]} /></div>
         {list.length === 0 ? <Empty>Aucun TP.</Empty> : (
           <div className="scroll"><table className="tbl">
-            <thead><tr><th>TP</th><th>Niveau</th><th>Enseignant</th><th className="num">Durée</th><th>Systèmes</th><th>Compétences</th>{canWrite && <th />}</tr></thead>
+            <thead><tr><th>TP</th><th>Niveau</th><th>Enseignant</th><th className="num">Durée</th><th>Systèmes</th><th>Compétences</th><th>Documents</th>{canWrite && <th />}</tr></thead>
             <tbody>{list.map((t) => (
               <tr key={t.id}>
                 <td><b>{t.code}</b> {t.title}{t.objective && <span className="sub">{t.objective}</span>}</td><td>{t.level}</td><td>{t.teacher_id ? who(t.teacher_id) : t.teacher_label ?? '—'}</td><td className="num">{t.hours ? `${t.hours} h` : '—'}</td>
                 <td>{t.system_ids.map((id) => systemById.get(id)?.name).filter(Boolean).join(', ') || '—'}</td>
                 <td>{t.competences.join(', ') || '—'}</td>
+                <td>{asDocs(t.documents).length ? <button className="btn ghost sm" aria-pressed={viewing === t.id} onClick={() => setViewing(viewing === t.id ? null : t.id)}>{asDocs(t.documents).length} document{asDocs(t.documents).length > 1 ? 's' : ''}</button> : <span className="muted">—</span>}</td>
                 {canWrite && <td><div className="row"><button className="btn ghost sm" onClick={() => { edit(t); window.scrollTo(0, 0); }}>Modifier</button>
                   {isAdmin && <ConfirmButton onConfirm={() => void act(() => api.remove('tps', { id: t.id }), { ok: 'TP supprimé.', tables: ['tps', 'progress', 'timetable_slots', 'sessions'] })}>Supprimer</ConfirmButton>}</div></td>}
               </tr>))}</tbody>
           </table></div>
+        )}
+        {viewing && data.tps.find((t) => t.id === viewing) && (
+          <div className="stack">
+            <h3>Documents du TP {data.tps.find((t) => t.id === viewing)!.code ?? ''} {data.tps.find((t) => t.id === viewing)!.title}</h3>
+            <DocsViewer docs={asDocs(data.tps.find((t) => t.id === viewing)!.documents)} />
+          </div>
         )}
       </section>
     </>
