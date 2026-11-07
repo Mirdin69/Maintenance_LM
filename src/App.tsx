@@ -20,26 +20,29 @@ import Students from '@/pages/Students';
 import Admin from '@/pages/Admin';
 import Pfmp from '@/pages/Pfmp';
 import Bank from '@/pages/Bank';
+import Help from '@/pages/Help';
+import { useSaveState } from '@/state/saving';
 import { Search } from '@/components/Search';
 import { Notifications } from '@/components/Notifications';
 import { ReportFault } from '@/components/ReportFault';
 
-type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'admin';
+type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'aide' | 'admin';
 
-const TABS: Array<[TabId, string]> = [
-  ['accueil', 'Accueil'],
-  ['semainier', 'Semainier'],
-  ['edt', 'Emploi du temps'],
-  ['occupation', 'Occupation'],
-  ['maintenance', 'Maintenance'],
-  ['achats', 'Achats'],
-  ['planning', 'Planning des TP'],
-  ['fiches', 'Fiches'],
-  ['eleves', 'Suivi des élèves'],
-  ['pfmp', 'PFMP'],
-  ['banque', 'Banque'],
-  ['admin', 'Administration'],
+/** Rubriques de la barre d'onglets ; chaque rubrique regroupe des pages */
+const FAMILIES: Array<{ id: string; label: string; tabs: Array<[TabId, string]>; admin?: boolean }> = [
+  { id: 'accueil', label: 'Accueil', tabs: [['accueil', 'Accueil']] },
+  { id: 'planifier', label: 'Planifier', tabs: [['semainier', 'Semainier'], ['edt', 'Emploi du temps'], ['occupation', 'Occupation'], ['planning', 'Planning des TP']] },
+  { id: 'pedagogie', label: 'Pédagogie', tabs: [['fiches', 'Fiches'], ['banque', 'Banque'], ['eleves', 'Suivi des élèves'], ['pfmp', 'PFMP']] },
+  { id: 'atelier', label: 'Atelier', tabs: [['maintenance', 'Maintenance'], ['achats', 'Achats']] },
+  { id: 'aide', label: 'Aide', tabs: [['aide', 'Aide et à propos']] },
+  { id: 'admin', label: 'Administration', tabs: [['admin', 'Administration']], admin: true },
 ];
+const TABS: Array<[TabId, string]> = FAMILIES.flatMap((f) => f.tabs);
+const familyOf = (t: TabId) => FAMILIES.find((f) => f.tabs.some(([id]) => id === t));
+const lastIn = (famId: string, fallback: TabId): TabId => {
+  try { const v = window.localStorage.getItem(`parc:fam-${famId}`); if (v && TABS.some(([id]) => id === v)) return v as TabId; } catch { /* ignoré */ }
+  return fallback;
+};
 
 const fromHash = (): TabId => {
   const h = window.location.hash.slice(1);
@@ -211,6 +214,17 @@ function Login() {
   );
 }
 
+/** En-tête des impressions : titre du site, logo du lycée et date */
+function PrintHead() {
+  const { title, schoolLogo } = useBranding();
+  return (
+    <div className="print-head" aria-hidden="true">
+      <b>{title}</b>
+      <span><Img url={schoolLogo} alt="" width={200} /> Imprimé le {new Date().toLocaleDateString('fr-FR')}</span>
+    </div>
+  );
+}
+
 function Shell() {
   const { profile, isAdmin, canWrite, signOut, refreshProfile } = useAuth();
   const { loading, error } = useStore();
@@ -233,8 +247,16 @@ function Shell() {
     setTab(t as TabId);
     window.scrollTo(0, 0);
   };
-  const tabs = TABS.filter(([id]) => id !== 'admin' || isAdmin);
   const current: TabId = tab === 'admin' && !isAdmin ? 'accueil' : tab;
+  const families = FAMILIES.filter((f) => !f.admin || isAdmin);
+  const fam = familyOf(current);
+  useEffect(() => {
+    if (!fam) return;
+    try { window.localStorage.setItem(`parc:fam-${fam.id}`, current); } catch { /* ignoré */ }
+  }, [fam, current]);
+  const pageLabel = TABS.find(([id]) => id === current)?.[1] ?? 'Systèmes';
+  const saveState = useSaveState();
+  const crumbs = [fam && fam.id !== 'accueil' ? fam.label : null, current !== 'accueil' && pageLabel !== fam?.label ? pageLabel : null].filter((x): x is string => !!x);
 
   const saveName = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -263,18 +285,33 @@ function Shell() {
                 {displayName(profile)}
               </button>
             )}
+            <span className={'save-ind ' + saveState} aria-live="polite">{saveState === 'saving' ? 'Enregistrement…' : saveState === 'saved' ? '✓ Enregistré' : saveState === 'failed' ? '⚠ Échec de l’enregistrement' : ''}</span>
             <Chip tone={isAdmin ? 'ok' : 'idle'}>{ROLES[profile!.role]}</Chip>
             <button className="btn sm" onClick={() => void signOut()}>Se déconnecter</button>
           </div>
         </div>
         <nav className="nav" aria-label="Sections">
-          {tabs.map(([id, label]) => (
-            <button key={id} aria-current={id === current ? 'page' : undefined} onClick={() => go(id)}>
-              {label}
+          {families.map((f) => (
+            <button key={f.id} aria-current={f === fam ? 'page' : undefined} onClick={() => go(f.tabs.length === 1 ? f.tabs[0][0] : lastIn(f.id, f.tabs[0][0]))}>
+              {f.label}
             </button>
           ))}
         </nav>
+        {fam && fam.tabs.length > 1 && (
+          <div className="subnav"><div className="subnav-in" role="navigation" aria-label="Pages de la rubrique">
+            {fam.tabs.map(([id, label]) => (
+              <button key={id} aria-current={id === current ? 'page' : undefined} onClick={() => go(id)}>{label}</button>
+            ))}
+          </div></div>
+        )}
       </header>
+      <div className="crumbs no-print" aria-label="Fil d’Ariane">
+        <a href="#accueil">Parc MELEC</a>
+        {crumbs.map((c, i) => <span key={c} className="row" style={{ gap: 6 }}><span aria-hidden="true">›</span><span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c}</span></span>)}
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn ghost sm" onClick={() => window.print()}>Imprimer cette page</button>
+      </div>
+      <PrintHead />
       {fault && <ReportFault onClose={() => setFault(false)} />}
       <main>
         {error && <div className="alert" role="alert">Chargement impossible : {error}</div>}
@@ -294,6 +331,7 @@ function Shell() {
             {current === 'eleves' && <Students />}
             {current === 'pfmp' && <Pfmp />}
             {current === 'banque' && <Bank />}
+            {current === 'aide' && <Help />}
             {current === 'admin' && isAdmin && <Admin />}
           </>
         )}

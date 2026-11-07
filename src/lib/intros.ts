@@ -14,6 +14,7 @@ export const TAB_INTROS: TabIntro[] = [
   { id: "fiches", label: "Fiches", title: "Fiches de séquence et de séance", text: "Préparez vos fiches (modèles issus de votre semainier), partagées avec les collègues et imprimables." },
   { id: "pfmp", label: "PFMP", title: "Périodes de formation en milieu professionnel", text: "Entreprises d’accueil, dates, tuteurs, visites et évaluations de chaque élève." },
   { id: "banque", label: "Banque de ressources", title: "Banque de ressources", text: "Les TP et fiches prêts à être repris par les collègues, avec leurs documents. Cochez « Ressource réutilisable » pour y ajouter les vôtres." },
+  { id: "aide", label: "Aide", title: "Aide et à propos", text: "Comment utiliser le site, réponses aux questions fréquentes et réglages d’affichage." },
 ];
 
 export const introOf = (id: string) => TAB_INTROS.find((t) => t.id === id);

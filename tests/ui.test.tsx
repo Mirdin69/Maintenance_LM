@@ -80,7 +80,7 @@ describe('administration', () => {
   });
   it('le suivi des élèves n’a plus d’import', async () => {
     await open('admin', 'eleves');
-    await screen.findByText('Suivi des élèves');
+    await screen.findByRole('heading', { name: 'Suivi des élèves' });
     expect(screen.queryByText(/Mise à jour par fichier/)).toBeNull();
     expect(screen.queryByText(/Ajouter ou mettre à jour des élèves/)).toBeNull();
   });
