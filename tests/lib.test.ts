@@ -263,3 +263,20 @@ describe('import de TP collés', () => {
     expect(ok[0].teacher_label).toBe('Martin');
   });
 });
+
+describe('domaines personnalisés', () => {
+  it('sont lus, enregistrés et reconnus par l’import des TP', async () => {
+    const { parseCustomDomains, registerDomains, DOMAINS, domainClass } = await import('@/lib/domain');
+    const { buildTps } = await import('@/lib/importTp');
+    const list = parseCustomDomains('[{"id":"c-froid","label":"Froid et clim","color":"p1"},{"id":"mauvais","label":"X","color":"p1"},{"id":"c-x","label":"Y","color":"zz"}]');
+    expect(list.map((d) => [d.id, d.color])).toEqual([['c-froid', 'p1'], ['c-x', 'p8']]);
+    registerDomains(list);
+    expect(DOMAINS['c-froid']).toBe('Froid et clim');
+    expect(domainClass('c-froid')).toBe('dom-p1');
+    expect(domainClass('bat')).toBe('dom-bat');
+    const { ok } = buildTps([['', 'TP froid', '', 'Froid et clim (1)', '', '', '', '', '', '']], [], []);
+    expect(ok[0].domain).toBe('c-froid');
+    registerDomains([]);
+    expect(DOMAINS['c-froid']).toBeUndefined();
+  });
+});

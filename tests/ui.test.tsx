@@ -508,6 +508,21 @@ describe('interface', () => {
     });
   });
 
+  it('ajoute un domaine dans Administration et le propose dans le catalogue', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Domaines' }));
+    await userEvent.type(await screen.findByLabelText('Nom du domaine *'), 'Froid et clim');
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter le domaine' }));
+    expect(await screen.findByText('Domaine ajouté.')).toBeInTheDocument();
+    expect(await screen.findByRole('cell', { name: 'Froid et clim' })).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('Nom du domaine *'), 'Industriel');
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter le domaine' }));
+    expect(await screen.findByText('Ce domaine existe déjà.')).toBeInTheDocument();
+    window.location.hash = 'catalogue';
+    await userEvent.click(await screen.findByText('Ajouter un TP'));
+    expect(await screen.findByRole('option', { name: 'Froid et clim' })).toBeInTheDocument();
+  });
+
   it('propose de restaurer le brouillon d’une fiche', async () => {
     window.localStorage.setItem('parc:draft:fiche:new-seance', JSON.stringify({ title: 'Brouillon séance', level: '', d: { activites: [] }, sequenceId: '' }));
     await open('prof', 'fiches');

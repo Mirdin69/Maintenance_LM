@@ -232,6 +232,14 @@ tr.sel td { background: var(--sunken); }
 .dom-ten { --cbg: #f6d9e0; --cfg: #6a1630; }
 .dom-hab { --cbg: #f8d4d0; --cfg: #7a1a12; }
 .dom-rem { --cbg: #e8e1d2; --cfg: #4a3d1f; }
+.dom-p1 { --cbg: #d3eef6; --cfg: #0b3f52; }
+.dom-p2 { --cbg: #fadbea; --cfg: #6e1342; }
+.dom-p3 { --cbg: #e9f2c2; --cfg: #3f4d0b; }
+.dom-p4 { --cbg: #dcdcf8; --cfg: #25256b; }
+.dom-p5 { --cbg: #eadccd; --cfg: #503118; }
+.dom-p6 { --cbg: #d0f0dd; --cfg: #0f4a28; }
+.dom-p7 { --cbg: #fcd9b8; --cfg: #6a2f00; }
+.dom-p8 { --cbg: #d9dee8; --cfg: #232c40; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .dom-ind { --cbg: #243a5e; --cfg: #d6e4fa; }
   :root:not([data-theme='light']) .dom-ter { --cbg: #35294f; --cfg: #e0d8f5; }
@@ -243,6 +251,14 @@ tr.sel td { background: var(--sunken); }
   :root:not([data-theme='light']) .dom-ten { --cbg: #552334; --cfg: #f6d6de; }
   :root:not([data-theme='light']) .dom-hab { --cbg: #5a2622; --cfg: #f8d2cd; }
   :root:not([data-theme='light']) .dom-rem { --cbg: #40392a; --cfg: #e8e0d0; }
+  :root:not([data-theme='light']) .dom-p1 { --cbg: #17414f; --cfg: #cdeaf3; }
+  :root:not([data-theme='light']) .dom-p2 { --cbg: #582140; --cfg: #f8d5e6; }
+  :root:not([data-theme='light']) .dom-p3 { --cbg: #3e4a17; --cfg: #e6efbd; }
+  :root:not([data-theme='light']) .dom-p4 { --cbg: #2b2c5e; --cfg: #d9d9f6; }
+  :root:not([data-theme='light']) .dom-p5 { --cbg: #483322; --cfg: #e9dac9; }
+  :root:not([data-theme='light']) .dom-p6 { --cbg: #1b4630; --cfg: #cbeed9; }
+  :root:not([data-theme='light']) .dom-p7 { --cbg: #5e3412; --cfg: #fbd5b0; }
+  :root:not([data-theme='light']) .dom-p8 { --cbg: #2c3548; --cfg: #d5dbe8; }
 }
 
 .thumb { max-width: 140px; max-height: 100px; border-radius: 6px; border: 1px solid var(--line); object-fit: cover; background: var(--sunken); }
@@ -364,6 +380,14 @@ a.btn { text-decoration: none; display: inline-block; }
   :root[data-theme='dark'] .dom-ten { --cbg: #552334; --cfg: #f6d6de; }
   :root[data-theme='dark'] .dom-hab { --cbg: #5a2622; --cfg: #f8d2cd; }
   :root[data-theme='dark'] .dom-rem { --cbg: #40392a; --cfg: #e8e0d0; }
+  :root[data-theme='dark'] .dom-p1 { --cbg: #17414f; --cfg: #cdeaf3; }
+  :root[data-theme='dark'] .dom-p2 { --cbg: #582140; --cfg: #f8d5e6; }
+  :root[data-theme='dark'] .dom-p3 { --cbg: #3e4a17; --cfg: #e6efbd; }
+  :root[data-theme='dark'] .dom-p4 { --cbg: #2b2c5e; --cfg: #d9d9f6; }
+  :root[data-theme='dark'] .dom-p5 { --cbg: #483322; --cfg: #e9dac9; }
+  :root[data-theme='dark'] .dom-p6 { --cbg: #1b4630; --cfg: #cbeed9; }
+  :root[data-theme='dark'] .dom-p7 { --cbg: #5e3412; --cfg: #fbd5b0; }
+  :root[data-theme='dark'] .dom-p8 { --cbg: #2c3548; --cfg: #d5dbe8; }
 
 :root[data-size='large'] { --scale: 1.2; }
 
@@ -421,3 +445,5 @@ table.sem .dom, .dom { font-weight: bold; }
 /* Bandeau d'invitation (mot de passe) */
 .notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; max-width: 1240px; margin: 8px auto 0; padding: 8px 14px; background: var(--warn-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 0.9rem; }
 .notice span { flex: 1 1 260px; }
+
+.swatch { display: inline-block; padding: 1px 8px; border-radius: 6px; font-weight: 600; font-size: 0.85em; }

@@ -1,7 +1,7 @@
 import { saving } from './saving';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/api';
-import { displayName } from '@/lib/domain';
+import { displayName, parseCustomDomains, registerDomains } from '@/lib/domain';
 import { useToast, friendlyError } from './toast';
 import type { DataSet, Profile, Room, System, TableName, Tp } from '@/lib/types';
 
@@ -88,6 +88,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Store>(() => {
     const profileById = new Map(data.profiles.map((p) => [p.id, p]));
+    // Les domaines ajoutés par un gestionnaire sont enregistrés avant que les pages ne s'affichent
+    registerDomains(parseCustomDomains(data.settings.find((x) => x.key === 'custom_domains')?.value));
     return {
       data, loading, error, reload,
       roomById: new Map(data.rooms.map((r) => [r.id, r])),

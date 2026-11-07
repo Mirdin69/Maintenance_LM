@@ -8,12 +8,13 @@ import RoomsAdmin from './admin/RoomsAdmin';
 import ToolsAdmin from './admin/ToolsAdmin';
 import CalendarAdmin from './admin/CalendarAdmin';
 import Appearance from './admin/Appearance';
+import DomainsAdmin from './admin/DomainsAdmin';
 import Texts from './admin/Texts';
 import BudgetAdmin from './admin/BudgetAdmin';
 import History from './admin/History';
 import BilanAdmin from './admin/BilanAdmin';
 
-export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'outils', 'calendrier', 'apparence', 'textes', 'budget', 'historique', 'bilan'] as const;
+export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'outils', 'domaines', 'calendrier', 'apparence', 'textes', 'budget', 'historique', 'bilan'] as const;
 type Section = (typeof ADMIN_SECTIONS)[number];
 
 export default function Admin() {
@@ -25,7 +26,7 @@ export default function Admin() {
       <PageHead tab="admin" title="Administration" />
       <div className="tools">
         <Seg<Section> label="Section" value={section} onChange={setSection} items={[
-          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'],
+          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'],
         ]} />
       </div>
       {section === 'comptes' && <AccountsAdmin />}
@@ -34,6 +35,7 @@ export default function Admin() {
       {section === 'salles' && <RoomsAdmin />}
       {section === 'outils' && <ToolsAdmin />}
       {section === 'calendrier' && <CalendarAdmin />}
+      {section === 'domaines' && <DomainsAdmin />}
       {section === 'apparence' && <Appearance />}
       {section === 'textes' && <Texts />}
       {section === 'budget' && <BudgetAdmin />}

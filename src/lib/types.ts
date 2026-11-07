@@ -1,6 +1,7 @@
 export type Role = 'admin' | 'prof' | 'lecture';
 export type Level = 'Seconde' | 'Première' | 'Terminale';
-export type Domain = 'ind' | 'ter' | 'bat' | 'tra' | 'ate' | 'ann' | 'pen' | 'ten' | 'hab' | 'rem';
+/** Domaine d'activité : identifiant prédéfini (ind, ter, bat…) ou personnalisé (c-…) */
+export type Domain = string;
 export type RoomKind = 'atelier' | 'salle' | 'labo' | 'info' | 'autre';
 export type SystemState = 'service' | 'maint' | 'hs';
 export type MarkLevel = 'NA' | 'ECA' | 'PA' | 'A';

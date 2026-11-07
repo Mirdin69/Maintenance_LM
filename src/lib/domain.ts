@@ -31,7 +31,7 @@ export function parseGroup(raw: unknown): { code: string; level: Level; sub: str
   return { code: LCODE[level] + sub, level, sub };
 }
 
-export const DOMAINS: Record<Domain, string> = {
+export const BUILTIN_DOMAINS: Record<string, string> = {
   ind: 'Industriel',
   ter: 'Tertiaire',
   bat: 'Bâtiment',
@@ -44,8 +44,51 @@ export const DOMAINS: Record<Domain, string> = {
   rem: 'Remise à niveau (REM)',
 };
 
-/** Couleurs des domaines dans le semainier : fond, texte (contraste AA vérifié en clair et en sombre) */
-export const DOMAIN_COLORS: Record<Domain, { bg: string; fg: string; dbg: string; dfg: string }> = {
+/** Liste courante : domaines prédéfinis + domaines ajoutés par un gestionnaire (voir registerDomains) */
+export const DOMAINS: Record<Domain, string> = { ...BUILTIN_DOMAINS };
+
+/** Couleurs proposées pour un domaine ajouté : clair (fond, texte) et sombre (fond, texte), contraste AA vérifié par les tests */
+export const DOMAIN_PALETTE: Record<string, { name: string; bg: string; fg: string; dbg: string; dfg: string }> = {
+  p1: { name: 'Cyan', bg: '#d3eef6', fg: '#0b3f52', dbg: '#17414f', dfg: '#cdeaf3' },
+  p2: { name: 'Rose', bg: '#fadbea', fg: '#6e1342', dbg: '#582140', dfg: '#f8d5e6' },
+  p3: { name: 'Citron', bg: '#e9f2c2', fg: '#3f4d0b', dbg: '#3e4a17', dfg: '#e6efbd' },
+  p4: { name: 'Indigo', bg: '#dcdcf8', fg: '#25256b', dbg: '#2b2c5e', dfg: '#d9d9f6' },
+  p5: { name: 'Brun', bg: '#eadccd', fg: '#503118', dbg: '#483322', dfg: '#e9dac9' },
+  p6: { name: 'Menthe', bg: '#d0f0dd', fg: '#0f4a28', dbg: '#1b4630', dfg: '#cbeed9' },
+  p7: { name: 'Orange vif', bg: '#fcd9b8', fg: '#6a2f00', dbg: '#5e3412', dfg: '#fbd5b0' },
+  p8: { name: 'Ardoise', bg: '#d9dee8', fg: '#232c40', dbg: '#2c3548', dfg: '#d5dbe8' },
+};
+
+export interface CustomDomain { id: string; label: string; color: string }
+export const MAX_CUSTOM_DOMAINS = 20;
+
+export function parseCustomDomains(raw: string | undefined): CustomDomain[] {
+  try {
+    const v: unknown = JSON.parse(raw || '[]');
+    if (!Array.isArray(v)) return [];
+    return v
+      .filter((d): d is CustomDomain => !!d && typeof d.id === 'string' && /^c-[a-z0-9-]{1,17}$/.test(d.id) && typeof d.label === 'string' && d.label.trim().length > 0)
+      .map((d) => ({ id: d.id, label: d.label.trim().slice(0, 40), color: d.color in DOMAIN_PALETTE ? d.color : 'p8' }))
+      .slice(0, MAX_CUSTOM_DOMAINS);
+  } catch {
+    return [];
+  }
+}
+
+const customColor = new Map<string, string>();
+/** Met à jour la liste courante des domaines (appelée par la base de données chargée) */
+export function registerDomains(list: CustomDomain[]) {
+  for (const k of Object.keys(DOMAINS)) if (!(k in BUILTIN_DOMAINS)) delete DOMAINS[k];
+  customColor.clear();
+  for (const d of list) { DOMAINS[d.id] = d.label; customColor.set(d.id, d.color); }
+}
+/** Classe CSS de couleur d'un domaine dans le semainier */
+export const domainClass = (id: Domain) => `dom-${customColor.get(id) ?? id}`;
+/** Nom d'un domaine, même si on ne le connaît plus */
+export const domainLabel = (id: Domain) => DOMAINS[id] ?? id;
+
+/** Couleurs des domaines prédéfinis dans le semainier : fond, texte (contraste AA vérifié en clair et en sombre) */
+export const DOMAIN_COLORS: Record<string, { bg: string; fg: string; dbg: string; dfg: string }> = {
   ind: { bg: '#dbe7f7', fg: '#14305c', dbg: '#243a5e', dfg: '#d6e4fa' },
   ter: { bg: '#e6e0f3', fg: '#33225e', dbg: '#35294f', dfg: '#e0d8f5' },
   bat: { bg: '#fbe3cf', fg: '#6b3410', dbg: '#5a3820', dfg: '#fbe0cb' },
@@ -57,6 +100,7 @@ export const DOMAIN_COLORS: Record<Domain, { bg: string; fg: string; dbg: string
   hab: { bg: '#f8d4d0', fg: '#7a1a12', dbg: '#5a2622', dfg: '#f8d2cd' },
   rem: { bg: '#e8e1d2', fg: '#4a3d1f', dbg: '#40392a', dfg: '#e8e0d0' },
 };
+
 
 export const ROOM_KINDS: Record<RoomKind, string> = {
   atelier: 'Atelier',

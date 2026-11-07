@@ -6,6 +6,7 @@ const migration = readFileSync(new URL('../supabase/migrations/0001_init.sql', i
 const migration2 = readFileSync(new URL('../supabase/migrations/0002_semainier.sql', import.meta.url), 'utf8');
 const migration3 = readFileSync(new URL('../supabase/migrations/0003_documents.sql', import.meta.url), 'utf8');
 const migration5 = readFileSync(new URL('../supabase/migrations/0005_ameliorations.sql', import.meta.url), 'utf8');
+const migration6 = readFileSync(new URL('../supabase/migrations/0006_domaines.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -66,6 +67,7 @@ beforeAll(async () => {
   await db.exec(migration3);
   await db.exec(migration4);
   await db.exec(migration5);
+  await db.exec(migration6);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -514,5 +516,24 @@ describe('migration 0005 : améliorations', () => {
     expect(await fails("insert into storage.objects (bucket_id, name) values ('images', 'img/aaaaaaaa/a.png')")).toMatch(/row-level security/);
     await as('prof');
     expect(await fails("insert into storage.objects (bucket_id, name) values ('images', 'img/aaaaaaaa/a.png')")).toBeNull();
+  });
+});
+
+describe('migration 0006 : domaines personnalisés', () => {
+  it('rejoue la migration sans erreur', async () => {
+    await db.exec('reset role');
+    await db.exec(migration6);
+  });
+  it('accepte un domaine personnalisé pour un TP et un système, refuse un identifiant invalide', async () => {
+    await as('admin');
+    expect(await fails("insert into public.tps (title, level, domain) values ('TP froid', 'Seconde', 'c-froid')")).toBeNull();
+    expect(await fails("insert into public.systems (name, domain) values ('Banc froid', 'ate')")).toBeNull();
+    expect(await fails("insert into public.tps (title, level, domain) values ('TP', 'Seconde', 'Domaine Libre')")).toMatch(/check/);
+  });
+  it('seul un gestionnaire enregistre la liste des domaines', async () => {
+    await as('prof');
+    expect(await fails("insert into public.settings (key, value) values ('custom_domains', '[]')")).toMatch(/row-level security/);
+    await as('admin');
+    expect(await fails("insert into public.settings (key, value) values ('custom_domains', '[{\"id\":\"c-froid\",\"label\":\"Froid\",\"color\":\"p1\"}]') on conflict (key) do update set value = excluded.value")).toBeNull();
   });
 });

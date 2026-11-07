@@ -1,3 +1,4 @@
+import { DOMAIN_PALETTE, DOMAIN_COLORS } from '@/lib/domain';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
@@ -24,5 +25,15 @@ describe.each([['clair', light], ['sombre', dark]] as const)('contraste, thème 
     expect(theme[fg], `variable --${fg} absente`).toBeTruthy();
     expect(theme[bg], `variable --${bg} absente`).toBeTruthy();
     expect(ratio(theme[fg], theme[bg])).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('couleurs des domaines du semainier', () => {
+  it.each([...Object.entries(DOMAIN_PALETTE), ...Object.entries(DOMAIN_COLORS)])('%s : texte lisible en clair et en sombre', (_k, c) => {
+    expect(ratio(c.fg, c.bg)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(c.dfg, c.dbg)).toBeGreaterThanOrEqual(4.5);
+  });
+  it('chaque couleur proposée a ses règles CSS', () => {
+    for (const k of Object.keys(DOMAIN_PALETTE)) expect(css).toContain(`.dom-${k} {`);
   });
 });

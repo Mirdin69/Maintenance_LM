@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
-import { DOMAINS, LEVELS, byText, levelOfGroup } from '@/lib/domain';
+import { LEVELS, byText, domainClass, domainLabel, levelOfGroup } from '@/lib/domain';
 import { GROUP_CODES } from '@/lib/domain';
 import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf, parseISO, schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { isoWeek, monthBlocks, periodOn, weekdaysFor } from '@/lib/calendar';
@@ -257,7 +257,7 @@ function Week({ groups, cells, weekdays, tpById, teacherOf }: CommonProps & { tp
                       const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
                       if (onlyMine && !isMine(tp, profile)) return <td key={d} className="dim">{ri === 0 ? '·' : ''}</td>;
                       if (!tp) return <td key={d} className={c?.label ? 'dim' : ''}>{ri === 0 ? c?.label ?? '' : ri === 3 ? c?.note ?? '' : ''}</td>;
-                      if (ri === 0) return <td key={d} className={`dom dom-${tp.domain}`} title={DOMAINS[tp.domain]}>{tp.code ?? DOMAINS[tp.domain]}</td>;
+                      if (ri === 0) return <td key={d} className={`dom ${domainClass(tp.domain)}`} title={domainLabel(tp.domain)}>{tp.code ?? domainLabel(tp.domain)}</td>;
                       if (ri === 1) return <td key={d}>{teacherOf(tp)}</td>;
                       if (ri === 2) return <td key={d}>{tp.title}</td>;
                       if (ri === 3) return <td key={d}>{tp.objective}</td>;

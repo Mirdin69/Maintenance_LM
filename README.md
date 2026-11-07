@@ -43,8 +43,9 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Fiches** séquence et séance : saisie, partage entre collègues, impression.
 - **Images** des systèmes, outils et logos : collez le lien de partage d'un fichier du Drive, réglé sur « Tous les utilisateurs disposant du lien ». Si votre Drive est limité à l'établissement, les images ne s'afficheront que pour les personnes connectées à leur compte Google du lycée dans le même navigateur.
 - **Documents joints** (Word, PDF, Excel) sur les TP et les fiches : collez le lien de partage du fichier du Drive ; un bouton « Aperçu » l'affiche dans la page (aperçu limité à Google Drive/Docs, sinon lien « Ouvrir »). Une fiche séance se rattache à une fiche séquence.
-- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql`, `0004_stockage.sql` puis **`0005_ameliorations.sql`**, après `0001_init.sql`.
+- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql`, `0004_stockage.sql` `0005_ameliorations.sql` puis **`0006_domaines.sql`**, après `0001_init.sql`.
 - `0005` ajoute : images déposées (espace public `images`, 5 Mo), historique des modifications (gestionnaires), contrôles préventifs récurrents, PFMP et entreprises, fournisseur et devis des achats, outils et « réutilisable » sur les TP et fiches. Elle peut être rejouée sans dommage. Tant qu'elle n'est pas appliquée, le reste du site fonctionne, mais l'enregistrement d'un TP, d'une fiche ou d'un achat avec ces nouveaux champs échoue.
+- `0006` autorise des domaines personnalisés sur les TP et les systèmes (liste gérée dans *Administration > Domaines*) et corrige la contrainte des systèmes, qui n'acceptait que 4 domaines. Sans elle, ajouter un domaine ou choisir « Atelier », « Annexe », etc. pour un système échoue.
 - Documents : dépôt direct de PDF, Word, Excel, PowerPoint ou OpenDocument (10 Mo max, bucket privé `documents`, lecture réservée aux comptes actifs). Aperçu intégré des PDF, .docx et .xlsx ; les .doc, .xls et .ppt se téléchargent. Les liens Google Drive restent possibles.
 
 ## Salles et occupation
