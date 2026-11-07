@@ -19,6 +19,7 @@ beforeEach(() => {
 describe('accès', () => {
   it('affiche la connexion hors session et refuse un autre domaine', async () => {
     await open('signedout', '');
+    await userEvent.click(await screen.findByRole('button', { name: /Première connexion/i }));
     const input = await screen.findByLabelText(/Adresse e-mail/i);
     await userEvent.type(input, 'eleve@gmail.com');
     await userEvent.click(screen.getByRole('button', { name: /Recevoir le lien/i }));

@@ -20,6 +20,7 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 2. **SQL Editor** : collez et exécutez `supabase/migrations/0001_init.sql`.
 3. Facultatif : exécutez `supabase/seed.sql` (4 systèmes et quelques TP d'exemple).
 4. **Authentication > URL Configuration** : *Site URL* = l'adresse Vercel (étape 3). Ajoutez-la aussi dans *Redirect URLs*.
+> **Mot de passe** : *Authentication > Providers > Email* doit rester activé (mots de passe autorisés). Première connexion et mot de passe oublié passent par le code envoyé par e-mail ; l'application propose ensuite de choisir un mot de passe (8 caractères minimum, réglable dans *Authentication > Sign In / Providers*). Aucune migration SQL.
 5. **Authentication > Email Templates > Magic Link** : ajoutez `{{ .Token }}` dans le message pour que le code à 6 chiffres soit aussi disponible.
 6. **Authentication > SMTP** : configurez un serveur d'envoi (le service intégré est limité à quelques e-mails par heure, insuffisant pour un lycée).
 7. **Project Settings > API** : notez l'URL du projet et la clé `anon` / publishable.

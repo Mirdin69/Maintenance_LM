@@ -11,6 +11,8 @@ export interface Query {
 export interface AuthUser {
   id: string;
   email: string;
+  /** Le compte a un mot de passe (sinon : connexion par code seulement) */
+  hasPassword?: boolean;
 }
 
 /** Accès aux données : Supabase en production, base en mémoire pour la démo et les tests */
@@ -21,6 +23,9 @@ export interface Api {
     onChange(cb: (u: AuthUser | null) => void): () => void;
     sendLink(email: string): Promise<void>;
     verifyCode(email: string, code: string): Promise<void>;
+    signInPassword(email: string, password: string): Promise<void>;
+    /** Définit ou change le mot de passe du compte connecté */
+    setPassword(password: string): Promise<void>;
     signOut(): Promise<void>;
   };
   /** Fichiers déposés (Supabase Storage, espace « documents », privé) */

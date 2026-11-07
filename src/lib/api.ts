@@ -34,8 +34,8 @@ function filter(q: any, match: Match) {
   return q;
 }
 
-const toUser = (u: { id: string; email?: string | null } | null | undefined): AuthUser | null =>
-  u ? { id: u.id, email: (u.email ?? '').toLowerCase() } : null;
+const toUser = (u: { id: string; email?: string | null; user_metadata?: Record<string, unknown> } | null | undefined): AuthUser | null =>
+  u ? { id: u.id, email: (u.email ?? '').toLowerCase(), hasPassword: u.user_metadata?.has_password === true } : null;
 
 export const api: Api = {
   configured: Boolean(client),
@@ -60,6 +60,14 @@ export const api: Api = {
     },
     async verifyCode(email, code) {
       const { error } = await db().auth.verifyOtp({ email, token: code, type: 'email' });
+      if (error) fail(error);
+    },
+    async signInPassword(email, password) {
+      const { error } = await db().auth.signInWithPassword({ email, password });
+      if (error) fail(error);
+    },
+    async setPassword(password) {
+      const { error } = await db().auth.updateUser({ password, data: { has_password: true } });
       if (error) fail(error);
     },
     async signOut() {

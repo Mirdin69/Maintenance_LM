@@ -417,3 +417,7 @@ table.sem .dom, .dom { font-weight: bold; }
 .faq summary { cursor: pointer; font-weight: bold; }
 .faq[open] summary { margin-bottom: 8px; }
 .inline-num { width: 76px; text-align: right; }
+
+/* Bandeau d'invitation (mot de passe) */
+.notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; max-width: 1240px; margin: 8px auto 0; padding: 8px 14px; background: var(--warn-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-size: 0.9rem; }
+.notice span { flex: 1 1 260px; }

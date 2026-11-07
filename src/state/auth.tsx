@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => alive && setStatus('signedOut'));
     const off = api.auth.onChange((u) => {
-      setUser((prev) => (prev?.id === u?.id ? prev : u));
+      setUser((prev) => (prev?.id === u?.id && prev?.hasPassword === u?.hasPassword ? prev : u));
       void loadProfile(u);
     });
     return () => {

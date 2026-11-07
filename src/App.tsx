@@ -26,6 +26,7 @@ import { useSaveState } from '@/state/saving';
 import { Search } from '@/components/Search';
 import { Notifications } from '@/components/Notifications';
 import { ReportFault } from '@/components/ReportFault';
+import { PasswordDialog } from '@/components/PasswordDialog';
 
 type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'catalogue' | 'aide' | 'admin';
 
@@ -142,6 +143,8 @@ function Misconfigured() {
 function Login() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [byCode, setByCode] = useState(false);
+  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -171,6 +174,19 @@ function Login() {
       setBusy(false);
     }
   };
+  const signIn = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      await api.auth.signInPassword(mail, password);
+    } catch (err) {
+      const m = friendlyError(err);
+      setError(/rate limit|too many/i.test(m) ? 'Trop de tentatives. Patientez quelques minutes avant de réessayer.' : 'Adresse ou mot de passe incorrect. Première connexion ou mot de passe oublié ? Recevez un code par e-mail.');
+    } finally {
+      setBusy(false);
+    }
+  };
   const verify = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -186,14 +202,27 @@ function Login() {
 
   return (
     <Message title="Connexion">
-      <p className="muted">Réservé aux enseignants du lycée. Un lien de connexion est envoyé à votre adresse @lamache.org.</p>
-      {!sent ? (
+      <p className="muted">Réservé aux enseignants du lycée. Connectez-vous avec votre adresse @lamache.org.</p>
+      {!sent && !byCode ? (
+        <form className="stack" onSubmit={signIn}>
+          <Field label="Adresse e-mail">
+            <input className="in" type="email" autoComplete="username" required placeholder="prenom.nom@lamache.org" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </Field>
+          <Field label="Mot de passe">
+            <input className="in" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          </Field>
+          {error && <div className="alert" role="alert">{error}</div>}
+          <button className="btn" type="submit" disabled={busy}>{busy ? 'Connexion…' : 'Se connecter'}</button>
+          <button className="btn ghost" type="button" onClick={() => { setByCode(true); setError(''); }}>Première connexion ou mot de passe oublié</button>
+        </form>
+      ) : !sent ? (
         <form className="stack" onSubmit={send}>
           <Field label="Adresse e-mail">
             <input className="in" type="email" autoComplete="email" required placeholder="prenom.nom@lamache.org" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           {error && <div className="alert" role="alert">{error}</div>}
           <button className="btn" type="submit" disabled={busy}>{busy ? 'Envoi…' : 'Recevoir le lien de connexion'}</button>
+          <button className="btn ghost" type="button" onClick={() => { setByCode(false); setError(''); }}>J’ai un mot de passe</button>
         </form>
       ) : (
         <form className="stack" onSubmit={verify}>
@@ -207,7 +236,7 @@ function Login() {
           {error && <div className="alert" role="alert">{error}</div>}
           <div className="row">
             <button className="btn" type="submit" disabled={busy || code.trim().length < 6}>Valider le code</button>
-            <button className="btn ghost" type="button" onClick={() => { setSent(false); setCode(''); setError(''); }}>Changer d’adresse</button>
+            <button className="btn ghost" type="button" onClick={() => { setSent(false); setByCode(false); setCode(''); setError(''); }}>Changer d’adresse</button>
           </div>
         </form>
       )}
@@ -227,7 +256,7 @@ function PrintHead() {
 }
 
 /** Compte : nom, rôle, changement du nom affiché et déconnexion, regroupés dans un menu */
-function UserMenu() {
+function UserMenu({ onPassword }: { onPassword: () => void }) {
   const { profile, isAdmin, signOut, refreshProfile } = useAuth();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(false);
@@ -263,6 +292,7 @@ function UserMenu() {
           ) : (
             <button type="button" role="menuitem" className="menu-item" onClick={() => setEdit(true)}>Modifier mon nom affiché</button>
           )}
+          <button type="button" role="menuitem" className="menu-item" onClick={() => { setOpen(false); onPassword(); }}>Mot de passe</button>
           <button type="button" role="menuitem" className="menu-item" onClick={() => void signOut()}>Se déconnecter</button>
         </div>
       )}
@@ -271,9 +301,11 @@ function UserMenu() {
 }
 
 function Shell() {
-  const { isAdmin, canWrite } = useAuth();
+  const { isAdmin, canWrite, user } = useAuth();
   const { loading, error } = useStore();
   const [fault, setFault] = useState(false);
+  const [pwd, setPwd] = useState(false);
+  const [pwdLater, setPwdLater] = useState(false);
   const [tab, setTab] = useState<TabId>(fromHash);
 
   useEffect(() => {
@@ -313,7 +345,7 @@ function Shell() {
             {!loading && canWrite && <button className="btn sm fault-btn" onClick={() => setFault(true)}><span aria-hidden="true">⚠</span> Signaler une panne</button>}
             {!loading && <Notifications go={go} />}
             <span className={'save-ind ' + saveState} aria-live="polite">{saveState === 'saving' ? 'Enregistrement…' : saveState === 'saved' ? '✓ Enregistré' : saveState === 'failed' ? '⚠ Échec de l’enregistrement' : ''}</span>
-            <UserMenu />
+            <UserMenu onPassword={() => setPwd(true)} />
           </div>
         </div>
         <nav className="nav" aria-label="Sections">
@@ -338,6 +370,14 @@ function Shell() {
         <button type="button" className="btn ghost sm" onClick={() => window.print()}>Imprimer cette page</button>
       </div>
       <PrintHead />
+      {user && !user.hasPassword && !pwdLater && (
+        <div className="notice no-print" role="note">
+          <span>Choisissez un mot de passe pour vous connecter plus vite la prochaine fois.</span>
+          <button type="button" className="btn sm" onClick={() => setPwd(true)}>Choisir un mot de passe</button>
+          <button type="button" className="btn ghost sm" onClick={() => setPwdLater(true)}>Plus tard</button>
+        </div>
+      )}
+      {pwd && <PasswordDialog first={!user?.hasPassword} onClose={() => setPwd(false)} />}
       {fault && <ReportFault onClose={() => setFault(false)} />}
       <main>
         {error && <div className="alert" role="alert">Chargement impossible : {error}</div>}

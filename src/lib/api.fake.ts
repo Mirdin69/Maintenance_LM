@@ -35,6 +35,8 @@ const ME: Record<string, string> = {
 
 let T: Record<string, Tbl> = {};
 let signedIn = true;
+const passwords = new Map<string, string>();
+const withPassword = new Set<string>();
 const listeners = new Set<(t: string) => void>();
 const authListeners = new Set<(u: AuthUser | null) => void>();
 
@@ -43,7 +45,7 @@ function currentProfile(): Profile | undefined {
 }
 const currentUser = (): AuthUser | null => {
   const p = currentProfile();
-  return signedIn && p ? { id: p.id, email: p.email } : null;
+  return signedIn && p ? { id: p.id, email: p.email, hasPassword: withPassword.has(p.id) } : null;
 };
 
 function reset() {
@@ -362,6 +364,18 @@ export const api: Api = {
       authListeners.forEach((cb) => cb(currentUser()));
     },
     async verifyCode() { signedIn = true; authListeners.forEach((cb) => cb(currentUser())); },
+    async signInPassword(email, password) {
+      const p = currentProfile();
+      if (!p || p.email !== email.toLowerCase() || passwords.get(p.id) !== password) throw new Error('Invalid login credentials');
+      signedIn = true; authListeners.forEach((cb) => cb(currentUser()));
+    },
+    async setPassword(password) {
+      const p = currentProfile();
+      if (!p || !signedIn) throw new Error('Auth session missing');
+      if (password.length < 8) throw new Error('Password should be at least 8 characters');
+      passwords.set(p.id, password); withPassword.add(p.id);
+      authListeners.forEach((cb) => cb(currentUser()));
+    },
     async signOut() { signedIn = false; authListeners.forEach((cb) => cb(null)); },
   },
   async select<T>(table: string, q: Query = {}) {
