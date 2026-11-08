@@ -6,7 +6,7 @@ const keysOf = (table: string) => PK[table] ?? ['id'];
 
 export const TABLE_LABEL: Record<string, string> = {
   systems: 'Systèmes', tps: 'TP', fiches: 'Fiches', maintenance: 'Maintenance', maintenance_plans: 'Contrôles récurrents', purchases: 'Achats', rooms: 'Salles',
-  tools: 'Outils', students: 'Élèves', planning_cells: 'Semainier', companies: 'Entreprises', pfmp_periods: 'PFMP', sessions: 'Séances', timetable_slots: 'Emploi du temps',
+  tools: 'Outils', students: 'Élèves', planning_cells: 'Semainier', companies: 'Entreprises', ideas: 'Idées', pfmp_periods: 'PFMP', sessions: 'Séances', timetable_slots: 'Emploi du temps',
 };
 
 /** Intitulé lisible de la ligne concernée */

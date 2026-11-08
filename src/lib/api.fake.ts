@@ -206,10 +206,10 @@ function reset() {
       { id: uid(), kind: 'ferie', label: 'Armistice', start_date: `${sy.from.slice(0, 4)}-11-11`, end_date: `${sy.from.slice(0, 4)}-11-11` },
     ],
     planning_cells: planning as Tbl,
-    fiches: [], maintenance_plans: [], companies: [], pfmp_periods: [], audit_log: [],
+    fiches: [], maintenance_plans: [], companies: [], pfmp_periods: [], ideas: [], audit_log: [],
   };
   if (options.empty) {
-    for (const k of ['rooms', 'systems', 'tps', 'timetable_slots', 'sessions', 'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress', 'tools', 'calendar_periods', 'planning_cells', 'fiches', 'maintenance_plans', 'companies', 'pfmp_periods']) T[k] = [];
+    for (const k of ['rooms', 'systems', 'tps', 'timetable_slots', 'sessions', 'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress', 'tools', 'calendar_periods', 'planning_cells', 'fiches', 'maintenance_plans', 'companies', 'pfmp_periods', 'ideas']) T[k] = [];
   }
   signedIn = options.as !== 'signedout';
 }
@@ -248,6 +248,7 @@ function guard(table: string, op: 'insert' | 'update' | 'delete') {
     throw new Error(`new row violates row-level security policy for table "${table}"`);
   };
   if (!role) return denied();
+  if (table === 'ideas') return op === 'insert' || role === 'admin' ? undefined : denied();
   if (table === 'profiles') return role === 'admin' ? undefined : denied();
   if (ADMIN_ONLY.has(table) && role !== 'admin') return denied();
   if (role === 'lecture') return denied();
@@ -264,6 +265,7 @@ function defaults(table: string, row: Row): Row {
     case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [], documents: [], tool_ids: [], reusable: false }); break;
     case 'maintenance_plans': Object.assign(base, { priority: 'n', checklist: [], active: true }); break;
     case 'pfmp_periods': Object.assign(base, { status: 'planned' }); break;
+    case 'ideas': Object.assign(base, { category: 'autre', status: 'nouvelle', answer: null, body: null, votes: [], created_by: me }); break;
     case 'maintenance': Object.assign(base, { kind: 'corr', priority: 'n', status: 'open', closed_at: null, photo_url: null, plan_id: null, created_by: me }); break;
     case 'maintenance_notes': Object.assign(base, { author_id: me }); break;
     case 'purchases': Object.assign(base, { kind: 'mat', qty: 1, unit_price: 0, urgent: false, supplier: null, quote_ref: null, quote_url: null, status: 'req', requested_by: me }); break;
@@ -439,6 +441,11 @@ export const api: Api = {
   },
   async rpc(fn, args) {
     const p = currentProfile();
+    if (fn === 'toggle_idea_vote' && p) {
+      const idea = T.ideas.find((x) => x.id === args?.p_id);
+      if (idea) { const v = (idea.votes as string[]) ?? []; idea.votes = v.includes(p.id) ? v.filter((x) => x !== p.id) : [...v, p.id]; notify('ideas'); }
+      return null;
+    }
     if (fn === 'touch_me' && p) p.last_seen = now();
     if (fn === 'set_my_name' && p) { p.full_name = String(args?.p_name ?? '').trim() || null; notify('profiles'); }
     const adminOnly = () => { if (p?.role !== 'admin' || !p.active) throw new Error('Réservé aux gestionnaires'); };

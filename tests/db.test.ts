@@ -8,6 +8,7 @@ const migration3 = readFileSync(new URL('../supabase/migrations/0003_documents.s
 const migration5 = readFileSync(new URL('../supabase/migrations/0005_ameliorations.sql', import.meta.url), 'utf8');
 const migration6 = readFileSync(new URL('../supabase/migrations/0006_domaines.sql', import.meta.url), 'utf8');
 const migration7 = readFileSync(new URL('../supabase/migrations/0007_rgpd.sql', import.meta.url), 'utf8');
+const migration8 = readFileSync(new URL('../supabase/migrations/0008_idees.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -70,6 +71,7 @@ beforeAll(async () => {
   await db.exec(migration5);
   await db.exec(migration6);
   await db.exec(migration7);
+  await db.exec(migration8);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -575,5 +577,29 @@ describe('migration 0007 : RGPD', () => {
     expect(res.students).toBe(1);
     const left = (await sql("select name from public.students where name in ('Vieux AA','Récent BB','Présent CC') order by name")).map((r) => r.name);
     expect(left).toEqual(['Présent CC', 'Récent BB']);
+  });
+});
+
+describe('migration 0008 : boîte à idées', () => {
+  it('rejoue la migration sans erreur', async () => {
+    await db.exec('reset role');
+    await db.exec(migration8);
+  });
+  it('tout compte actif propose et vote, seul un gestionnaire répond', async () => {
+    await as('prof');
+    expect(await fails("insert into public.ideas (title) values ('Exporter en PDF')")).toBeNull();
+    expect(await fails("insert into public.ideas (title, status) values ('Je me valide', 'retenue')")).toMatch(/row-level security/);
+    const [idea] = await sql("select id from public.ideas where title = 'Exporter en PDF'");
+    expect(await fails("update public.ideas set status = 'retenue' where title = 'Exporter en PDF'")).toBeNull(); // RLS : aucune ligne modifiée
+    expect((await sql("select status from public.ideas where title = 'Exporter en PDF'"))[0].status).toBe('nouvelle');
+    await sql(`select public.toggle_idea_vote('${idea.id}')`);
+    expect((await sql(`select cardinality(votes) as n from public.ideas where id = '${idea.id}'`))[0].n).toBe(1);
+    await sql(`select public.toggle_idea_vote('${idea.id}')`);
+    expect((await sql(`select cardinality(votes) as n from public.ideas where id = '${idea.id}'`))[0].n).toBe(0);
+    await as('lecteur');
+    expect(await fails("insert into public.ideas (title) values ('Idée d’un lecteur')")).toBeNull();
+    await as('admin');
+    await sql("update public.ideas set status = 'retenue', answer = 'Bonne idée' where title = 'Exporter en PDF'");
+    expect((await sql("select status from public.ideas where title = 'Exporter en PDF'"))[0].status).toBe('retenue');
   });
 });

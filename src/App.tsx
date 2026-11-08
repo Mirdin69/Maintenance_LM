@@ -27,11 +27,12 @@ import { Search } from '@/components/Search';
 import { Notifications } from '@/components/Notifications';
 import { ReportFault } from '@/components/ReportFault';
 import Privacy from '@/pages/Privacy';
+import Ideas from '@/pages/Ideas';
 import { STUDENTS_OFF_TIP, STUDENT_TABS, studentsEnabled } from '@/lib/studentsFeature';
 import { PrivacyText } from '@/components/PrivacyText';
 import { PasswordDialog } from '@/components/PasswordDialog';
 
-type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'catalogue' | 'aide' | 'confidentialite' | 'admin';
+type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'catalogue' | 'aide' | 'confidentialite' | 'idees' | 'admin';
 
 /** Rubriques de la barre d'onglets ; chaque rubrique regroupe des pages */
 const FAMILIES: Array<{ id: string; label: string; tabs: Array<[TabId, string]>; admin?: boolean }> = [
@@ -39,7 +40,7 @@ const FAMILIES: Array<{ id: string; label: string; tabs: Array<[TabId, string]>;
   { id: 'planifier', label: 'Planifier', tabs: [['semainier', 'Semainier'], ['edt', 'Emploi du temps'], ['occupation', 'Occupation'], ['planning', 'Planning des TP']] },
   { id: 'pedagogie', label: 'Pédagogie', tabs: [['fiches', 'Fiches'], ['catalogue', 'Catalogue des TP'], ['banque', 'Banque'], ['eleves', 'Suivi des élèves'], ['pfmp', 'PFMP']] },
   { id: 'atelier', label: 'Atelier', tabs: [['maintenance', 'Maintenance'], ['achats', 'Achats']] },
-  { id: 'aide', label: 'Aide', tabs: [['aide', 'Aide et à propos'], ['confidentialite', 'Confidentialité']] },
+  { id: 'aide', label: 'Aide', tabs: [['aide', 'Aide et à propos'], ['idees', 'Idées d’amélioration'], ['confidentialite', 'Confidentialité']] },
   { id: 'admin', label: 'Administration', tabs: [['admin', 'Administration']], admin: true },
 ];
 const TABS: Array<[TabId, string]> = FAMILIES.flatMap((f) => f.tabs);
@@ -273,7 +274,7 @@ function PrintHead() {
 }
 
 /** Compte : nom, rôle, changement du nom affiché et déconnexion, regroupés dans un menu */
-function UserMenu({ onPassword }: { onPassword: () => void }) {
+function UserMenu({ onPassword, onIdea }: { onPassword: () => void; onIdea: () => void }) {
   const { profile, isAdmin, signOut, refreshProfile } = useAuth();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(false);
@@ -309,6 +310,7 @@ function UserMenu({ onPassword }: { onPassword: () => void }) {
           ) : (
             <button type="button" role="menuitem" className="menu-item" onClick={() => setEdit(true)}>Modifier mon nom affiché</button>
           )}
+          <button type="button" role="menuitem" className="menu-item" onClick={() => { setOpen(false); onIdea(); }}>Proposer une idée</button>
           <button type="button" role="menuitem" className="menu-item" onClick={() => { setOpen(false); onPassword(); }}>Mot de passe</button>
           <button type="button" role="menuitem" className="menu-item" onClick={() => void signOut()}>Se déconnecter</button>
         </div>
@@ -365,7 +367,7 @@ function Shell() {
             {!loading && canWrite && <button className="btn sm fault-btn" onClick={() => setFault(true)}><span aria-hidden="true">⚠</span> Signaler une panne</button>}
             {!loading && <Notifications go={go} />}
             <span className={'save-ind ' + saveState} aria-live="polite">{saveState === 'saving' ? 'Enregistrement…' : saveState === 'saved' ? '✓ Enregistré' : saveState === 'failed' ? '⚠ Échec de l’enregistrement' : ''}</span>
-            <UserMenu onPassword={() => setPwd(true)} />
+            <UserMenu onPassword={() => setPwd(true)} onIdea={() => go('idees')} />
           </div>
         </div>
         <nav className="nav" aria-label="Sections">
@@ -421,6 +423,7 @@ function Shell() {
             {current === 'banque' && <Bank />}
             {current === 'aide' && <Help />}
             {current === 'confidentialite' && <Privacy />}
+            {current === 'idees' && <Ideas />}
             {current === 'admin' && isAdmin && <Admin />}
           </>
         )}

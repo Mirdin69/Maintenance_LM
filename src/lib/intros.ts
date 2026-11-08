@@ -15,6 +15,7 @@ export const TAB_INTROS: TabIntro[] = [
   { id: "pfmp", label: "PFMP", title: "Périodes de formation en milieu professionnel", text: "Entreprises d’accueil, dates, tuteurs, visites et évaluations de chaque élève." },
   { id: "banque", label: "Banque de ressources", title: "Banque de ressources", text: "Les TP et fiches prêts à être repris par les collègues, avec leurs documents. Cochez « Ressource réutilisable » pour y ajouter les vôtres." },
   { id: "aide", label: "Aide", title: "Aide et à propos", text: "Comment utiliser le site, réponses aux questions fréquentes et réglages d’affichage." },
+  { id: "idees", label: "Idées", title: "Idées d’amélioration", text: "Proposez une amélioration du site, soutenez celles de vos collègues : les gestionnaires répondent et indiquent ce qui est retenu." },
   { id: "confidentialite", label: "Confidentialité", title: "Confidentialité et données personnelles", text: "Qui est responsable, quelles données sont enregistrées, pendant combien de temps et comment exercer vos droits." },
   { id: "catalogue", label: "Catalogue des TP", title: "Catalogue des TP", text: "Tous les TP par niveau : objectif, enseignant, systèmes, outils, compétences et documents joints. Un TP du catalogue se place ensuite dans le semainier." },
 ];

@@ -239,6 +239,20 @@ export interface MaintenancePlan {
   created_at: string;
 }
 
+export type IdeaStatus = 'nouvelle' | 'etudiee' | 'retenue' | 'faite' | 'refusee';
+export type IdeaCategory = 'fonction' | 'affichage' | 'donnees' | 'autre';
+export interface Idea {
+  id: string;
+  title: string;
+  body: string | null;
+  category: IdeaCategory;
+  status: IdeaStatus;
+  answer: string | null;
+  votes: string[];
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface Company {
   id: string;
   name: string;
@@ -298,6 +312,7 @@ export interface DataSet {
   maintenance_plans: MaintenancePlan[];
   companies: Company[];
   pfmp_periods: PfmpPeriod[];
+  ideas: Idea[];
 }
 
 export type TableName = keyof DataSet;

@@ -599,3 +599,25 @@ describe('fonctions élèves désactivées', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Élèves' })).not.toHaveAttribute('aria-disabled'));
   });
 });
+
+describe('boîte à idées', () => {
+  it('un enseignant propose et soutient une idée, un gestionnaire répond', async () => {
+    await open('prof', 'idees');
+    await userEvent.type(await screen.findByLabelText(/Votre idée en une phrase/), 'Exporter le semainier en PDF');
+    await userEvent.click(screen.getByRole('button', { name: 'Envoyer l’idée' }));
+    expect(await screen.findByText('Exporter le semainier en PDF')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Soutenir/ }));
+    expect(await screen.findByRole('button', { name: /Je soutiens · 1/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Statut de l’idée/)).toBeNull();
+  });
+  it('un gestionnaire change le statut et répond', async () => {
+    await open('admin', 'idees');
+    await userEvent.type(await screen.findByLabelText(/Votre idée en une phrase/), 'Mode sombre automatique');
+    await userEvent.click(screen.getByRole('button', { name: 'Envoyer l’idée' }));
+    await userEvent.selectOptions(await screen.findByLabelText(/Statut de l’idée « Mode sombre automatique »/), 'retenue');
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /Statut de l’idée « Mode sombre automatique »/ })).toHaveValue('retenue'));
+    await userEvent.type(screen.getByLabelText(/Réponse à « Mode sombre automatique »/), 'Prévu en décembre');
+    await userEvent.tab();
+    expect(await screen.findByText(/Prévu en décembre/)).toBeInTheDocument();
+  });
+});
