@@ -3,17 +3,19 @@ import { useStore } from '@/state/store';
 import { GROUP_CODES, byText } from '@/lib/domain';
 import { addDays, fmtShort, iso, mondayOf, parseISO } from '@/lib/dates';
 import { buildRotation } from '@/lib/rotation';
+import { studentsEnabled, STUDENTS_OFF_TIP } from '@/lib/studentsFeature';
 import { Empty, Field, Options, downloadBlob, toCsv } from '@/components/ui';
 
 /** Rotation des sous-groupes sur les postes : qui passe où, et quand */
 export default function Rotations() {
-  const { data } = useStore();
+  const { data, settings } = useStore();
+  const on = studentsEnabled(settings);
   const [group, setGroup] = useState(GROUP_CODES[0]);
   const [picked, setPicked] = useState<string[]>([]);
   const [start, setStart] = useState(() => iso(mondayOf(new Date())));
   const [step, setStep] = useState(7);
 
-  const students = useMemo(() => data.students.filter((s) => s.group_code === group).sort(byText((s) => s.name)), [data.students, group]);
+  const students = useMemo(() => (on ? data.students : []).filter((s) => s.group_code === group).sort(byText((s) => s.name)), [data.students, group, on]);
   const stations = picked.map((id) => data.systems.find((s) => s.id === id)).filter((s): s is NonNullable<typeof s> => !!s);
   const plan = useMemo(() => buildRotation(students.map((s) => s.name), stations.length), [students, stations.length]);
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
@@ -35,7 +37,7 @@ export default function Rotations() {
       </div>
       <div className="f no-print"><span className="lab">Systèmes de la rotation</span>
         <div className="picks">{data.systems.map((s) => <label key={s.id} className="pick"><input type="checkbox" checked={picked.includes(s.id)} onChange={() => toggle(s.id)} />{s.name} ({s.qty} poste{s.qty > 1 ? 's' : ''})</label>)}</div></div>
-      {students.length === 0 ? <Empty to={{ href: '#admin', label: 'Ouvrir l’administration' }}>Aucun élève dans {group}. Un gestionnaire peut les ajouter dans Administration, Élèves.</Empty>
+      {students.length === 0 ? <Empty to={on ? { href: '#admin', label: 'Ouvrir l’administration' } : undefined}>{on ? `Aucun élève dans ${group}. Un gestionnaire peut les ajouter dans Administration, Élèves.` : `Répartition des élèves : ${STUDENTS_OFF_TIP.toLowerCase()}.`}</Empty>
         : stations.length === 0 ? <Empty>Cochez au moins un système.</Empty> : (
           <>
             <div className="scroll"><table className="tbl">

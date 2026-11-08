@@ -27,6 +27,7 @@ import { Search } from '@/components/Search';
 import { Notifications } from '@/components/Notifications';
 import { ReportFault } from '@/components/ReportFault';
 import Privacy from '@/pages/Privacy';
+import { STUDENTS_OFF_TIP, STUDENT_TABS, studentsEnabled } from '@/lib/studentsFeature';
 import { PrivacyText } from '@/components/PrivacyText';
 import { PasswordDialog } from '@/components/PasswordDialog';
 
@@ -116,6 +117,16 @@ function Logos({ onDark = false }: { onDark?: boolean }) {
       </div>
       <Img url={schoolLogo} alt="Logo du lycée" width={240} />
     </div>
+  );
+}
+
+function StudentsOff() {
+  return (
+    <section className="panel stack">
+      <h2>Fonction désactivée</h2>
+      <p>{STUDENTS_OFF_TIP}. Cette page manipule des données d’élèves : elle sera réactivée par un gestionnaire (Administration, Confidentialité) une fois le traitement validé.</p>
+      <p><a href="#accueil">Retour à l’accueil</a></p>
+    </section>
   );
 }
 
@@ -308,7 +319,9 @@ function UserMenu({ onPassword }: { onPassword: () => void }) {
 
 function Shell() {
   const { isAdmin, canWrite, user } = useAuth();
-  const { loading, error } = useStore();
+  const { loading, error, settings } = useStore();
+  const studentsOn = studentsEnabled(settings);
+  const off = (t: string) => !studentsOn && STUDENT_TABS.has(t);
   const [fault, setFault] = useState(false);
   const [pwd, setPwd] = useState(false);
   const [pwdLater, setPwdLater] = useState(false);
@@ -320,6 +333,7 @@ function Shell() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
   const go = (t: string) => {
+    if (off(t)) return;
     // Les systèmes se gèrent dans Administration ; les autres comptes y accèdent encore par les liens de l'application
     if (t === 'systemes' && isAdmin) {
       try { window.localStorage.setItem('parc:admin-sec', 'systemes'); } catch { /* ignoré */ }
@@ -364,7 +378,7 @@ function Shell() {
         {fam && fam.tabs.length > 1 && (
           <div className="subnav"><div className="subnav-in" role="navigation" aria-label="Pages de la rubrique">
             {fam.tabs.map(([id, label]) => (
-              <button key={id} aria-current={id === current ? 'page' : undefined} onClick={() => go(id)}>{label}</button>
+              <button key={id} aria-current={id === current ? 'page' : undefined} aria-disabled={off(id) || undefined} className={off(id) ? 'off' : undefined} title={off(id) ? STUDENTS_OFF_TIP : undefined} onClick={() => go(id)}>{label}</button>
             ))}
           </div></div>
         )}
@@ -400,8 +414,9 @@ function Shell() {
             {current === 'achats' && <Purchases />}
             {current === 'planning' && <Planning />}
             {current === 'fiches' && <Fiches />}
-            {current === 'eleves' && <Students />}
-            {current === 'pfmp' && <Pfmp />}
+            {off(current) && <StudentsOff />}
+            {current === 'eleves' && studentsOn && <Students />}
+            {current === 'pfmp' && studentsOn && <Pfmp />}
             {current === 'catalogue' && <Catalogue />}
             {current === 'banque' && <Bank />}
             {current === 'aide' && <Help />}

@@ -109,3 +109,4 @@ npm run build
 - *Administration > Élèves* : date de sortie, « Marquer la classe comme sortie », **Exporter** (droit d'accès, JSON) et **Effacer** (droit à l'effacement, irréversible).
 - *Administration > Confidentialité* : durées de conservation (élèves sortis, historique) et bouton **Lancer la purge**, à utiliser à chaque rentrée.
 - Reste à faire hors du code : inscrire le traitement au registre du lycée, informer le DPD, choisir une région européenne dans Supabase et vérifier les accords de traitement (DPA) de Vercel et Supabase.
+- **Fonctions élèves désactivées par défaut** (Suivi des élèves, PFMP, section Élèves de l'administration, répartition en sous-groupes, élèves et entreprises dans la recherche) : menus grisés avec l'info-bulle « Désactivé en attente validation RGPD ». Un gestionnaire les réactive dans *Administration > Confidentialité* (réglage `students_enabled`). Dans la démo, `?students=on` les active.

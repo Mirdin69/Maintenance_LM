@@ -5,8 +5,8 @@ import userEvent from '@testing-library/user-event';
 import { App } from '@/App';
 import { configureDemo } from '@/lib/api.fake';
 
-const open = async (as: string, tab: string) => {
-  configureDemo({ as: as as never });
+const open = async (as: string, tab: string, studentsOn = true) => {
+  configureDemo({ as: as as never, studentsOn });
   window.location.hash = tab;
   render(<App />);
 };
@@ -572,5 +572,30 @@ describe('interface', () => {
   it('l’accueil d’un gestionnaire liste ce qui est à traiter', async () => {
     await open('admin', 'accueil');
     expect(await screen.findByRole('region', { name: 'À traiter' })).toBeInTheDocument();
+  });
+});
+
+describe('fonctions élèves désactivées', () => {
+  it('grise Suivi des élèves et PFMP avec une info-bulle, et bloque les pages', async () => {
+    await open('admin', 'eleves', false);
+    const btn = await screen.findByRole('button', { name: 'PFMP' });
+    expect(btn).toHaveAttribute('aria-disabled', 'true');
+    expect(btn).toHaveAttribute('title', 'Désactivé en attente validation RGPD');
+    expect(screen.getByRole('button', { name: 'Suivi des élèves' })).toHaveAttribute('title', 'Désactivé en attente validation RGPD');
+    expect(await screen.findByRole('heading', { name: 'Fonction désactivée' })).toBeInTheDocument();
+    expect(screen.queryByRole('table')).toBeNull();
+    await userEvent.click(btn);
+    expect(window.location.hash).toBe('#eleves');
+  });
+  it('désactive aussi la section Élèves de l’administration, réactivable dans Confidentialité', async () => {
+    await open('admin', 'admin', false);
+    const sec = await screen.findByRole('button', { name: 'Élèves' });
+    expect(sec).toHaveAttribute('title', 'Désactivé en attente validation RGPD');
+    await userEvent.click(sec);
+    expect(sec).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.queryByLabelText('Prénom de l’élève à ajouter dans 2PB1.1')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Confidentialité' }));
+    await userEvent.click(await screen.findByLabelText(/Activer le suivi des élèves/));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Élèves' })).not.toHaveAttribute('aria-disabled'));
   });
 });

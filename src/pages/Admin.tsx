@@ -13,13 +13,15 @@ import Texts from './admin/Texts';
 import BudgetAdmin from './admin/BudgetAdmin';
 import History from './admin/History';
 import BilanAdmin from './admin/BilanAdmin';
+import { STUDENTS_OFF_TIP, studentsEnabled } from '@/lib/studentsFeature';
 import RgpdAdmin from './admin/RgpdAdmin';
 
 export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'outils', 'domaines', 'calendrier', 'apparence', 'textes', 'budget', 'historique', 'bilan', 'rgpd'] as const;
 type Section = (typeof ADMIN_SECTIONS)[number];
 
 export default function Admin() {
-  const { data } = useStore();
+  const { data, settings } = useStore();
+  const studentsOn = studentsEnabled(settings);
   const [section, setSection] = usePersisted<Section>('admin-sec', 'comptes', ADMIN_SECTIONS);
   const pending = data.profiles.filter((p) => !p.active).length;
   return (
@@ -27,12 +29,12 @@ export default function Admin() {
       <PageHead tab="admin" title="Administration" />
       <div className="tools">
         <Seg<Section> label="Section" value={section} onChange={setSection} items={[
-          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'], ['rgpd', 'Confidentialité'],
+          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves', ...(studentsOn ? [] : [{ off: STUDENTS_OFF_TIP }])] as [Section, string], ['salles', 'Salles'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'], ['rgpd', 'Confidentialité'],
         ]} />
       </div>
       {section === 'comptes' && <AccountsAdmin />}
       {section === 'systemes' && <Systems />}
-      {section === 'eleves' && <StudentsAdmin />}
+      {section === 'eleves' && (studentsOn ? <StudentsAdmin /> : <section className="panel"><h2>Fonction désactivée</h2><p>{STUDENTS_OFF_TIP}. Réactivation : Administration, Confidentialité.</p></section>)}
       {section === 'salles' && <RoomsAdmin />}
       {section === 'outils' && <ToolsAdmin />}
       {section === 'calendrier' && <CalendarAdmin />}

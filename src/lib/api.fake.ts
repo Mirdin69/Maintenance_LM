@@ -17,10 +17,12 @@ const now = () => new Date().toISOString();
 export interface DemoOptions {
   as?: 'admin' | 'prof' | 'lecture' | 'pending' | 'signedout';
   empty?: boolean;
+  /** Fonctions élèves actives (par défaut : désactivées en attente de validation RGPD) */
+  studentsOn?: boolean;
 }
 
 const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
-let options: DemoOptions = { as: (params.get('as') as DemoOptions['as']) ?? 'admin' };
+let options: DemoOptions = { as: (params.get('as') as DemoOptions['as']) ?? 'admin', studentsOn: params.get('students') === 'on' };
 export const configureDemo = (o: DemoOptions) => {
   options = { ...options, ...o };
   reset();
@@ -197,7 +199,7 @@ function reset() {
     ],
     settings: [
       { key: 'site_title', value: 'Parc MELEC' }, { key: 'site_logo_url', value: '' }, { key: 'school_logo_url', value: '' },
-      { key: 'year_start', value: sy.from }, { key: 'year_end', value: sy.to }, { key: 'shown_days', value: '1,2,3,4' },
+      { key: 'year_start', value: sy.from }, { key: 'year_end', value: sy.to }, { key: 'shown_days', value: '1,2,3,4' }, ...(options.studentsOn ? [{ key: 'students_enabled', value: '1' }] : []),
     ],
     calendar_periods: [
       { id: uid(), kind: 'vacances', label: 'Toussaint', start_date: `${sy.from.slice(0, 4)}-10-17`, end_date: `${sy.from.slice(0, 4)}-11-01` },

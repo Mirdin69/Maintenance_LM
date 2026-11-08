@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@/state/store';
 import { DOMAINS } from '@/lib/domain';
+import { studentsEnabled } from '@/lib/studentsFeature';
 
 interface Hit { id: string; label: string; sub: string; tab: string; kind: string }
 
@@ -8,7 +9,8 @@ const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 
 /** Recherche dans toutes les listes ; « / » place le curseur dans la barre */
 export function Search({ go }: { go: (tab: string) => void }) {
-  const { data, roomById } = useStore();
+  const { data, roomById, settings } = useStore();
+  const on = studentsEnabled(settings);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -33,9 +35,9 @@ export function Search({ go }: { go: (tab: string) => void }) {
     ...data.tools.map((t) => ({ id: t.id, label: t.name, sub: t.category ?? '', tab: 'systemes', kind: 'Outil' })),
     ...data.purchases.map((p) => ({ id: p.id, label: p.item, sub: p.ref ?? '', tab: 'achats', kind: 'Achat' })),
     ...data.maintenance.map((m) => ({ id: m.id, label: m.title, sub: m.status === 'done' ? 'terminée' : 'ouverte', tab: 'maintenance', kind: 'Intervention' })),
-    ...data.companies.map((c) => ({ id: c.id, label: c.name, sub: c.contact ?? '', tab: 'pfmp', kind: 'Entreprise' })),
-    ...data.students.map((s) => ({ id: s.id, label: s.name, sub: s.group_code, tab: 'eleves', kind: 'Élève' })),
-  ], [data, roomById]);
+    ...(on ? data.companies : []).map((c) => ({ id: c.id, label: c.name, sub: c.contact ?? '', tab: 'pfmp', kind: 'Entreprise' })),
+    ...(on ? data.students : []).map((s) => ({ id: s.id, label: s.name, sub: s.group_code, tab: 'eleves', kind: 'Élève' })),
+  ], [data, roomById, on]);
 
   const hits = useMemo(() => {
     const words = norm(q).split(/\s+/).filter(Boolean);

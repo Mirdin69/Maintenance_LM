@@ -26,6 +26,11 @@ export default function RgpdAdmin() {
     <>
       <p className="muted">Réglages de la page « Confidentialité » (Aide) et durées de conservation. Les élèves sont enregistrés sous la forme « Prénom + 2 premières lettres du nom ».</p>
       <section className="panel stack">
+        <h2>Fonctions liées aux élèves</h2>
+        <label className="row"><input type="checkbox" checked={settings.students_enabled === '1'} onChange={(e) => void save('students_enabled', e.target.checked ? '1' : '0')} /> Activer le suivi des élèves, les PFMP, la liste des élèves en administration et la répartition en sous-groupes</label>
+        <p className="muted small">{settings.students_enabled === '1' ? 'Ces fonctions sont actives.' : 'Désactivées en attente de validation RGPD : les menus sont grisés avec une info-bulle, et les élèves et entreprises n’apparaissent plus dans la recherche. À cocher une fois le traitement validé par le chef d’établissement et le DPD.'}</p>
+      </section>
+      <section className="panel stack">
         <h2>Informations affichées</h2>
         <div className="form">
           <Field label="Responsable du traitement"><input className="in" defaultValue={settings.privacy_controller ?? ''} placeholder={PRIVACY_DEFAULTS.controller} maxLength={200} key={`c${settings.privacy_controller}`} onBlur={(e) => e.target.value !== (settings.privacy_controller ?? '') && void save('privacy_controller', e.target.value.trim())} /></Field>

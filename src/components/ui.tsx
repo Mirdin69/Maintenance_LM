@@ -110,15 +110,15 @@ export function ConfirmButton({
 export function Seg<T extends string>({
   items, value, onChange, label,
 }: {
-  items: Array<[T, string]>;
+  items: Array<[T, string] | [T, string, { off?: string }]>;
   value: T;
   onChange: (v: T) => void;
   label: string;
 }) {
   return (
     <div className="seg" role="group" aria-label={label}>
-      {items.map(([k, l]) => (
-        <button key={k} type="button" aria-pressed={k === value} onClick={() => onChange(k)}>
+      {items.map(([k, l, o]) => (
+        <button key={k} type="button" aria-pressed={k === value} aria-disabled={o?.off ? true : undefined} className={o?.off ? 'off' : undefined} title={o?.off} onClick={() => !o?.off && onChange(k)}>
           {l}
         </button>
       ))}
