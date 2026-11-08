@@ -43,9 +43,10 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Fiches** séquence et séance : saisie, partage entre collègues, impression.
 - **Images** des systèmes, outils et logos : collez le lien de partage d'un fichier du Drive, réglé sur « Tous les utilisateurs disposant du lien ». Si votre Drive est limité à l'établissement, les images ne s'afficheront que pour les personnes connectées à leur compte Google du lycée dans le même navigateur.
 - **Documents joints** (Word, PDF, Excel) sur les TP et les fiches : collez le lien de partage du fichier du Drive ; un bouton « Aperçu » l'affiche dans la page (aperçu limité à Google Drive/Docs, sinon lien « Ouvrir »). Une fiche séance se rattache à une fiche séquence.
-- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql`, `0004_stockage.sql` `0005_ameliorations.sql` puis **`0006_domaines.sql`**, après `0001_init.sql`.
+- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql`, `0004_stockage.sql` `0005_ameliorations.sql` `0006_domaines.sql` puis **`0007_rgpd.sql`**, après `0001_init.sql`.
 - `0005` ajoute : images déposées (espace public `images`, 5 Mo), historique des modifications (gestionnaires), contrôles préventifs récurrents, PFMP et entreprises, fournisseur et devis des achats, outils et « réutilisable » sur les TP et fiches. Elle peut être rejouée sans dommage. Tant qu'elle n'est pas appliquée, le reste du site fonctionne, mais l'enregistrement d'un TP, d'une fiche ou d'un achat avec ces nouveaux champs échoue.
 - `0006` autorise des domaines personnalisés sur les TP et les systèmes (liste gérée dans *Administration > Domaines*) et corrige la contrainte des systèmes, qui n'acceptait que 4 domaines. Sans elle, ajouter un domaine ou choisir « Atelier », « Annexe », etc. pour un système échoue.
+- `0007` (RGPD) ajoute la date de sortie des élèves, la purge selon les durées de conservation, l'export et l'effacement complet d'un élève (progression et traces dans l'historique comprises). Sans elle, les boutons Exporter, Effacer et Purge de l'administration échouent.
 - Documents : dépôt direct de PDF, Word, Excel, PowerPoint ou OpenDocument (10 Mo max, bucket privé `documents`, lecture réservée aux comptes actifs). Aperçu intégré des PDF, .docx et .xlsx ; les .doc, .xls et .ppt se téléchargent. Les liens Google Drive restent possibles.
 
 ## Salles et occupation
@@ -100,3 +101,11 @@ npm run build
 *Administration > Calendrier* :
 - **Vacances officielles** : « Importer les vacances (zone A) » interroge les données ouvertes du ministère (data.education.gouv.fr, jeu `fr-en-calendrier-scolaire`) depuis le navigateur, affiche les périodes trouvées, puis les ajoute après confirmation. Si le site est injoignable ou si le calendrier n'est pas publié, un message l'indique et la saisie manuelle reste possible.
 - **Préparer la nouvelle année scolaire** : reporte le semainier de l'année en cours sur la nouvelle (même jour de la même semaine depuis la rentrée), sauf sur les vacances et jours fériés de la nouvelle année. Une fenêtre liste les vacances qui ne tombent plus aux mêmes semaines et les cases non reportées. Annulable.
+
+## Données personnelles (RGPD)
+
+- Les élèves sont enregistrés sous la forme **« Prénom + 2 premières lettres du nom »** (ex. Emma LA) ; le nom complet n'est jamais envoyé ni conservé (formulaire et import Excel). Les anciens noms « Emma L. » sont convertis à l'import suivant sans perdre la progression.
+- Page **Aide > Confidentialité** (aussi visible avant connexion) : responsable, contact du DPD et durées, réglables dans *Administration > Confidentialité*.
+- *Administration > Élèves* : date de sortie, « Marquer la classe comme sortie », **Exporter** (droit d'accès, JSON) et **Effacer** (droit à l'effacement, irréversible).
+- *Administration > Confidentialité* : durées de conservation (élèves sortis, historique) et bouton **Lancer la purge**, à utiliser à chaque rentrée.
+- Reste à faire hors du code : inscrire le traitement au registre du lycée, informer le DPD, choisir une région européenne dans Supabase et vérifier les accords de traitement (DPA) de Vercel et Supabase.

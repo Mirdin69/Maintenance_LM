@@ -75,9 +75,29 @@ describe('administration', () => {
     await open('admin', 'admin');
     await userEvent.click(await screen.findByRole('button', { name: 'Élèves' }));
     expect(await screen.findByText('Mise à jour par fichier Excel')).toBeInTheDocument();
-    const input = screen.getByLabelText(/Nom de l’élève à ajouter dans 2PB1.1/);
-    await userEvent.type(input, 'Nina T.{enter}');
-    expect(await screen.findByText('Nina T.')).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/Prénom de l’élève à ajouter dans 2PB1.1/), 'Nina');
+    await userEvent.type(screen.getByLabelText(/Nom de famille/), 'Tessier{enter}');
+    expect(await screen.findByText('Nina TE')).toBeInTheDocument();
+    expect(screen.queryByText(/Tessier/)).toBeNull();
+    const row = screen.getByText('Nina TE').closest('tr')!;
+    await userEvent.click(within(row).getByRole('button', { name: 'Effacer' }));
+    expect(screen.queryByText(/retrouver la plupart des suppressions/)).toBeNull();
+    await userEvent.click(await screen.findByRole('button', { name: 'Confirmer' }));
+    await waitFor(() => expect(screen.queryByText('Nina TE')).toBeNull());
+  });
+  it('purge les élèves sortis après la durée de conservation et affiche la page de confidentialité', async () => {
+    const old = new Date(); old.setMonth(old.getMonth() - 30);
+    await open('admin', 'admin');
+    await api.insert('students', [{ name: 'Vieux VI', group_code: '2PB1.1', left_at: old.toISOString().slice(0, 10) }, { name: 'Actif AC', group_code: '2PB1.1' }]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Confidentialité' }));
+    expect(await screen.findByText(/À purger maintenant/)).toHaveTextContent('1 élève sorti');
+    await userEvent.click(screen.getByRole('button', { name: 'Lancer la purge maintenant' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Confirmer' }));
+    await waitFor(async () => expect((await api.select<{ name: string }>('students')).map((s) => s.name)).not.toContain('Vieux VI'));
+    expect((await api.select<{ name: string }>('students')).map((s) => s.name)).toContain('Actif AC');
+    window.location.hash = 'confidentialite';
+    expect(await screen.findByRole('heading', { name: 'Confidentialité et données personnelles' })).toBeInTheDocument();
+    expect(screen.getByText(/2 premières lettres du nom/)).toBeInTheDocument();
   });
   it('le suivi des élèves n’a plus d’import', async () => {
     await open('admin', 'eleves');

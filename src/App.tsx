@@ -26,9 +26,11 @@ import { useSaveState } from '@/state/saving';
 import { Search } from '@/components/Search';
 import { Notifications } from '@/components/Notifications';
 import { ReportFault } from '@/components/ReportFault';
+import Privacy from '@/pages/Privacy';
+import { PrivacyText } from '@/components/PrivacyText';
 import { PasswordDialog } from '@/components/PasswordDialog';
 
-type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'catalogue' | 'aide' | 'admin';
+type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'catalogue' | 'aide' | 'confidentialite' | 'admin';
 
 /** Rubriques de la barre d'onglets ; chaque rubrique regroupe des pages */
 const FAMILIES: Array<{ id: string; label: string; tabs: Array<[TabId, string]>; admin?: boolean }> = [
@@ -36,7 +38,7 @@ const FAMILIES: Array<{ id: string; label: string; tabs: Array<[TabId, string]>;
   { id: 'planifier', label: 'Planifier', tabs: [['semainier', 'Semainier'], ['edt', 'Emploi du temps'], ['occupation', 'Occupation'], ['planning', 'Planning des TP']] },
   { id: 'pedagogie', label: 'Pédagogie', tabs: [['fiches', 'Fiches'], ['catalogue', 'Catalogue des TP'], ['banque', 'Banque'], ['eleves', 'Suivi des élèves'], ['pfmp', 'PFMP']] },
   { id: 'atelier', label: 'Atelier', tabs: [['maintenance', 'Maintenance'], ['achats', 'Achats']] },
-  { id: 'aide', label: 'Aide', tabs: [['aide', 'Aide et à propos']] },
+  { id: 'aide', label: 'Aide', tabs: [['aide', 'Aide et à propos'], ['confidentialite', 'Confidentialité']] },
   { id: 'admin', label: 'Administration', tabs: [['admin', 'Administration']], admin: true },
 ];
 const TABS: Array<[TabId, string]> = FAMILIES.flatMap((f) => f.tabs);
@@ -240,6 +242,10 @@ function Login() {
           </div>
         </form>
       )}
+      <details className="add">
+        <summary>Confidentialité et données personnelles</summary>
+        <div className="add-body"><PrivacyText /></div>
+      </details>
     </Message>
   );
 }
@@ -399,6 +405,7 @@ function Shell() {
             {current === 'catalogue' && <Catalogue />}
             {current === 'banque' && <Bank />}
             {current === 'aide' && <Help />}
+            {current === 'confidentialite' && <Privacy />}
             {current === 'admin' && isAdmin && <Admin />}
           </>
         )}

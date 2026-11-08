@@ -13,8 +13,9 @@ import Texts from './admin/Texts';
 import BudgetAdmin from './admin/BudgetAdmin';
 import History from './admin/History';
 import BilanAdmin from './admin/BilanAdmin';
+import RgpdAdmin from './admin/RgpdAdmin';
 
-export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'outils', 'domaines', 'calendrier', 'apparence', 'textes', 'budget', 'historique', 'bilan'] as const;
+export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'outils', 'domaines', 'calendrier', 'apparence', 'textes', 'budget', 'historique', 'bilan', 'rgpd'] as const;
 type Section = (typeof ADMIN_SECTIONS)[number];
 
 export default function Admin() {
@@ -26,7 +27,7 @@ export default function Admin() {
       <PageHead tab="admin" title="Administration" />
       <div className="tools">
         <Seg<Section> label="Section" value={section} onChange={setSection} items={[
-          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'],
+          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'], ['rgpd', 'Confidentialité'],
         ]} />
       </div>
       {section === 'comptes' && <AccountsAdmin />}
@@ -41,6 +42,7 @@ export default function Admin() {
       {section === 'budget' && <BudgetAdmin />}
       {section === 'historique' && <History />}
       {section === 'bilan' && <BilanAdmin />}
+      {section === 'rgpd' && <RgpdAdmin />}
     </>
   );
 }

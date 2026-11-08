@@ -439,6 +439,32 @@ export const api: Api = {
     const p = currentProfile();
     if (fn === 'touch_me' && p) p.last_seen = now();
     if (fn === 'set_my_name' && p) { p.full_name = String(args?.p_name ?? '').trim() || null; notify('profiles'); }
+    const adminOnly = () => { if (p?.role !== 'admin' || !p.active) throw new Error('Réservé aux gestionnaires'); };
+    const months = (key: string) => Number(String(T.settings.find((x) => x.key === key)?.value ?? '12').replace(/\D/g, '')) || 12;
+    const ago = (m: number) => { const d = new Date(); d.setMonth(d.getMonth() - m); return d; };
+    const expiredStudents = () => T.students.filter((s) => s.left_at && new Date(String(s.left_at)) < ago(months('retention_students_months')));
+    if (fn === 'purge_preview') {
+      adminOnly();
+      return { students: expiredStudents().length, audit: (T.audit_log ?? []).filter((a) => new Date(String(a.at)) < ago(months('retention_audit_months'))).length, students_months: months('retention_students_months'), audit_months: months('retention_audit_months') };
+    }
+    const scrub = (id: string) => { T.audit_log = (T.audit_log ?? []).filter((a) => { const d = (a.new_data ?? a.old_data) as Row | null; return !((a.table_name === 'students' && d?.id === id) || (a.table_name === 'progress' && d?.student_id === id)); }); };
+    const erase = (id: string) => { T.students = T.students.filter((s) => s.id !== id); T.progress = T.progress.filter((x) => x.student_id !== id); scrub(id); };
+    if (fn === 'purge_expired') {
+      adminOnly();
+      const ids = expiredStudents().map((s) => String(s.id));
+      ids.forEach(erase);
+      const before = (T.audit_log ?? []).length;
+      T.audit_log = (T.audit_log ?? []).filter((a) => new Date(String(a.at)) >= ago(months('retention_audit_months')));
+      notify('students'); notify('progress');
+      return { students: ids.length, audit: before - T.audit_log.length };
+    }
+    if (fn === 'export_student') {
+      adminOnly();
+      const s = T.students.find((x) => x.id === args?.p_id);
+      if (!s) return null;
+      return { eleve: s, competences: T.progress.filter((x) => x.student_id === s.id).map((x) => ({ tp: T.tps.find((t) => t.id === x.tp_id)?.code ?? null, titre: T.tps.find((t) => t.id === x.tp_id)?.title ?? null, niveau: x.level, modifie_le: x.updated_at })), exporte_le: now() };
+    }
+    if (fn === 'erase_student') { adminOnly(); erase(String(args?.p_id)); notify('students'); notify('progress'); return null; }
     if (fn === 'generate_due_maintenance') {
       if (!p?.active || p.role === 'lecture') throw new Error('Droits insuffisants');
       const today = iso(new Date());

@@ -161,6 +161,8 @@ export interface Student {
   name: string;
   group_code: string;
   created_at: string;
+  /** Date de sortie de l'élève : il est effacé après la durée de conservation */
+  left_at?: string | null;
 }
 
 export interface Progress {

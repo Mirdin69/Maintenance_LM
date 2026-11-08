@@ -7,6 +7,7 @@ const migration2 = readFileSync(new URL('../supabase/migrations/0002_semainier.s
 const migration3 = readFileSync(new URL('../supabase/migrations/0003_documents.sql', import.meta.url), 'utf8');
 const migration5 = readFileSync(new URL('../supabase/migrations/0005_ameliorations.sql', import.meta.url), 'utf8');
 const migration6 = readFileSync(new URL('../supabase/migrations/0006_domaines.sql', import.meta.url), 'utf8');
+const migration7 = readFileSync(new URL('../supabase/migrations/0007_rgpd.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -68,6 +69,7 @@ beforeAll(async () => {
   await db.exec(migration4);
   await db.exec(migration5);
   await db.exec(migration6);
+  await db.exec(migration7);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -535,5 +537,43 @@ describe('migration 0006 : domaines personnalisés', () => {
     expect(await fails("insert into public.settings (key, value) values ('custom_domains', '[]')")).toMatch(/row-level security/);
     await as('admin');
     expect(await fails("insert into public.settings (key, value) values ('custom_domains', '[{\"id\":\"c-froid\",\"label\":\"Froid\",\"color\":\"p1\"}]') on conflict (key) do update set value = excluded.value")).toBeNull();
+  });
+});
+
+describe('migration 0007 : RGPD', () => {
+  it('rejoue la migration sans erreur', async () => {
+    await db.exec('reset role');
+    await db.exec(migration7);
+  });
+  it('exporte puis efface un élève avec sa progression et ses traces dans le journal', async () => {
+    await as('admin');
+    const [st] = await sql("insert into public.students (name, group_code) values ('Emma LA', '2PB1.1') returning id");
+    const [tp] = await sql("insert into public.tps (title, level, domain, code) values ('TP RGPD', 'Seconde', 'ind', 'RG1') returning id");
+    await sql(`insert into public.progress (student_id, tp_id, level) values ('${st.id}', '${tp.id}', 'A')`);
+    const exp = (await sql(`select public.export_student('${st.id}') as j`))[0].j as { eleve: { name: string }; competences: unknown[] };
+    expect(exp.eleve.name).toBe('Emma LA');
+    expect(exp.competences).toHaveLength(1);
+    await as('prof');
+    expect(await fails(`select public.erase_student('${st.id}')`)).toMatch(/Réservé/);
+    await as('admin');
+    await sql(`select public.erase_student('${st.id}')`);
+    expect(await sql(`select 1 from public.students where id = '${st.id}'`)).toHaveLength(0);
+    expect(await sql(`select 1 from public.progress where student_id = '${st.id}'`)).toHaveLength(0);
+    await db.exec('reset role');
+    expect((await db.query("select count(*)::int as n from public.audit_log where (table_name='students' and coalesce(new_data,old_data)->>'id' = $1) or (table_name='progress' and coalesce(new_data,old_data)->>'student_id' = $1)", [st.id])).rows[0]).toEqual({ n: 0 });
+  });
+  it('purge les élèves sortis depuis plus longtemps que la durée de conservation', async () => {
+    await as('admin');
+    await sql("insert into public.settings (key, value) values ('retention_students_months', '6') on conflict (key) do update set value = excluded.value");
+    await sql("insert into public.students (name, group_code, left_at) values ('Vieux AA', '2PB1.1', current_date - 400), ('Récent BB', '2PB1.1', current_date - 30), ('Présent CC', '2PB1.1', null)");
+    const prev = (await sql('select public.purge_preview() as j'))[0].j as { students: number; students_months: number };
+    expect(prev).toMatchObject({ students: 1, students_months: 6 });
+    await as('prof');
+    expect(await fails('select public.purge_expired()')).toMatch(/Réservé/);
+    await as('admin');
+    const res = (await sql('select public.purge_expired() as j'))[0].j as { students: number };
+    expect(res.students).toBe(1);
+    const left = (await sql("select name from public.students where name in ('Vieux AA','Récent BB','Présent CC') order by name")).map((r) => r.name);
+    expect(left).toEqual(['Présent CC', 'Récent BB']);
   });
 });

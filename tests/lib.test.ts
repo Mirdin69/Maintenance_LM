@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseGroup } from '@/lib/domain';
 import { iso, isoDow, parseISO } from '@/lib/dates';
-import { planImport, parseCsv, rowsFromGrid } from '@/lib/importStudents';
+import { displayNames, planImport, parseCsv, pseudonym, rowsFromGrid } from '@/lib/importStudents';
 import { buildOccurrences, freeRooms, roomLoads, unionMinutes } from '@/lib/occupancy';
 import { sessionConflicts, slotConflicts } from '@/lib/conflicts';
 import type { Room, Session, Slot } from '@/lib/types';
@@ -39,16 +39,34 @@ describe('import des élèves', () => {
       { nom: 'Autre', prenom: 'Max', groupe: 'XYZ' },
     ];
     const existing = [
-      { id: '1', name: 'Léa D.', group_code: '2PB1.1' },
-      { id: '2', name: 'Tom M.', group_code: '2PB1.1' },
-      { id: '3', name: 'Ancien A.', group_code: '2PB1.1' },
+      { id: '1', name: 'Léa DU', group_code: '2PB1.1' },
+      { id: '2', name: 'Tom MA', group_code: '2PB1.1' },
+      { id: '3', name: 'Ancien AN', group_code: '2PB1.1' },
     ];
     const plan = planImport(rows, existing, true);
-    expect(plan.same.map((p) => p.name)).toEqual(['Léa D.']);
-    expect(plan.move.map((p) => [p.name, p.fromGroup, p.groupCode])).toEqual([['Tom M.', '2PB1.1', '2PB1.2']]);
-    expect(plan.add.map((p) => p.name)).toEqual(['Zoé D.']);
+    expect(plan.same.map((p) => p.name)).toEqual(['Léa DU']);
+    expect(plan.move.map((p) => [p.name, p.fromGroup, p.groupCode])).toEqual([['Tom MA', '2PB1.1', '2PB1.2']]);
+    expect(plan.add.map((p) => p.name)).toEqual(['Zoé DU']);
     expect(plan.gone.map((g) => g.id)).toEqual(['3']);
     expect(plan.bad).toHaveLength(1);
+  });
+});
+
+describe('pseudonymisation des élèves', () => {
+  it('garde le prénom et les 2 premières lettres du nom, jamais le nom complet', () => {
+    expect(pseudonym('Emma', 'Lambert')).toBe('Emma LA');
+    expect(pseudonym('Léo', 'de la Fontaine')).toBe('Léo DE');
+    expect(pseudonym('Ana', 'Ö')).toBe('Ana Ö');
+  });
+  it('ajoute des lettres quand deux élèves se ressemblent', () => {
+    const rows = [{ nom: 'Lambert', prenom: 'Emma', groupe: '2PB1.1' }, { nom: 'Lamy', prenom: 'Emma', groupe: '2PB1.1' }];
+    expect(displayNames(rows, true)).toEqual(['Emma LAM', 'Emma LAM'].map((_, i) => ['Emma LAMB', 'Emma LAMY'][i]));
+  });
+  it('convertit « Emma L. » en « Emma LA » sans perdre l’élève', () => {
+    const plan = planImport([{ nom: 'Lambert', prenom: 'Emma', groupe: '2PB1.1' }], [{ id: '9', name: 'Emma L.', group_code: '2PB1.1' }], true);
+    expect(plan.add).toHaveLength(0);
+    expect(plan.gone).toHaveLength(0);
+    expect(plan.move.map((m) => [m.existingId, m.name, m.renamedFrom])).toEqual([['9', 'Emma LA', 'Emma L.']]);
   });
 });
 

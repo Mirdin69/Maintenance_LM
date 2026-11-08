@@ -15,6 +15,8 @@ export interface PlannedStudent {
   /** Élève déjà présent dans la base (déplacement ou ligne inchangée) */
   existingId?: string;
   fromGroup?: string;
+  /** Ancien nom abrégé (« Emma L. ») remplacé par la nouvelle forme */
+  renamedFrom?: string;
 }
 
 export interface ImportPlan {
@@ -187,15 +189,19 @@ export async function buildTemplate(): Promise<Blob> {
 // --- Noms et plan de mise à jour --------------------------------------------
 
 /**
- * Nom enregistré pour chaque ligne. Avec `reduce`, seul le prénom et l'initiale du nom sont gardés
- * (« Emma L. »), et l'initiale s'allonge si deux élèves différents se ressemblent.
+ * Nom enregistré pour chaque ligne. Avec `reduce` (pseudonymisation, RGPD), seul le prénom et les deux premières
+ * lettres du nom sont gardés (« Emma LA »), et les lettres s'ajoutent si deux élèves différents se ressemblent.
  */
+export const pseudonym = (prenom: string, nom: string, letters = 2) => {
+  const w = (nom.trim().split(/\s+/)[0] ?? '').replace(/[^\p{L}]/gu, '');
+  return `${prenom.trim()} ${w.slice(0, letters).toUpperCase()}`.trim();
+};
+
 export function displayNames(rows: RawRow[], reduce: boolean): string[] {
-  const len = rows.map(() => 1);
+  const len = rows.map(() => 2);
   const nameOf = (r: RawRow, k: number) => {
     if (!reduce) return `${r.prenom} ${r.nom}`.trim();
-    const w = r.nom.split(' ')[0] ?? '';
-    return `${r.prenom} ${w.slice(0, k)}${k >= w.length ? '' : '.'}`.trim();
+    return pseudonym(r.prenom, r.nom, k);
   };
   for (let pass = 0; pass < 12; pass++) {
     const groups = new Map<string, number[]>();
@@ -208,7 +214,7 @@ export function displayNames(rows: RawRow[], reduce: boolean): string[] {
       if (idx.length < 2) continue;
       if (new Set(idx.map((i) => normalize(rows[i].nom))).size < 2) continue;
       for (const i of idx) {
-        const w = rows[i].nom.split(' ')[0] ?? '';
+        const w = (rows[i].nom.trim().split(/\s+/)[0] ?? '').replace(/[^\p{L}]/gu, '');
         if (len[i] < w.length) {
           len[i]++;
           changed = true;
@@ -249,8 +255,21 @@ export function planImport(
     else if (ex.group_code !== g.code) plan.move.push({ ...item, existingId: ex.id, fromGroup: ex.group_code });
     else plan.same.push({ ...item, existingId: ex.id });
   });
+  // Anciens noms « Emma L. » : repris tels quels sous leur nouvelle forme « Emma LA » (même élève, progression conservée)
+  const legacy = existing.filter((s) => /\.$/.test(s.name.trim()) && !seen.has(normalize(s.name)));
+  const claimed = new Set<string>();
+  for (const item of [...plan.add]) {
+    const k = normalize(item.name);
+    const hits = legacy.filter((s) => !claimed.has(s.id) && k.startsWith(normalize(s.name.replace(/\.$/, ''))));
+    const rivals = plan.add.filter((o) => normalize(o.name).startsWith(normalize(hits[0]?.name.replace(/\.$/, '') ?? '\u0000')));
+    if (hits.length === 1 && rivals.length === 1) {
+      claimed.add(hits[0].id);
+      plan.add.splice(plan.add.indexOf(item), 1);
+      plan.move.push({ ...item, existingId: hits[0].id, fromGroup: hits[0].group_code, renamedFrom: hits[0].name });
+    }
+  }
   for (const s of existing) {
-    if (groupsInFile.has(s.group_code) && !seen.has(normalize(s.name))) plan.gone.push(s);
+    if (groupsInFile.has(s.group_code) && !seen.has(normalize(s.name)) && !claimed.has(s.id)) plan.gone.push(s);
   }
   return plan;
 }

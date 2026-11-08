@@ -69,7 +69,7 @@ export function AddPanel({ summary, open, onClose, children }: { summary: string
 
 /** Suppression en deux temps : une fenêtre dit ce qui sera perdu, puis demande confirmation */
 export function ConfirmButton({
-  onConfirm, children, warn = 'Confirmer', className = 'btn del sm', disabled, detail,
+  onConfirm, children, warn = 'Confirmer', className = 'btn del sm', disabled, detail, irreversible,
 }: {
   onConfirm: () => void | Promise<void>;
   children: ReactNode;
@@ -77,6 +77,8 @@ export function ConfirmButton({
   className?: string;
   disabled?: boolean;
   detail?: string;
+  /** Pas de retour possible depuis l'historique (effacement RGPD) */
+  irreversible?: boolean;
 }) {
   const [ask, setAsk] = useState(false);
   useEffect(() => {
@@ -93,7 +95,7 @@ export function ConfirmButton({
           <div className="modal panel" role="alertdialog" aria-modal="true" aria-label="Confirmation" onClick={(e) => e.stopPropagation()}>
             <h2>Confirmer l’action ?</h2>
             <p>{detail ?? 'Cette action est définitive pour l’élément concerné.'}</p>
-            <p className="muted small">Un gestionnaire peut retrouver la plupart des suppressions dans Administration, Historique.</p>
+            {!irreversible && <p className="muted small">Un gestionnaire peut retrouver la plupart des suppressions dans Administration, Historique.</p>}
             <div className="actions">
               <button type="button" className="btn del" autoFocus onClick={() => { setAsk(false); void onConfirm(); }}>{warn}</button>
               <button type="button" className="btn ghost" onClick={() => setAsk(false)}>Annuler</button>
