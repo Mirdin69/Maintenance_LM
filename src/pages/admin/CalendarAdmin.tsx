@@ -6,6 +6,7 @@ import { DAY_LONG, fmtDate, schoolYearOf } from '@/lib/dates';
 import { LEVELS } from '@/lib/domain';
 import { daysKey, frenchHolidays, weekdaysFor } from '@/lib/calendar';
 import type { CalendarPeriod } from '@/lib/types';
+import { NewYear, ZoneAImport } from './NewYear';
 import { AddPanel, Chip, ConfirmButton, Empty, Field, Options } from '@/components/ui';
 
 export default function CalendarAdmin() {
@@ -61,6 +62,11 @@ export default function CalendarAdmin() {
           ))}
         </div>
       </section>
+      <section className="panel stack">
+        <h2>Vacances officielles</h2>
+        <p className="muted">Récupère automatiquement les vacances scolaires de la zone A (Lyon) publiées par le ministère. Les jours fériés se complètent avec le bouton plus bas.</p>
+        <ZoneAImport year={start ? Number(start.slice(0, 4)) : schoolYearOf(new Date())} />
+      </section>
       <AddPanel summary="Ajouter des vacances, un jour férié ou une période">
         <form className="form" key={formKey} onSubmit={add}>
           <Field label="Type"><select className="in" name="kind"><Options items={Object.entries(PERIOD_KINDS)} /></select></Field>
@@ -87,6 +93,7 @@ export default function CalendarAdmin() {
           </table></div>
         )}
       </section>
+      <NewYear />
     </>
   );
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '@/App';
@@ -521,6 +521,24 @@ describe('interface', () => {
     window.location.hash = 'catalogue';
     await userEvent.click(await screen.findByText('Ajouter un TP'));
     expect(await screen.findByRole('option', { name: 'Froid et clim' })).toBeInTheDocument();
+  });
+
+  it('importe les vacances de la zone A puis prépare la nouvelle année', async () => {
+    const y = new Date().getMonth() >= 7 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+    const rec = (description: string, s: string, e: string) => ({ description, start_date: s, end_date: e, population: '-', zones: 'Zone A' });
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ results: [rec('Vacances de Noël', `${y}-12-19`, `${y + 1}-01-04`)] }) })));
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Calendrier' }));
+    await userEvent.click((await screen.findAllByRole('button', { name: new RegExp(`Importer les vacances ${y}-${y + 1}`) }))[0]);
+    expect(await screen.findByText(/Vacances de la zone A trouvées/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^Ajouter ces 1 périodes/ }));
+    expect(await screen.findByText('1 période de vacances ajoutée.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Prévisualiser et préremplir' }));
+    const dlg = await screen.findByRole('dialog', { name: 'Préparer la nouvelle année' });
+    expect(dlg).toHaveTextContent(/case/);
+    expect(dlg).toHaveTextContent(/aucune vacance n’est enregistrée pour la nouvelle année/);
+    await userEvent.click(screen.getByRole('button', { name: 'Annuler' }));
+    vi.unstubAllGlobals();
   });
 
   it('propose de restaurer le brouillon d’une fiche', async () => {

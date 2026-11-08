@@ -94,3 +94,9 @@ npm run build
 - Modification directe dans les listes (postes, quantités, échéances), collage de listes depuis Excel (systèmes, achats), brouillons des fiches conservés sur l'appareil.
 - Page Aide et à propos : guide, questions fréquentes, thème (automatique, clair, sombre) et taille du texte.
 - Téléphone et tablette : semaine du semainier jour par jour, grandes zones à toucher. Un test vérifie le contraste (WCAG AA) des couleurs du thème clair et sombre.
+
+## Changement d'année scolaire
+
+*Administration > Calendrier* :
+- **Vacances officielles** : « Importer les vacances (zone A) » interroge les données ouvertes du ministère (data.education.gouv.fr, jeu `fr-en-calendrier-scolaire`) depuis le navigateur, affiche les périodes trouvées, puis les ajoute après confirmation. Si le site est injoignable ou si le calendrier n'est pas publié, un message l'indique et la saisie manuelle reste possible.
+- **Préparer la nouvelle année scolaire** : reporte le semainier de l'année en cours sur la nouvelle (même jour de la même semaine depuis la rentrée), sauf sur les vacances et jours fériés de la nouvelle année. Une fenêtre liste les vacances qui ne tombent plus aux mêmes semaines et les cases non reportées. Annulable.

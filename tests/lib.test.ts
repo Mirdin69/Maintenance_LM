@@ -300,3 +300,48 @@ describe('carrousel de semaines', () => {
     expect(skipped.map((o) => o.day)).toEqual(['2026-09-09']);
   });
 });
+
+describe('nouvelle année scolaire', () => {
+  const rec = (description: string, start_date: string, end_date: string, population: string | null = '-') => ({ description, start_date, end_date, population, zones: 'Zone A' });
+  it('lit les vacances de la zone A (reprise le lundi = veille retenue)', async () => {
+    const { parseZoneA } = await import('@/lib/newYear');
+    const list = parseZoneA([
+      rec('Vacances de la Toussaint', '2026-10-16T22:00:00+00:00', '2026-11-01T23:00:00+00:00'),
+      rec('Vacances de la Toussaint', '2026-10-16T22:00:00+00:00', '2026-11-01T23:00:00+00:00'),
+      rec('Rentrée scolaire des élèves', '2026-09-01T00:00:00+00:00', '2026-09-01T00:00:00+00:00'),
+      rec('Vacances de Noël', '2026-12-18', '2027-01-04', 'Enseignants'),
+      rec('Vacances de Noël', '2026-12-19', '2027-01-04'),
+    ]);
+    expect(list.map((p) => [p.label, p.start_date, p.end_date])).toEqual([
+      ['Vacances de la Toussaint', '2026-10-17', '2026-11-01'],
+      ['Vacances de Noël', '2026-12-19', '2027-01-03'],
+    ]);
+  });
+  it('signale une erreur claire si le ministère ne répond pas', async () => {
+    const { fetchZoneA } = await import('@/lib/newYear');
+    await expect(fetchZoneA(2027, (() => Promise.reject(new Error('net'))) as never)).rejects.toThrow(/data\.education\.gouv\.fr/);
+    await expect(fetchZoneA(2027, (() => Promise.resolve({ ok: true, json: async () => ({ results: [] }) })) as never)).rejects.toThrow(/Aucune vacance publiée/);
+  });
+  it('reporte les cases semaine par semaine, signale les vacances décalées', async () => {
+    const { planNewYear } = await import('@/lib/newYear');
+    const cell = (day: string, g: string, tp_id: string | null, label: string | null = null) => ({ day, group_code: g, tp_id, label, note: null, updated_by: null, updated_at: '' });
+    const per = (id: string, label: string, s: string, e: string) => ({ id, kind: 'vacances' as const, label, start_date: s, end_date: e });
+    const plan = planNewYear({
+      cells: [cell('2026-09-02', '2PB1.1', 'th0'), cell('2026-11-04', '2PB1.1', 'th1'), cell('2026-09-03', '2PB2', null, 'PFMP'), cell('2027-09-08', '2PB2', 'x')] as never,
+      periods: [
+        per('a', 'Vacances de la Toussaint', '2026-10-17', '2026-11-01'),
+        per('b', 'Vacances de la Toussaint', '2027-10-23', '2027-11-07'),
+        per('c', 'Vacances de Noël', '2026-12-19', '2027-01-03'),
+      ],
+      prev: { from: '2026-09-01', to: '2027-07-07' }, next: { from: '2027-09-01', to: '2028-07-07' }, includeLabels: true,
+    });
+    // 2027-08-30 est le lundi de la semaine de rentrée 2027 ; 2026-08-31 celui de 2026 : décalage de 364 jours
+    expect(plan.offsetDays).toBe(364);
+    expect(plan.ops.map((o) => [o.day, o.group, o.value])).toEqual([['2027-09-01', '2PB1.1', 'tp:th0'], ['2027-09-02', '2PB2', 'lab:PFMP']]);
+    expect(plan.kept).toBe(0);
+    // 2026-11-04 (+364) = 2027-11-03, pendant la Toussaint 2027 : non reporté
+    expect(plan.blocked).toMatchObject([{ day: '2027-11-03', group: '2PB1.1', why: 'Vacances de la Toussaint' }]);
+    expect(plan.diffs.map((d) => [d.label, d.status])).toEqual([['Vacances de la Toussaint', 'decale'], ['Vacances de Noël', 'absent']]);
+    expect(plan.noNewHolidays).toBe(false);
+  });
+});
