@@ -57,3 +57,12 @@ describe('couleurs de domaine choisies librement', () => {
     expect(css2).toContain("[data-theme='dark'] .dom-c-x");
   });
 });
+
+describe('impression des couleurs de domaine', () => {
+  it('force l’impression des fonds et des couleurs claires', async () => {
+    expect(css).toMatch(/@media print \{\s*\.sem, \.sem \*, \.wk, \.wk \*, \.swatch \{ -webkit-print-color-adjust: exact; print-color-adjust: exact; \}/);
+    for (const k of Object.keys(DOMAIN_COLORS)) expect(css).toContain(`:root:root:root .dom-${k} {`);
+    const { domainColorsCss } = await import('@/lib/domain');
+    expect(domainColorsCss({ ind: '#ff0000' })).toContain('@media print{\n:root:root:root .dom-ind{--cbg:#ff0000;');
+  });
+});

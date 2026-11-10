@@ -461,3 +461,26 @@ table.sem .dom, .dom { font-weight: bold; }
 .part-tag { font-weight: 400; font-size: 0.72rem; color: var(--muted, #666); }
 select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 2px; border: 1px dashed var(--line); background: transparent; color: inherit; }
 .pick select.in { padding: 1px 4px; font-size: 0.75rem; }
+
+/* Impression : les navigateurs suppriment les fonds par défaut ; on force les couleurs des domaines, toujours en thème clair */
+@media print {
+  .sem, .sem *, .wk, .wk *, .swatch { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root:root:root .dom-ind { --cbg: #dbe7f7; --cfg: #14305c; }
+  :root:root:root .dom-ter { --cbg: #e6e0f3; --cfg: #33225e; }
+  :root:root:root .dom-bat { --cbg: #fbe3cf; --cfg: #6b3410; }
+  :root:root:root .dom-tra { --cbg: #e6e8ec; --cfg: #2c3440; }
+  :root:root:root .dom-ate { --cbg: #dcefd9; --cfg: #1d4a1a; }
+  :root:root:root .dom-ann { --cbg: #f6e9b8; --cfg: #5a4500; }
+  :root:root:root .dom-pen { --cbg: #cfeee9; --cfg: #0d4a42; }
+  :root:root:root .dom-ten { --cbg: #f6d9e0; --cfg: #6a1630; }
+  :root:root:root .dom-hab { --cbg: #f8d4d0; --cfg: #7a1a12; }
+  :root:root:root .dom-rem { --cbg: #e8e1d2; --cfg: #4a3d1f; }
+  :root:root:root .dom-p1 { --cbg: #d3eef6; --cfg: #0b3f52; }
+  :root:root:root .dom-p2 { --cbg: #fadbea; --cfg: #6e1342; }
+  :root:root:root .dom-p3 { --cbg: #e9f2c2; --cfg: #3f4d0b; }
+  :root:root:root .dom-p4 { --cbg: #dcdcf8; --cfg: #25256b; }
+  :root:root:root .dom-p5 { --cbg: #eadccd; --cfg: #503118; }
+  :root:root:root .dom-p6 { --cbg: #d0f0dd; --cfg: #0f4a28; }
+  :root:root:root .dom-p7 { --cbg: #fcd9b8; --cfg: #6a2f00; }
+  :root:root:root .dom-p8 { --cbg: #d9dee8; --cfg: #232c40; }
+}

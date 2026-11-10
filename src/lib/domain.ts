@@ -117,6 +117,9 @@ export function domainColorsCss(map: Record<string, string>): string {
     ...rules.map(({ id, c }) => one(`:root:not([data-theme='light']) .dom-${id}`, c.dbg, c.dfg)),
     '}',
     ...rules.map(({ id, c }) => one(`:root[data-theme='dark'] .dom-${id}`, c.dbg, c.dfg)),
+    '@media print{',
+    ...rules.map(({ id, c }) => one(`:root:root:root .dom-${id}`, c.bg, c.fg)),
+    '}',
   ].join('\n');
 }
 
