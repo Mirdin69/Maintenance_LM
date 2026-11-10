@@ -12,6 +12,7 @@ const migration8 = readFileSync(new URL('../supabase/migrations/0008_idees.sql',
 const migration9 = readFileSync(new URL('../supabase/migrations/0009_demi_journees.sql', import.meta.url), 'utf8');
 const migration10 = readFileSync(new URL('../supabase/migrations/0010_plusieurs_cours.sql', import.meta.url), 'utf8');
 const migration11 = readFileSync(new URL('../supabase/migrations/0011_enseignants_binomes.sql', import.meta.url), 'utf8');
+const migration12 = readFileSync(new URL('../supabase/migrations/0012_suppression_tp.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -78,6 +79,7 @@ beforeAll(async () => {
   await db.exec(migration9);
   await db.exec(migration10);
   await db.exec(migration11);
+  await db.exec(migration12);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -670,5 +672,16 @@ describe('migration 0010 : plusieurs cours dans une demi-journée', () => {
     expect(c.teacher_ids).toEqual([]);
     expect(await fails(`update public.planning_cells set teacher_labels = array['a','b','c','d','e','f','g'] where day = '2026-11-03'`)).toMatch(/teachers_check/);
     expect(await fails(`insert into public.tps (title, level, pair_size) values ('X', 'Seconde', 5)`)).toMatch(/pair_size|check/);
+  });
+
+  it('supprimer un TP utilisé dans le semainier ne bloque plus (0012)', async () => {
+    await as('admin');
+    const [tp] = await sql(`insert into public.tps (title, level) values ('TP à supprimer', 'Seconde') returning id`);
+    await sql(`insert into public.planning_cells (day, group_code, tp_id) values ('2026-12-01', '2PB1.1', $1)`, [tp.id]);
+    await sql(`insert into public.planning_cells (day, group_code, tp_id, note) values ('2026-12-01', '2PB1.2', $1, 'Note')`, [tp.id]);
+    await sql(`delete from public.tps where id = $1`, [tp.id]);
+    expect(await sql(`select 1 from public.planning_cells where day = '2026-12-01' and group_code = '2PB1.1'`)).toHaveLength(0);
+    const [kept] = await sql(`select tp_id, note from public.planning_cells where day = '2026-12-01' and group_code = '2PB1.2'`);
+    expect(kept).toEqual({ tp_id: null, note: 'Note' });
   });
 });

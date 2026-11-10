@@ -323,6 +323,7 @@ function cascade(table: string, removed: Row[]) {
     T[t].forEach((r) => { if (ids.includes(r[col] as string)) { r[col] = null; changed = true; } });
     if (changed) notify(t);
   };
+  if (table === 'tps') drop('planning_cells', (r) => ids.includes(r.tp_id) && !r.label && !r.note);
   if (table === 'tps') nullify('planning_cells', 'tp_id');
   if (table === 'fiches') nullify('fiches', 'sequence_id');
   if (table === 'students') drop('progress', (r) => ids.includes(r.student_id));
