@@ -4,7 +4,7 @@ import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
 import { GROUP_CODES, ROOM_KINDS, levelOfGroup } from '@/lib/domain';
 import { addDays, fmtDayLong, fmtShort, iso, mondayOf, minToHM, parseISO, toMin } from '@/lib/dates';
-import { buildOccurrences, freeRooms, roomLoads } from '@/lib/occupancy';
+import { buildOccurrences, freeRooms, roomLoads, semainierOccurrences } from '@/lib/occupancy';
 import { sessionConflicts } from '@/lib/conflicts';
 import { Empty, Field, Options, PageHead } from '@/components/ui';
 import { WeekGrid, type GridBlock } from '@/components/WeekGrid';
@@ -19,9 +19,14 @@ export default function Occupancy() {
   const [group, setGroup] = useState('');
 
   const days = Array.from({ length: 5 }, (_, i) => iso(addDays(parseISO(weekStart), i)));
-  const { occs } = useMemo(
-    () => buildOccurrences(data.timetable_slots, data.sessions, days[0], days[4]),
-    [data.timetable_slots, data.sessions, days[0], days[4]], // eslint-disable-line react-hooks/exhaustive-deps
+  // Emploi du temps, séances datées, et salles renseignées dans le semainier de l'année
+  const withSemainier = (from: string, to: string) => {
+    const base = buildOccurrences(data.timetable_slots, data.sessions, from, to).occs;
+    return [...base, ...semainierOccurrences(data.planning_cells, tpById, base, from, to)];
+  };
+  const occs = useMemo(
+    () => withSemainier(days[0], days[4]),
+    [data.timetable_slots, data.sessions, data.planning_cells, data.tps, days[0], days[4]], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const rooms = data.rooms.filter((r) => r.active);
   const loads = roomLoads(rooms, occs, days);
@@ -34,7 +39,7 @@ export default function Occupancy() {
         start: o.start,
         end: o.end,
         title: o.groupCode ?? o.label ?? 'Réservé',
-        sub: who(o.teacherId, o.teacherLabel),
+        sub: o.source === 'semainier' ? `${who(o.teacherId, o.teacherLabel)} · semainier`.replace(/^ · /, '') : who(o.teacherId, o.teacherLabel),
         tone: o.groupCode ? `l-${levelOfGroup(o.groupCode) ?? 'Seconde'}` : 'res',
         tag: o.tpId ? tpById.get(o.tpId)?.code ?? undefined : undefined,
       }))
@@ -42,7 +47,7 @@ export default function Occupancy() {
 
   const startM = toMin(find.start);
   const endM = toMin(find.end);
-  const findDay = buildOccurrences(data.timetable_slots, data.sessions, find.date, find.date).occs;
+  const findDay = withSemainier(find.date, find.date);
   const free = endM > startM ? freeRooms(data.rooms, findDay, find.date, startM, endM, Number(find.seats) || 0) : [];
 
   const reserve = async (roomId: string, e: FormEvent) => {
@@ -51,6 +56,8 @@ export default function Occupancy() {
       { date: find.date, start: startM, end: endM, roomId, groupCode: group || null, teacherId: profile?.id ?? null },
       data.timetable_slots, data.sessions, data.rooms,
     );
+    const fromCell = findDay.find((o) => o.source === 'semainier' && o.roomId === roomId && o.start < endM && startM < o.end && !roomById.get(roomId)?.shared);
+    if (fromCell) issues.push(`Conflit de salle : cette salle est prévue au semainier pour ${fromCell.groupCode ?? 'un groupe'} ce jour-là.`);
     if (issues.length) {
       await act(() => Promise.reject(new Error(issues[0])));
       return;

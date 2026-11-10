@@ -1,11 +1,12 @@
 import { DAY_END, DAY_START } from './domain';
 import { eachDay, isoDow, parseISO, toMin } from './dates';
-import type { Room, Session, Slot } from './types';
+import { dayEnd, dayStart } from './schedule';
+import type { PlanningCell, Room, Session, Slot, Tp } from './types';
 
 /** Une occupation effective un jour donné (emploi du temps ou séance datée) */
 export interface Occ {
   key: string;
-  source: 'slot' | 'session';
+  source: 'slot' | 'session' | 'semainier';
   slotId: string | null;
   sessionId: string | null;
   date: string;
@@ -109,6 +110,36 @@ export function buildOccurrences(slots: Slot[], sessions: Session[], from: strin
   }
   occs.sort((a, b) => a.date.localeCompare(b.date) || a.start - b.start || a.end - b.end);
   return { occs, cancelled };
+}
+
+/**
+ * Occupations déduites du semainier de l'année : une case avec salle occupe cette salle sur sa demi-journée
+ * (matin, après-midi, ou les deux pour une journée entière). Une case n'est comptée que si le même groupe n'a pas déjà
+ * une occupation détaillée (emploi du temps ou séance datée) sur ces horaires : le détail l'emporte, sans double compte.
+ */
+export function semainierOccurrences(
+  cells: PlanningCell[], tpById: Map<string, Pick<Tp, 'teacher_id' | 'teacher_label'>>, existing: Occ[], from: string, to: string,
+): Occ[] {
+  const out: Occ[] = [];
+  for (const c of cells) {
+    if (!c.room_id || (!c.tp_id && !c.label) || c.day < from || c.day > to) continue;
+    const dow = isoDow(parseISO(c.day));
+    if (dow > 5) continue;
+    const spans: Array<['M' | 'A', number, number]> = [];
+    if (c.part !== 'A') spans.push(['M', dayStart(dow, 'M'), dayEnd('M')]);
+    if (c.part !== 'M') spans.push(['A', dayStart(dow, 'A'), dayEnd('A')]);
+    for (const [p, start, end] of spans) {
+      const detailed = existing.some((o) => o.date === c.day && o.groupCode === c.group_code && o.start < end && start < o.end);
+      if (detailed) continue;
+      const tp = c.tp_id ? tpById.get(c.tp_id) : undefined;
+      out.push({
+        key: `cell:${c.day}|${c.group_code}|${c.part}|${p}`, source: 'semainier', slotId: null, sessionId: null, date: c.day, start, end, roomId: c.room_id,
+        groupCode: c.group_code, teacherId: tp?.teacher_id ?? null, teacherLabel: tp?.teacher_label ?? null, label: c.label, tpId: c.tp_id, systemId: null,
+        status: 'planned', moved: false,
+      });
+    }
+  }
+  return out;
 }
 
 /** Durée totale couverte par des intervalles, sans compter deux fois les chevauchements */

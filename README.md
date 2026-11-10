@@ -79,6 +79,7 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Planning des TP** : exceptions d'un jour (annuler, déplacer de salle ou d'horaire, marquer réalisée) et réservations ponctuelles.
 - **Occupation** : taux par salle et par jour (8 h – 18 h), détail hebdomadaire, recherche de salle libre avec réservation.
 - **Conflits** refusés par la base : salle déjà occupée (sauf salle partagée), groupe ou enseignant déjà en cours. Un dépassement du nombre de postes d'un système est signalé sans bloquer.
+- **Semainier de l'année** : une case avec une salle occupe cette salle sur sa demi-journée (matin 8h40 ou 7h45 à 11h40, après-midi 13h10 à 18h). Elle compte dans le taux d'occupation, le détail de la salle (marqué « semainier ») et la recherche de salle libre. Si le même groupe a déjà un créneau ou une séance détaillée à ces heures, le détail l'emporte (pas de double compte).
 
 ## Élèves par fichier
 

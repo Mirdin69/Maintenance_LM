@@ -776,3 +776,18 @@ describe('catalogue des TP : recherche et tri', () => {
     expect(screen.getByRole('columnheader', { name: /Durée/ })).toHaveAttribute('aria-sort', 'descending');
   });
 });
+
+describe('occupation des salles et semainier', () => {
+  it('la salle renseignée dans le semainier apparaît comme occupée et n’est plus proposée', async () => {
+    const { mondayOf, iso, addDays } = await import('@/lib/dates');
+    const monday = iso(addDays(mondayOf(new Date()), 7)); // lundi prochain : pas d'autre séance dans les données de démonstration
+    await openWith('admin', 'occupation', async () => {
+      const rooms = await api.select<{ id: string; name: string }>('rooms');
+      const room = rooms.find((r) => r.name === 'B202')!;
+      await api.upsert('planning_cells', [{ day: monday, group_code: 'TPB1.1', part: 'M', label: 'REM', room_id: room.id }], 'day,group_code,part');
+    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Suivante →' }));
+    const row = (await screen.findByRole('button', { name: 'B202' })).closest('tr')!;
+    await waitFor(() => expect(within(row).getAllByRole('cell')[1].textContent).toBe('3 h')); // 8h40 à 11h40
+  });
+});

@@ -294,3 +294,29 @@ describe('catalogue des TP : recherche, sélection et tri', () => {
     expect(codes('teacher' as never, 1).at(-1)).toBe('TP3');
   });
 });
+
+describe('occupation des salles d’après le semainier de l’année', () => {
+  const c = (day: string, g: string, part: 'J' | 'M' | 'A', room: string | null, tp: string | null = 'a', label: string | null = null) =>
+    ({ day, group_code: g, part, room_id: room, tp_id: tp, label, note: null, updated_by: null, updated_at: '' }) as never;
+  const tps = new Map([['a', { teacher_id: 't1', teacher_label: null }]]);
+  it('une case du lundi matin avec salle occupe la salle de 8h40 à 11h40, l’après-midi de 13h10 à 18h', async () => {
+    const { semainierOccurrences } = await import('@/lib/occupancy');
+    const m = semainierOccurrences([c('2026-11-16', 'G1', 'M', 'r1'), c('2026-11-17', 'G1', 'A', 'r1')], tps, [], '2026-11-16', '2026-11-20');
+    expect(m.map((o) => [o.date, o.start, o.end, o.roomId, o.source])).toEqual([
+      ['2026-11-16', 8 * 60 + 40, 11 * 60 + 40, 'r1', 'semainier'], ['2026-11-17', 13 * 60 + 10, 18 * 60, 'r1', 'semainier'],
+    ]);
+    expect(m[0].teacherId).toBe('t1');
+  });
+  it('une journée entière occupe le matin et l’après-midi ; sans salle, ou hors période, rien', async () => {
+    const { semainierOccurrences } = await import('@/lib/occupancy');
+    expect(semainierOccurrences([c('2026-11-18', 'G1', 'J', 'r1')], tps, [], '2026-11-16', '2026-11-20')).toHaveLength(2);
+    expect(semainierOccurrences([c('2026-11-18', 'G1', 'J', null)], tps, [], '2026-11-16', '2026-11-20')).toHaveLength(0);
+    expect(semainierOccurrences([c('2026-11-30', 'G1', 'J', 'r1')], tps, [], '2026-11-16', '2026-11-20')).toHaveLength(0);
+    expect(semainierOccurrences([c('2026-11-18', 'G1', 'J', 'r1', null, null)], tps, [], '2026-11-16', '2026-11-20')).toHaveLength(0);
+  });
+  it('ne compte pas deux fois un groupe déjà détaillé par l’emploi du temps ou une séance', async () => {
+    const { semainierOccurrences } = await import('@/lib/occupancy');
+    const detailed = [{ date: '2026-11-16', groupCode: 'G1', start: 9 * 60, end: 10 * 60 }] as never;
+    expect(semainierOccurrences([c('2026-11-16', 'G1', 'M', 'r1'), c('2026-11-16', 'G2', 'M', 'r1')], tps, detailed, '2026-11-16', '2026-11-16').map((o) => o.groupCode)).toEqual(['G2']);
+  });
+});
