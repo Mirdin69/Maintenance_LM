@@ -10,6 +10,7 @@ const migration6 = readFileSync(new URL('../supabase/migrations/0006_domaines.sq
 const migration7 = readFileSync(new URL('../supabase/migrations/0007_rgpd.sql', import.meta.url), 'utf8');
 const migration8 = readFileSync(new URL('../supabase/migrations/0008_idees.sql', import.meta.url), 'utf8');
 const migration9 = readFileSync(new URL('../supabase/migrations/0009_demi_journees.sql', import.meta.url), 'utf8');
+const migration10 = readFileSync(new URL('../supabase/migrations/0010_plusieurs_cours.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -74,6 +75,7 @@ beforeAll(async () => {
   await db.exec(migration7);
   await db.exec(migration8);
   await db.exec(migration9);
+  await db.exec(migration10);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -633,5 +635,26 @@ describe('migration 0009 : demi-journées et salle dans le semainier', () => {
     await as('admin');
     const keys = (await sql("select row_key from public.audit_log where table_name = 'planning_cells' and row_key like '2026-12-07/%'")).map((r: { row_key: string }) => r.row_key);
     expect(keys).toEqual(expect.arrayContaining(['2026-12-07/2PB1.1/M', '2026-12-07/2PB1.1/A']));
+  });
+});
+
+describe('migration 0010 : plusieurs cours dans une demi-journée', () => {
+  it('rejoue la migration sans erreur', async () => {
+    await db.exec('reset role');
+    await db.exec(migration10);
+  });
+  it('autorise jusqu’à quatre cours par demi-journée, refuse un rang en double ou hors limites', async () => {
+    await as('prof');
+    for (const n of [1, 2, 3]) expect(await fails(`insert into public.planning_cells (day, group_code, part, seq, label) values ('2027-01-11', '2PB2', 'M', ${n}, 'cours ${n}')`)).toBeNull();
+    expect(await fails("insert into public.planning_cells (day, group_code, part, seq, label) values ('2027-01-11', '2PB2', 'M', 2, 'doublon')")).toMatch(/duplicate/);
+    expect(await fails("insert into public.planning_cells (day, group_code, part, seq, label) values ('2027-01-11', '2PB2', 'M', 5, 'trop')")).toMatch(/check/);
+    expect(await fails("insert into public.planning_cells (day, group_code, part, seq, label) values ('2027-01-11', '2PB2', 'A', 1, 'après-midi différent')")).toBeNull();
+    expect(await fails("insert into public.planning_cells (day, group_code, label) values ('2027-01-12', '2PB2', 'sans rang')")).toBeNull();
+    expect((await sql("select seq from public.planning_cells where day = '2027-01-12'"))[0].seq).toBe(1);
+  });
+  it('le journal d’audit garde la clé historique pour le premier cours et ajoute le rang ensuite', async () => {
+    await as('admin');
+    const keys = (await sql("select row_key from public.audit_log where table_name = 'planning_cells' and row_key like '2027-01-11/%'")).map((r: { row_key: string }) => r.row_key);
+    expect(keys).toEqual(expect.arrayContaining(['2027-01-11/2PB2/M', '2027-01-11/2PB2/M/2', '2027-01-11/2PB2/M/3', '2027-01-11/2PB2/A']));
   });
 });

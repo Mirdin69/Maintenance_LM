@@ -121,19 +121,31 @@ export function semainierOccurrences(
   cells: PlanningCell[], tpById: Map<string, Pick<Tp, 'teacher_id' | 'teacher_label'>>, existing: Occ[], from: string, to: string,
 ): Occ[] {
   const out: Occ[] = [];
-  for (const c of cells) {
-    if (!c.room_id || (!c.tp_id && !c.label) || c.day < from || c.day > to) continue;
+  // Plusieurs cours dans une demi-journée : elle est partagée à parts égales, dans l'ordre des rangs
+  const filled = cells.filter((c) => c.tp_id || c.label);
+  const rank = new Map<string, PlanningCell[]>();
+  for (const c of filled) {
+    const k = `${c.day}|${c.group_code}|${c.part}`;
+    rank.set(k, [...(rank.get(k) ?? []), c].sort((x, y) => (x.seq ?? 1) - (y.seq ?? 1)));
+  }
+  for (const c of filled) {
+    if (!c.room_id || c.day < from || c.day > to) continue;
     const dow = isoDow(parseISO(c.day));
     if (dow > 5) continue;
+    const mates = rank.get(`${c.day}|${c.group_code}|${c.part}`)!;
+    const i = mates.indexOf(c);
     const spans: Array<['M' | 'A', number, number]> = [];
-    if (c.part !== 'A') spans.push(['M', dayStart(dow, 'M'), dayEnd('M')]);
-    if (c.part !== 'M') spans.push(['A', dayStart(dow, 'A'), dayEnd('A')]);
-    for (const [p, start, end] of spans) {
+    if (c.part !== 'A') spans.push(['M', dayStart(dow, 'M'), dayEnd('M', dow)]);
+    if (c.part !== 'M') spans.push(['A', dayStart(dow, 'A'), dayEnd('A', dow)]);
+    for (const [p, a0, b0] of spans) {
+      const step = (b0 - a0) / mates.length;
+      const start = Math.round((a0 + step * i) / 5) * 5;
+      const end = i === mates.length - 1 ? b0 : Math.round((a0 + step * (i + 1)) / 5) * 5;
       const detailed = existing.some((o) => o.date === c.day && o.groupCode === c.group_code && o.start < end && start < o.end);
       if (detailed) continue;
       const tp = c.tp_id ? tpById.get(c.tp_id) : undefined;
       out.push({
-        key: `cell:${c.day}|${c.group_code}|${c.part}|${p}`, source: 'semainier', slotId: null, sessionId: null, date: c.day, start, end, roomId: c.room_id,
+        key: `cell:${c.day}|${c.group_code}|${c.part}|${c.seq ?? 1}|${p}`, source: 'semainier', slotId: null, sessionId: null, date: c.day, start, end, roomId: c.room_id,
         groupCode: c.group_code, teacherId: tp?.teacher_id ?? null, teacherLabel: tp?.teacher_label ?? null, label: c.label, tpId: c.tp_id, systemId: null,
         status: 'planned', moved: false,
       });

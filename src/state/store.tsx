@@ -2,6 +2,7 @@ import { saving } from './saving';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { displayName, domainColorsCss, parseCustomDomains, parseDomainColors, registerDomainColors, registerDomains } from '@/lib/domain';
+import { parseSchedule, registerSchedule } from '@/lib/schedule';
 import { useToast, friendlyError } from './toast';
 import type { DataSet, Profile, Room, System, TableName, Tp } from '@/lib/types';
 
@@ -99,6 +100,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Les domaines ajoutés par un gestionnaire sont enregistrés avant que les pages ne s'affichent
     registerDomains(parseCustomDomains(data.settings.find((x) => x.key === 'custom_domains')?.value));
     registerDomainColors(parseDomainColors(data.settings.find((x) => x.key === 'domain_colors')?.value));
+    registerSchedule(parseSchedule(data.settings.find((x) => x.key === 'schedule')?.value));
     return {
       data, loading, error, reload,
       roomById: new Map(data.rooms.map((r) => [r.id, r])),

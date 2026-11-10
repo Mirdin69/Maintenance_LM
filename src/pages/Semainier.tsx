@@ -6,7 +6,7 @@ import { LEVELS, byText, domainClass, domainLabel, levelOfGroup } from '@/lib/do
 import { GROUP_CODES } from '@/lib/domain';
 import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf, parseISO, schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { isoWeek, monthBlocks, partsFor, periodOn, weekdaysFor } from '@/lib/calendar';
-import { CONFLICT_COLS, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, hoursOf, indexCells, isMine, rowOfOp, weekNeeds, type CellOp } from '@/lib/semainier';
+import { CONFLICT_COLS, MAX_SEQ, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, hoursOf, indexCells, isMine, rowOfOp, weekNeeds, type CellOp } from '@/lib/semainier';
 import { usePersisted } from '@/hooks/usePersisted';
 import { useMedia } from '@/hooks/useMedia';
 import type { Level, Part, PlanningCell, Tp } from '@/lib/types';
@@ -74,12 +74,12 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
   /** Écrit des cases et permet d'annuler l'ensemble d'un geste */
   const apply = (ops: CellOp[], ok?: string) => {
     if (!ops.length) return;
-    const before = ops.map((o) => ({ o, prev: cells.get(cellKey(o.day, o.group, o.part ?? 'J')) }));
+    const before = ops.map((o) => ({ o, prev: cells.get(cellKey(o.day, o.group, o.part ?? 'J', o.seq ?? 1)) }));
     const run = async () => {
       for (const { o } of before) {
         const patch = cellPatch(o.value);
-        const ex = cells.get(cellKey(o.day, o.group, o.part ?? 'J'));
-        const key = { day: o.day, group_code: o.group, part: o.part ?? 'J' };
+        const ex = cells.get(cellKey(o.day, o.group, o.part ?? 'J', o.seq ?? 1));
+        const key = { day: o.day, group_code: o.group, part: o.part ?? 'J', seq: o.seq ?? 1 };
         if (!patch.tp_id && !patch.label) {
           if (ex?.note) await api.update('planning_cells', key, { ...patch, room_id: null });
           else if (ex) await api.remove('planning_cells', key);
@@ -90,29 +90,29 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
     };
     const undo = async () => {
       for (const { o, prev } of before) {
-        if (prev) await api.upsert('planning_cells', [{ day: prev.day, group_code: prev.group_code, part: prev.part ?? 'J', room_id: prev.room_id ?? null, tp_id: prev.tp_id, label: prev.label, note: prev.note }], CONFLICT_COLS);
-        else await api.remove('planning_cells', { day: o.day, group_code: o.group, part: o.part ?? 'J' });
+        if (prev) await api.upsert('planning_cells', [{ day: prev.day, group_code: prev.group_code, part: prev.part ?? 'J', seq: prev.seq ?? 1, room_id: prev.room_id ?? null, tp_id: prev.tp_id, label: prev.label, note: prev.note }], CONFLICT_COLS);
+        else await api.remove('planning_cells', { day: o.day, group_code: o.group, part: o.part ?? 'J', seq: o.seq ?? 1 });
       }
     };
     void act(run, { ok, tables: ['planning_cells'], undo });
   };
-  const change = (day: string, group: string, part: Part, value: string) => apply([{ day, group, part, value }], 'Case modifiée.');
+  const change = (day: string, group: string, part: Part, seq: number, value: string) => apply([{ day, group, part, seq, value }], 'Case modifiée.');
 
   /** Change la salle d'une case (annulable) */
   const setRoom = (c: PlanningCell, room: string) =>
-    void act(() => api.update('planning_cells', { day: c.day, group_code: c.group_code, part: c.part ?? 'J' }, { room_id: room || null }), {
+    void act(() => api.update('planning_cells', { day: c.day, group_code: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1 }, { room_id: room || null }), {
       ok: room ? 'Salle modifiée.' : 'Salle retirée.', tables: ['planning_cells'],
-      undo: () => api.update('planning_cells', { day: c.day, group_code: c.group_code, part: c.part ?? 'J' }, { room_id: c.room_id ?? null }),
+      undo: () => api.update('planning_cells', { day: c.day, group_code: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1 }, { room_id: c.room_id ?? null }),
     });
 
   const drop = (e: React.DragEvent, day: string, group: string, part: Part) => {
     e.preventDefault();
-    const [sd, sg, sp = 'J'] = e.dataTransfer.getData('text/plain').split('|');
-    const src = cells.get(cellKey(sd, sg, sp as Part));
+    const [sd, sg, sp = 'J', sq = '1'] = e.dataTransfer.getData('text/plain').split('|');
+    const src = cells.get(cellKey(sd, sg, sp as Part, Number(sq)));
     const value = cellValue(src);
-    if (!sd || !sg || !value || (sd === day && sg === group && sp === part)) return;
-    const copy: CellOp = { day, group, part, value, room: src?.room_id ?? null };
-    apply(e.shiftKey ? [copy, { day: sd, group: sg, part: sp as Part, value: '' }] : [copy], e.shiftKey ? 'Case déplacée.' : 'Case copiée.');
+    if (!sd || !sg || !value || (sd === day && sg === group && sp === part && sq === '1')) return;
+    const copy: CellOp = { day, group, part, seq: 1, value, room: src?.room_id ?? null };
+    apply(e.shiftKey ? [copy, { day: sd, group: sg, part: sp as Part, seq: Number(sq), value: '' }] : [copy], e.shiftKey ? 'Case déplacée.' : 'Case copiée.');
   };
 
   const rooms = data.rooms.filter((r) => r.active);
@@ -121,6 +121,13 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
   const partsOf = (d: string): Part[] => {
     const conf = dayParts[isoDow(parseISO(d))] ?? ['J'];
     return PARTS.filter((p) => conf.includes(p) || groups.some((g) => cells.has(cellKey(d, g, p))));
+  };
+  /** Cours visibles dans une demi-journée : ceux qui existent, plus ceux que l'on vient d'ajouter avec « + cours » */
+  const [more, setMore] = useState<Record<string, number>>({});
+  const seqsOf = (d: string, g: string, part: Part) => {
+    let max = 1;
+    for (let s = 2; s <= MAX_SEQ; s++) if (cells.has(cellKey(d, g, part, s))) max = s;
+    return Math.max(max, more[`${d}|${g}|${part}`] ?? 1);
   };
 
   const [copyFrom, setCopyFrom] = useState(() => iso(mondayOf(new Date())));
@@ -212,36 +219,54 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
                     <td className="k">{DAY_SHORT[dow - 1]}{part !== 'J' && !p && <span className="part-tag"> {part === 'M' ? 'matin' : 'ap.-midi'}</span>}</td>
                     <td className="k">{pi === 0 ? parseISO(d).getDate() : ''}</td>
                     {p ? <td colSpan={groups.length}>{p.label}</td> : groups.map((g) => {
-                      const c = cells.get(cellKey(d, g, part));
-                      const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
-                      const value = cellValue(c);
-                      const known = !!c?.label && SPECIAL_LABELS.includes(c.label);
-                      const where = `${g}, ${DAY_LONG[dow - 1]} ${fmtShort(d)}${part === 'J' ? '' : ` ${PART_LABEL[part].toLowerCase()}`}`;
+                      const n = seqsOf(d, g, part);
+                      const mkey = `${d}|${g}|${part}`;
+                      const mine = onlyMine && Array.from({ length: n }, (_, i) => cells.get(cellKey(d, g, part, i + 1))).some((c) => c?.tp_id && isMine(tpById.get(c.tp_id), profile));
                       return (
-                        <td key={g} className={`${tp ? `cc ${domainClass(tp.domain)}` : ''} ${onlyMine && isMine(tp, profile) ? 'mine' : ''}`}
+                        <td key={g} className={mine ? 'mine' : ''}
                           onDragOver={canWrite ? (e) => e.preventDefault() : undefined} onDrop={canWrite ? (e) => drop(e, d, g, part) : undefined}>
-                          {canWrite && value && <span className="grip no-print" draggable aria-hidden="true" title="Glisser pour copier (Maj : déplacer)"
-                            onDragStart={(e) => { e.dataTransfer.setData('text/plain', `${d}|${g}|${part}`); e.dataTransfer.effectAllowed = 'copyMove'; }}>⠿</span>}
-                          {warnings.get(cellKey(d, g, part)) && <span className="cell-warn" role="img" aria-label={`Attention : ${warnings.get(cellKey(d, g, part))!.join(' ; ')}`} title={warnings.get(cellKey(d, g, part))!.join('\n')}>⚠</span>}
-                          <select className={`pc ${tp ? '' : value ? 'lab' : 'empty'}`} value={value} disabled={!canWrite}
-                            aria-label={where} onChange={(e) => change(d, g, part, e.target.value)}>
-                            <option value="">—</option>
-                            {c?.tp_id && !tp && <option value={`tp:${c.tp_id}`}>(TP d’un autre niveau)</option>}
-                            <optgroup label="TP">{tps.map((t) => <option key={t.id} value={`tp:${t.id}`}>{t.code ?? t.title}</option>)}</optgroup>
-                            <optgroup label="Autres">
-                              {SPECIAL_LABELS.map((l) => <option key={l} value={`lab:${l}`}>{l}</option>)}
-                              {c?.label && !known && <option value={`lab:${c.label}`}>{c.label}</option>}
-                            </optgroup>
-                          </select>
-                          {c && value && (canWrite ? (
-                            <select className="pc-room" value={c.room_id ?? ''} aria-label={`Salle, ${where}`} onChange={(e) => setRoom(c, e.target.value)}>
-                              <option value="">Salle…</option>
-                              {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                              {c.room_id && !rooms.some((r) => r.id === c.room_id) && <option value={c.room_id}>{roomName(c.room_id)}</option>}
-                            </select>
-                          ) : c.room_id ? <span className="who">{roomName(c.room_id)}</span> : null)}
-                          {tp && <span className="who">{teacherOf(tp)}</span>}
-                          {c?.note && <span className="who">{c.note}</span>}
+                          {Array.from({ length: n }, (_, i) => i + 1).map((seq) => {
+                            const c = cells.get(cellKey(d, g, part, seq));
+                            const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
+                            const value = cellValue(c);
+                            const known = !!c?.label && SPECIAL_LABELS.includes(c.label);
+                            const where = `${g}, ${DAY_LONG[dow - 1]} ${fmtShort(d)}${part === 'J' ? '' : ` ${PART_LABEL[part].toLowerCase()}`}${n > 1 ? `, cours ${seq}` : ''}`;
+                            const warn = warnings.get(cellKey(d, g, part, seq));
+                            return (
+                              <div key={seq} className={`course ${tp ? `cc ${domainClass(tp.domain)}` : ''}`}>
+                                {canWrite && value && <span className="grip no-print" draggable aria-hidden="true" title="Glisser pour copier (Maj : déplacer)"
+                                  onDragStart={(e) => { e.dataTransfer.setData('text/plain', `${d}|${g}|${part}|${seq}`); e.dataTransfer.effectAllowed = 'copyMove'; }}>⠿</span>}
+                                {warn && <span className="cell-warn" role="img" aria-label={`Attention : ${warn.join(' ; ')}`} title={warn.join('\n')}>⚠</span>}
+                                <select className={`pc ${tp ? '' : value ? 'lab' : 'empty'}`} value={value} disabled={!canWrite}
+                                  aria-label={where} onChange={(e) => change(d, g, part, seq, e.target.value)}>
+                                  <option value="">—</option>
+                                  {c?.tp_id && !tp && <option value={`tp:${c.tp_id}`}>(TP d’un autre niveau)</option>}
+                                  <optgroup label="TP">{tps.map((t) => <option key={t.id} value={`tp:${t.id}`}>{t.code ?? t.title}</option>)}</optgroup>
+                                  <optgroup label="Autres">
+                                    {SPECIAL_LABELS.map((l) => <option key={l} value={`lab:${l}`}>{l}</option>)}
+                                    {c?.label && !known && <option value={`lab:${c.label}`}>{c.label}</option>}
+                                  </optgroup>
+                                </select>
+                                {c && value && (canWrite ? (
+                                  <select className="pc-room" value={c.room_id ?? ''} aria-label={`Salle, ${where}`} onChange={(e) => setRoom(c, e.target.value)}>
+                                    <option value="">Salle…</option>
+                                    {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                    {c.room_id && !rooms.some((r) => r.id === c.room_id) && <option value={c.room_id}>{roomName(c.room_id)}</option>}
+                                  </select>
+                                ) : c.room_id ? <span className="who">{roomName(c.room_id)}</span> : null)}
+                                {tp && <span className="who">{teacherOf(tp)}</span>}
+                                {c?.note && <span className="who">{c.note}</span>}
+                                {canWrite && seq > 1 && (
+                                  <button type="button" className="btn ghost sm no-print course-del" aria-label={`Retirer le cours ${seq}, ${g}, ${fmtShort(d)}`}
+                                    onClick={() => { if (value || c?.note) change(d, g, part, seq, ''); if (seq === n) setMore((m) => ({ ...m, [mkey]: Math.max(1, n - 1) })); }}>✕</button>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {canWrite && n < MAX_SEQ && cellValue(cells.get(cellKey(d, g, part, n))) && (
+                            <button type="button" className="btn ghost sm no-print course-add" aria-label={`Ajouter un cours, ${g}, ${fmtShort(d)}${part === 'J' ? '' : ` ${PART_LABEL[part].toLowerCase()}`}`}
+                              onClick={() => setMore((m) => ({ ...m, [mkey]: n + 1 }))}>+ cours</button>
+                          )}
                         </td>
                       );
                     })}
@@ -272,7 +297,13 @@ function Week({ groups, cells, weekdays, dayParts, tpById, teacherOf }: CommonPr
   const cols = days.flatMap((d) => {
     const conf = dayParts[isoDow(parseISO(d))] ?? ['J'];
     const parts = PARTS.filter((p) => conf.includes(p) || groups.some((g) => cells.has(cellKey(d, g, p))));
-    return parts.map((part, i) => ({ d, part, first: i === 0, span: parts.length }));
+    // Une colonne par cours : une demi-journée avec plusieurs cours en compte plusieurs
+    const cs = parts.flatMap((part) => {
+      let max = 1;
+      for (const g of groups) for (let s = 2; s <= MAX_SEQ; s++) if (cells.has(cellKey(d, g, part, s))) max = Math.max(max, s);
+      return Array.from({ length: max }, (_, i) => ({ d, part, seq: i + 1, multi: max > 1 }));
+    });
+    return cs.map((c, i) => ({ ...c, first: i === 0, span: cs.length }));
   });
   const end = allDays[allDays.length - 1];
 
@@ -300,16 +331,16 @@ function Week({ groups, cells, weekdays, dayParts, tpById, teacherOf }: CommonPr
         {groups.map((g) => (
           <div key={g} className="scroll">
             <table className="wk">
-              <thead><tr><th>{g}</th>{cols.map(({ d, part }) => <th key={d + part}>{DAY_LONG[isoDow(parseISO(d)) - 1]}<br /><span className="small">{fmtShort(d)}{part !== 'J' && ` · ${PART_LABEL[part].toLowerCase()}`}</span></th>)}</tr></thead>
+              <thead><tr><th>{g}</th>{cols.map(({ d, part, seq, multi }) => <th key={d + part + seq}>{DAY_LONG[isoDow(parseISO(d)) - 1]}<br /><span className="small">{fmtShort(d)}{part !== 'J' && ` · ${PART_LABEL[part].toLowerCase()}`}{multi && ` · cours ${seq}`}</span></th>)}</tr></thead>
               <tbody>
                 {(['Domaine', 'Enseignant', 'Salle', 'TP / activité', 'Objectif', 'Compétences'] as const).map((row, ri) => (
                   <tr key={row}>
                     <th className="row-h">{row}</th>
-                    {cols.map(({ d, part, first, span }) => {
-                      const k = d + part;
+                    {cols.map(({ d, part, seq, first, span }) => {
+                      const k = d + part + seq;
                       const p = periodOn(d, data.calendar_periods);
                       if (p) return ri === 0 && first ? <td key={k} className="dim" rowSpan={6} colSpan={span}>{p.label}</td> : null;
-                      const c = cells.get(cellKey(d, g, part));
+                      const c = cells.get(cellKey(d, g, part, seq));
                       const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
                       if (onlyMine && !isMine(tp, profile)) return <td key={k} className="dim">{ri === 0 ? '·' : ''}</td>;
                       if (ri === 2) return <td key={k} className={tp ? `dom sub ${domainClass(tp.domain)}` : ''}>{c && (tp || c.label) ? roomName(c.room_id) : ''}</td>;
@@ -336,7 +367,7 @@ function Mine({ cells, tpById }: { cells: PlanningCell[]; tpById: Map<string, Tp
   const { data } = useStore();
   const today = iso(new Date());
   const mine = useMemo(
-    () => cells.filter((c) => isMine(c.tp_id ? tpById.get(c.tp_id) : undefined, profile)).sort((a, b) => a.day.localeCompare(b.day) || (a.part ?? 'J').localeCompare(b.part ?? 'J') || a.group_code.localeCompare(b.group_code)),
+    () => cells.filter((c) => isMine(c.tp_id ? tpById.get(c.tp_id) : undefined, profile)).sort((a, b) => a.day.localeCompare(b.day) || (a.part ?? 'J').localeCompare(b.part ?? 'J') || (a.seq ?? 1) - (b.seq ?? 1) || a.group_code.localeCompare(b.group_code)),
     [cells, tpById, profile],
   );
   const upcoming = mine.filter((c) => c.day >= today && !periodOn(c.day, data.calendar_periods));
@@ -354,7 +385,7 @@ function Mine({ cells, tpById }: { cells: PlanningCell[]; tpById: Map<string, Tp
             <thead><tr><th>Date</th><th>Groupe</th><th>Salle</th><th>TP</th><th>Objectif</th></tr></thead>
             <tbody>{list.map((c) => {
               const tp = tpById.get(c.tp_id!)!;
-              return <tr key={cellKey(c.day, c.group_code, c.part ?? 'J')}>
+              return <tr key={cellKey(c.day, c.group_code, c.part ?? 'J', c.seq ?? 1)}>
                 <td>{DAY_LONG[isoDow(parseISO(c.day)) - 1]} {fmtDate(c.day)}{c.part && c.part !== 'J' ? ` (${PART_LABEL[c.part].toLowerCase()})` : ''}</td><td>{c.group_code}</td>
                 <td>{data.rooms.find((r) => r.id === c.room_id)?.name ?? ''}</td>
                 <td><Chip tone="info">{tp.code ?? '—'}</Chip> {tp.title}</td><td className="small">{tp.objective}</td>

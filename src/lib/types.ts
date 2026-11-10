@@ -206,6 +206,8 @@ export interface PlanningCell {
   day: string;
   group_code: string;
   part: Part;
+  /** Rang du cours dans la demi-journée (1 par défaut, jusqu'à 4) */
+  seq: number;
   room_id: string | null;
   tp_id: string | null;
   label: string | null;

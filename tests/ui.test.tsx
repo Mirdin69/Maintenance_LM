@@ -667,7 +667,7 @@ describe('couleurs des domaines', () => {
   it('colore toute la case du cours dans le semainier', async () => {
     await open('prof', 'semainier');
     const cell = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ })).find((c) => (c as HTMLSelectElement).value.startsWith('tp:'))!;
-    expect(cell.closest('td')?.className).toMatch(/cc dom-/);
+    expect(cell.closest('.course')?.className).toMatch(/cc dom-/);
   });
 });
 
@@ -789,5 +789,33 @@ describe('occupation des salles et semainier', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Suivante →' }));
     const row = (await screen.findByRole('button', { name: 'B202' })).closest('tr')!;
     await waitFor(() => expect(within(row).getAllByRole('cell')[1].textContent).toBe('3 h')); // 8h40 à 11h40
+  });
+});
+
+describe('horaires de TP et plusieurs cours', () => {
+  it('un gestionnaire règle les horaires par jour retenu dans le calendrier', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Horaires de TP' }));
+    const table = await screen.findByRole('table', { name: 'Horaires par jour' });
+    expect(within(table).getByText('lundi', { exact: false })).toBeInTheDocument();
+    const debut = screen.getByLabelText('lundi matin, début') as HTMLInputElement;
+    expect(debut.value).toBe('08:40');
+    fireEvent.change(debut, { target: { value: '09:00' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer les horaires' }));
+    expect(await screen.findByText('Horaires enregistrés.')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('lundi matin, fin'), { target: { value: '08:00' } });
+    expect(await screen.findByRole('alert')).toHaveTextContent(/la fin doit être après le début/);
+    expect(screen.getByRole('button', { name: 'Enregistrer les horaires' })).toBeDisabled();
+  });
+  it('permet d’ajouter un deuxième cours dans une demi-journée du semainier', async () => {
+    await open('prof', 'semainier');
+    const first = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ })).find((c) => (c as HTMLSelectElement).value.startsWith('tp:'))!;
+    const where = first.getAttribute('aria-label')!;
+    await userEvent.click(screen.getAllByRole('button', { name: /^Ajouter un cours, 2PB1\.1/ })[0]);
+    const second = await screen.findAllByRole('combobox', { name: /, cours 2$/ });
+    expect(second.length).toBeGreaterThan(0);
+    await userEvent.selectOptions(second[0], 'Évaluation');
+    expect(await screen.findByText('Case modifiée.')).toBeInTheDocument();
+    expect(where).toMatch(/^2PB1\.1,/);
   });
 });

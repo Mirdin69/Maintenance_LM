@@ -15,7 +15,7 @@ const PK: Record<string, string[]> = {
   progress: ['student_id', 'tp_id'],
   teacher_groups: ['profile_id', 'group_code'],
   groups: ['code'],
-  planning_cells: ['day', 'group_code', 'part'],
+  planning_cells: ['day', 'group_code', 'part', 'seq'],
   settings: ['key'],
 };
 

@@ -1,7 +1,7 @@
 import type { AuditEntry } from './types';
 import type { Match, Row } from './apiTypes';
 
-const PK: Record<string, string[]> = { planning_cells: ['day', 'group_code', 'part'] };
+const PK: Record<string, string[]> = { planning_cells: ['day', 'group_code', 'part', 'seq'] };
 const keysOf = (table: string) => PK[table] ?? ['id'];
 
 export const TABLE_LABEL: Record<string, string> = {
@@ -12,7 +12,7 @@ export const TABLE_LABEL: Record<string, string> = {
 /** Intitulé lisible de la ligne concernée */
 export function entryLabel(e: AuditEntry): string {
   const d = (e.new_data ?? e.old_data ?? {}) as Record<string, unknown>;
-  if (e.table_name === 'planning_cells') return `${d.group_code} · ${d.day}${d.part && d.part !== 'J' ? (d.part === 'M' ? ' matin' : ' après-midi') : ''}`;
+  if (e.table_name === 'planning_cells') return `${d.group_code} · ${d.day}${d.part && d.part !== 'J' ? (d.part === 'M' ? ' matin' : ' après-midi') : ''}${Number(d.seq) > 1 ? ` (cours ${d.seq})` : ''}`;
   return String(d.name ?? d.title ?? d.item ?? d.label ?? e.row_key ?? '');
 }
 

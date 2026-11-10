@@ -15,14 +15,17 @@ export const SPECIAL_LABELS = [
 export const PARTS: readonly Part[] = ['J', 'M', 'A'];
 export const PART_LABEL: Record<Part, string> = { J: 'Journée', M: 'Matin', A: 'Après-midi' };
 
-export const cellKey = (day: string, group: string, part: Part = 'J') => `${day}|${group}|${part}`;
+/** Nombre maximal de cours dans une même demi-journée */
+export const MAX_SEQ = 4;
+/** Clé d'une case ; le premier cours de la demi-journée garde la clé « jour|groupe|partie » */
+export const cellKey = (day: string, group: string, part: Part = 'J', seq = 1) => `${day}|${group}|${part}${seq > 1 ? `|${seq}` : ''}`;
 /** Deux parties de journée se chevauchent si l'une est la journée entière, ou si elles sont identiques */
 export const partsOverlap = (a: Part, b: Part) => a === 'J' || b === 'J' || a === b;
 /** Poids d'une case en journées : une demi-journée compte 0,5 */
 export const partWeight = (p: Part | undefined) => (p === 'M' || p === 'A' ? 0.5 : 1);
 
 export function indexCells(cells: PlanningCell[]): Map<string, PlanningCell> {
-  return new Map(cells.map((c) => [cellKey(c.day, c.group_code, c.part ?? 'J'), c]));
+  return new Map(cells.map((c) => [cellKey(c.day, c.group_code, c.part ?? 'J', c.seq ?? 1), c]));
 }
 
 /**
@@ -51,24 +54,27 @@ export function cellPatch(value: string): { tp_id: string | null; label: string 
 export const hoursOf = (tps: Tp[], cells: PlanningCell[]) => {
   const byId = new Map(tps.map((t) => [t.id, t]));
   const out = new Map<string, { days: number; tp: Tp }>();
+  // Plusieurs cours dans une même demi-journée (ou journée) : ils se partagent son poids à parts égales
+  const count = new Map<string, number>();
+  for (const c of cells) if (c.tp_id || c.label) { const k = `${c.day}|${c.group_code}|${c.part ?? 'J'}`; count.set(k, (count.get(k) ?? 0) + 1); }
   for (const c of cells) {
     const tp = c.tp_id ? byId.get(c.tp_id) : undefined;
     if (!tp) continue;
     const cur = out.get(tp.id) ?? { days: 0, tp };
-    cur.days += partWeight(c.part);
+    cur.days += partWeight(c.part) / (count.get(`${c.day}|${c.group_code}|${c.part ?? 'J'}`) ?? 1);
     out.set(tp.id, cur);
   }
   return out;
 };
 
 /** Une écriture dans le semainier : valeur vide = case effacée */
-export interface CellOp { day: string; group: string; value: string; part?: Part; room?: string | null }
+export interface CellOp { day: string; group: string; value: string; part?: Part; seq?: number; room?: string | null }
 
 /** Ligne de la table planning_cells correspondant à une écriture (la salle n'est écrite que si elle est précisée) */
 export function rowOfOp(o: CellOp) {
-  return { day: o.day, group_code: o.group, part: o.part ?? 'J', ...(o.room !== undefined ? { room_id: o.room } : {}), ...cellPatch(o.value) };
+  return { day: o.day, group_code: o.group, part: o.part ?? 'J', seq: o.seq ?? 1, ...(o.room !== undefined ? { room_id: o.room } : {}), ...cellPatch(o.value) };
 }
-export const CONFLICT_COLS = 'day,group_code,part';
+export const CONFLICT_COLS = 'day,group_code,part,seq';
 
 /** Avertissements par case : système hors service ou en maintenance, ou réclamé par un autre groupe le même jour */
 export function buildWarnings(
@@ -90,7 +96,7 @@ export function buildWarnings(
         const others = list.filter((o) => o.group_code !== c.group_code && partsOverlap(o.part ?? 'J', c.part ?? 'J') && tpById.get(o.tp_id!)?.system_ids.includes(id)).map((o) => o.group_code);
         if (others.length) msgs.push(`« ${sys.name} » aussi prévu pour ${others.join(', ')}`);
       }
-      if (msgs.length) out.set(cellKey(c.day, c.group_code, c.part ?? 'J'), msgs);
+      if (msgs.length) out.set(cellKey(c.day, c.group_code, c.part ?? 'J', c.seq ?? 1), msgs);
     }
   }
   return out;
@@ -117,12 +123,12 @@ export function copyWeekOps(
     for (const [gi, g] of groups.entries()) {
       // Carrousel : le groupe g reçoit ce que faisait, la semaine source, le groupe situé `shift` rangs avant lui
       const from = groups[(((gi - (opts.shift ?? 0)) % groups.length) + groups.length) % groups.length];
-      for (const part of PARTS) {
-        const c = cells.get(cellKey(src, from, part));
+      for (const part of PARTS) for (let seq = 1; seq <= MAX_SEQ; seq++) {
+        const c = cells.get(cellKey(src, from, part, seq));
         const value = cellValue(c);
         if (!value) continue;
-        if (cells.get(cellKey(dst, g, part)) && !opts.overwrite) continue;
-        ops.push({ day: dst, group: g, part, value, room: c?.room_id ?? null });
+        if (cells.get(cellKey(dst, g, part, seq)) && !opts.overwrite) continue;
+        ops.push({ day: dst, group: g, part, seq, value, room: c?.room_id ?? null });
       }
     }
   }

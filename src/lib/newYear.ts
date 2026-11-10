@@ -63,14 +63,14 @@ export const onlyNewPeriods = (found: NewPeriod[], existing: CalendarPeriod[]) =
 
 /* ───────── Préparation d'une nouvelle année à partir de la précédente ───────── */
 
-export interface CellCopy { day: string; group: string; value: string; part?: Part; room?: string | null }
+export interface CellCopy { day: string; group: string; value: string; part?: Part; seq?: number; room?: string | null }
 export interface HolidayDiff { label: string; before: string; after: string; status: 'identique' | 'decale' | 'nouveau' | 'absent' }
 
 export interface YearPlan {
   /** Cases à écrire dans la nouvelle année */
   ops: CellCopy[];
   /** Cases ignorées : la nouvelle année tombe ce jour-là sur des vacances ou un jour férié */
-  blocked: Array<{ day: string; group: string; part?: Part; value: string; why: string }>;
+  blocked: Array<{ day: string; group: string; part?: Part; seq?: number; value: string; why: string }>;
   /** Cases ignorées : la cible est déjà remplie */
   kept: number;
   /** Vacances de l'ancienne et de la nouvelle année, comparées par rapport à la rentrée (semaine n°) */
@@ -101,7 +101,7 @@ export function planNewYear(args: {
   const pm = iso(mondayOf(parseISO(prev.from)));
   const nm = iso(mondayOf(parseISO(next.from)));
   const offsetDays = Math.round((parseISO(nm).getTime() - parseISO(pm).getTime()) / 86400000);
-  const target = new Map(cells.map((c) => [cellKey(c.day, c.group_code, c.part ?? 'J'), c]));
+  const target = new Map(cells.map((c) => [cellKey(c.day, c.group_code, c.part ?? 'J', c.seq ?? 1), c]));
   const blockedBy = (d: string) => periods.find((p) => inRange(d, p.start_date, p.end_date));
 
   const ops: CellCopy[] = [];
@@ -114,10 +114,10 @@ export function planNewYear(args: {
     const day = iso(addDays(parseISO(c.day), offsetDays));
     if (!inRange(day, next.from, next.to)) continue;
     const p = blockedBy(day);
-    if (p) { blocked.push({ day, group: c.group_code, part: c.part ?? 'J', value, why: p.label }); continue; }
-    const ex = target.get(cellKey(day, c.group_code, c.part ?? 'J'));
+    if (p) { blocked.push({ day, group: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1, value, why: p.label }); continue; }
+    const ex = target.get(cellKey(day, c.group_code, c.part ?? 'J', c.seq ?? 1));
     if (ex && (ex.tp_id || ex.label) && !args.overwrite) { kept++; continue; }
-    ops.push({ day, group: c.group_code, part: c.part ?? 'J', value, room: c.room_id ?? null });
+    ops.push({ day, group: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1, value, room: c.room_id ?? null });
   }
 
   const vac = periods.filter((p) => p.kind === 'vacances');

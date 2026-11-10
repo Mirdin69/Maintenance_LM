@@ -19,13 +19,13 @@ const valueOf = (s: Session): string => (s.tp_id ? `tp:${s.tp_id}` : s.label ? `
 
 /** Planning du lundi, heure par heure : un enseignant et une salle par groupe et par séance, en carrousel ou à construire à la main */
 export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps: Tp[]; level: Level; canWrite: boolean }) {
-  const { data, who } = useStore();
+  const { data, who, settings } = useStore();
   const act = useAct();
   const [mode, setMode] = usePersisted<Mode>('lundi-mode', 'carrousel', MODES);
   const [part, setPart] = usePersisted<Exclude<Part, 'J'>>('lundi-part', 'M', SIDE);
   const [date, setDate] = usePersisted<string>('lundi-date', iso(mondayOf(new Date())));
   const monday = iso(mondayOf(parseISO(date)));
-  const periods = useMemo(() => periodsOf(1, part), [part]);
+  const periods = useMemo(() => periodsOf(1, part), [part, settings.schedule]); // eslint-disable-line react-hooks/exhaustive-deps
   const rooms = data.rooms.filter((r) => r.active);
   const teachers = data.profiles.filter((p) => p.active);
   const off = periodOn(monday, data.calendar_periods);
@@ -41,7 +41,7 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
     return s ? { teacherId: s.teacher_id, teacherLabel: s.teacher_label, roomId: s.room_id, value: valueOf(s) } : null;
   }));
   // Tant que rien n'est enregistré, on propose un carrousel de base d'après le semainier de l'année
-  const cellsByKey = useMemo(() => new Map(data.planning_cells.map((c) => [`${c.day}|${c.group_code}|${c.part ?? 'J'}`, c])), [data.planning_cells]);
+  const cellsByKey = useMemo(() => new Map(data.planning_cells.filter((c) => (c.seq ?? 1) === 1).map((c) => [`${c.day}|${c.group_code}|${c.part ?? 'J'}`, c])), [data.planning_cells]);
   const tpById = useMemo(() => new Map(data.tps.map((t) => [t.id, t])), [data.tps]);
   const proposal: Grid = useMemo(
     () => carouselGrid(firstFromSemainier(groups, monday, part, cellsByKey, tpById), periods.length),

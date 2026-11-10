@@ -289,9 +289,13 @@ tr.sel td { background: var(--sunken); }
 .wk td.dom { background: var(--cbg); color: var(--cfg); font-weight: 700; }
 .wk td.dom.sub { font-weight: 400; }
 /* Semainier : toute la case du cours prend la couleur de son domaine */
-.sem td.cc { background: var(--cbg); color: var(--cfg); }
-.sem td.cc .pc, .sem td.cc select.pc-room { background: transparent; color: inherit; }
-.sem td.cc .who { color: inherit; }
+.sem .course { position: relative; border-radius: 4px; }
+.sem .course + .course, .sem .course-add { margin-top: 3px; }
+.sem .course.cc { background: var(--cbg); color: var(--cfg); }
+.sem .course.cc .pc, .sem .course.cc select.pc-room { background: transparent; color: inherit; }
+.sem .course.cc .who { color: inherit; }
+.course-del { position: absolute; top: 0; right: 0; padding: 0 4px; line-height: 1.2; }
+.course-add { width: 100%; font-size: 0.72rem; }
 .wk td.dim { color: var(--muted); font-style: italic; background: var(--sunken); }
 .fiche-grid { display: grid; gap: 10px; }
 .fiche-sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }

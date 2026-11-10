@@ -72,7 +72,7 @@ export function NewYear() {
       if (switchYear) await api.upsert('settings', [{ key: 'year_start', value: from }, { key: 'year_end', value: to }], 'key');
     };
     const undo = async () => {
-      for (let i = 0; i < rows.length; i += 20) await Promise.all(rows.slice(i, i + 20).map((r) => api.remove('planning_cells', { day: r.day, group_code: r.group_code, part: r.part })));
+      for (let i = 0; i < rows.length; i += 20) await Promise.all(rows.slice(i, i + 20).map((r) => api.remove('planning_cells', { day: r.day, group_code: r.group_code, part: r.part, seq: r.seq })));
       if (switchYear && prevSettings.year_start) await api.upsert('settings', [{ key: 'year_start', value: prevSettings.year_start }, { key: 'year_end', value: prevSettings.year_end ?? '' }], 'key');
     };
     if (await act(run, { ok: `Semainier ${from.slice(0, 4)}-${to.slice(0, 4)} prérempli : ${rows.length} case${rows.length > 1 ? 's' : ''}.`, tables: ['planning_cells', 'settings'], undo })) setOpen(false);

@@ -7,6 +7,7 @@ import StudentsAdmin from './admin/StudentsAdmin';
 import RoomsAdmin from './admin/RoomsAdmin';
 import ToolsAdmin from './admin/ToolsAdmin';
 import CalendarAdmin from './admin/CalendarAdmin';
+import ScheduleAdmin from './admin/ScheduleAdmin';
 import Appearance from './admin/Appearance';
 import DomainsAdmin from './admin/DomainsAdmin';
 import Texts from './admin/Texts';
@@ -16,7 +17,7 @@ import BilanAdmin from './admin/BilanAdmin';
 import { STUDENTS_OFF_TIP, studentsEnabled } from '@/lib/studentsFeature';
 import RgpdAdmin from './admin/RgpdAdmin';
 
-export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'outils', 'domaines', 'calendrier', 'apparence', 'textes', 'budget', 'historique', 'bilan', 'rgpd'] as const;
+export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'outils', 'domaines', 'calendrier', 'horaires', 'apparence', 'textes', 'budget', 'historique', 'bilan', 'rgpd'] as const;
 type Section = (typeof ADMIN_SECTIONS)[number];
 
 export default function Admin() {
@@ -29,7 +30,7 @@ export default function Admin() {
       <PageHead tab="admin" title="Administration" />
       <div className="tools">
         <Seg<Section> label="Section" value={section} onChange={setSection} items={[
-          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves', ...(studentsOn ? [] : [{ off: STUDENTS_OFF_TIP }])] as [Section, string], ['salles', 'Salles'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'], ['rgpd', 'Confidentialité'],
+          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves', ...(studentsOn ? [] : [{ off: STUDENTS_OFF_TIP }])] as [Section, string], ['salles', 'Salles'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['horaires', 'Horaires de TP'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'], ['rgpd', 'Confidentialité'],
         ]} />
       </div>
       {section === 'comptes' && <AccountsAdmin />}
@@ -38,6 +39,7 @@ export default function Admin() {
       {section === 'salles' && <RoomsAdmin />}
       {section === 'outils' && <ToolsAdmin />}
       {section === 'calendrier' && <CalendarAdmin />}
+      {section === 'horaires' && <ScheduleAdmin />}
       {section === 'domaines' && <DomainsAdmin />}
       {section === 'apparence' && <Appearance />}
       {section === 'textes' && <Texts />}

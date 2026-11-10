@@ -8,7 +8,7 @@ import { undoPlan, entryLabel } from '@/lib/restore';
 import { checkImage, newImagePath } from '@/lib/images';
 import type { AuditEntry, PlanningCell } from '@/lib/types';
 
-const cell = (day: string, group_code: string, tp_id: string | null, label: string | null = null, part: PlanningCell['part'] = 'J'): PlanningCell => ({ day, group_code, part, room_id: null, tp_id, label, note: null, updated_by: null, updated_at: '' });
+const cell = (day: string, group_code: string, tp_id: string | null, label: string | null = null, part: PlanningCell['part'] = 'J', seq = 1): PlanningCell => ({ day, group_code, part, seq, room_id: null, tp_id, label, note: null, updated_by: null, updated_at: '' });
 
 describe('avertissements du semainier', () => {
   const tps = new Map([['a', { system_ids: ['s1'] }], ['b', { system_ids: ['s1', 's2'] }], ['c', { system_ids: [] as string[] }]]);
@@ -25,7 +25,7 @@ describe('copie de semaine', () => {
   it('copie lundi-vendredi, respecte les cases remplies et les jours bloqués', () => {
     const cells = indexCells([cell('2026-10-05', 'G', 'a'), cell('2026-10-06', 'G', null, 'Évaluation'), cell('2026-10-12', 'G', 'z'), cell('2026-10-14', 'G', 'a')]);
     const base = { overwrite: false, blocked: (d: string) => d === '2026-10-14' };
-    expect(copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', base)).toEqual([{ day: '2026-10-13', group: 'G', part: 'J', room: null, value: 'lab:Évaluation' }]);
+    expect(copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', base)).toEqual([{ day: '2026-10-13', group: 'G', part: 'J', seq: 1, room: null, value: 'lab:Évaluation' }]);
     const ow = copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', { ...base, overwrite: true });
     expect(ow.map((o) => o.day)).toEqual(['2026-10-12', '2026-10-13']);
   });
@@ -133,7 +133,7 @@ describe('demi-journées du semainier', () => {
   it('la copie de semaine garde la partie de journée et la salle', () => {
     const c = { ...cell('2026-10-05', 'G', 'a', null, 'A'), room_id: 'r1' };
     const ops = copyWeekOps(indexCells([c]), ['G'], '2026-10-05', '2026-10-12', { overwrite: false, blocked: () => false });
-    expect(ops).toEqual([{ day: '2026-10-12', group: 'G', part: 'A', room: 'r1', value: 'tp:a' }]);
+    expect(ops).toEqual([{ day: '2026-10-12', group: 'G', part: 'A', seq: 1, room: 'r1', value: 'tp:a' }]);
   });
   it('deux avertissements de système ne se mélangent pas entre matin et après-midi', () => {
     const tps = new Map([['a', { system_ids: ['s1'] }], ['b', { system_ids: ['s1'] }]]);
@@ -318,5 +318,56 @@ describe('occupation des salles d’après le semainier de l’année', () => {
     const { semainierOccurrences } = await import('@/lib/occupancy');
     const detailed = [{ date: '2026-11-16', groupCode: 'G1', start: 9 * 60, end: 10 * 60 }] as never;
     expect(semainierOccurrences([c('2026-11-16', 'G1', 'M', 'r1'), c('2026-11-16', 'G2', 'M', 'r1')], tps, detailed, '2026-11-16', '2026-11-16').map((o) => o.groupCode)).toEqual(['G2']);
+  });
+});
+
+describe('horaires de TP réglables', () => {
+  it('lit et écrit la trame, avec repli sur la trame du lycée pour toute valeur invalide', async () => {
+    const { parseSchedule, formatSchedule, DEFAULT_SCHEDULE } = await import('@/lib/schedule');
+    expect(parseSchedule(undefined)).toEqual(DEFAULT_SCHEDULE);
+    expect(parseSchedule('pas du json')).toEqual(DEFAULT_SCHEDULE);
+    expect(parseSchedule(formatSchedule(DEFAULT_SCHEDULE))).toEqual(DEFAULT_SCHEDULE);
+    const c = parseSchedule(JSON.stringify({ periodMin: 50, breaks: [['10:00', '10:10'], ['x', 'y']], days: { 1: { M: ['08:00', '07:00'], A: ['14:00', '17:00'] } } }));
+    expect(c.periodMin).toBe(50);
+    expect(c.breaks).toEqual([[600, 610]]);
+    expect(c.days[1].M).toEqual(DEFAULT_SCHEDULE.days[1].M); // fin avant le début : valeur par défaut
+    expect(c.days[1].A).toEqual([840, 1020]);
+  });
+  it('calcule les séances selon la trame choisie, pauses comprises', async () => {
+    const { periodsIn, parseSchedule, toHM } = await import('@/lib/schedule');
+    const c = parseSchedule(JSON.stringify({ periodMin: 60, breaks: [['10:00', '10:15']], days: { 3: { M: ['08:00', '12:15'], A: ['14:00', '16:00'] } } }));
+    expect(periodsIn(c, 3, 'M').map((p) => `${toHM(p.start)}-${toHM(p.end)}`)).toEqual(['08:00-09:00', '09:00-10:00', '10:15-11:15', '11:15-12:15']);
+    expect(periodsIn(c, 3, 'A')).toHaveLength(2);
+  });
+  it('la trame enregistrée pilote les séances proposées partout', async () => {
+    const { registerSchedule, parseSchedule, periodsOf, DEFAULT_SCHEDULE } = await import('@/lib/schedule');
+    registerSchedule(parseSchedule(JSON.stringify({ periodMin: 60, days: { 1: { M: ['09:00', '12:00'], A: ['13:00', '17:00'] } } })));
+    try {
+      expect(periodsOf(1, 'M')).toHaveLength(3);
+      expect(periodsOf(1, 'M')[0]).toEqual({ start: 540, end: 600 });
+    } finally { registerSchedule(DEFAULT_SCHEDULE); }
+    expect(periodsOf(1, 'M')[0].start).toBe(8 * 60 + 40);
+  });
+});
+
+describe('plusieurs cours dans une demi-journée', () => {
+  it('les cours se partagent le poids de la demi-journée', async () => {
+    const { hoursOf } = await import('@/lib/semainier');
+    const tp = (id: string) => ({ id, code: id, title: id }) as never;
+    const r = hoursOf([tp('a'), tp('b')], [cell('2026-10-05', 'G', 'a', null, 'M', 1), cell('2026-10-05', 'G', 'b', null, 'M', 2), cell('2026-10-06', 'G', 'a', null, 'M', 1)]);
+    expect(r.get('a')!.days).toBe(0.25 + 0.5);
+    expect(r.get('b')!.days).toBe(0.25);
+  });
+  it('chaque cours a sa propre case et la copie de semaine les reprend tous', () => {
+    const cells = indexCells([cell('2026-10-05', 'G', 'a', null, 'M', 1), cell('2026-10-05', 'G', 'b', null, 'M', 2), cell('2026-10-05', 'G', null, 'REM', 'A', 1)]);
+    expect([...cells.keys()].sort()).toEqual(['2026-10-05|G|A', '2026-10-05|G|M', '2026-10-05|G|M|2']);
+    const ops = copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', { overwrite: false, blocked: () => false });
+    expect(ops.map((o) => [o.part, o.seq, o.value])).toEqual([['M', 1, 'tp:a'], ['M', 2, 'tp:b'], ['A', 1, 'lab:REM']]);
+  });
+  it('l’occupation des salles partage la demi-journée entre les cours', async () => {
+    const { semainierOccurrences } = await import('@/lib/occupancy');
+    const c = (seq: number, room: string) => ({ day: '2026-11-17', group_code: 'G', part: 'M', seq, room_id: room, tp_id: null, label: 'X' }) as never;
+    const occ = semainierOccurrences([c(1, 'r1'), c(2, 'r2')], new Map(), [], '2026-11-17', '2026-11-17');
+    expect(occ.map((o) => [o.roomId, o.start, o.end])).toEqual([['r1', 7 * 60 + 45, 9 * 60 + 45], ['r2', 9 * 60 + 45, 11 * 60 + 40]]);
   });
 });

@@ -34,7 +34,7 @@ export function HalfdayGenerator() {
 
   const levelGroups = GROUP_CODES.filter((g) => levelOfGroup(g) === level);
   const groups = (picked ?? levelGroups).filter((g) => levelGroups.includes(g));
-  const periods = useMemo(() => periodsOf(weekday, part), [weekday, part]);
+  const periods = useMemo(() => periodsOf(weekday, part), [weekday, part, settings.schedule]); // eslint-disable-line react-hooks/exhaustive-deps
   const blocks = useMemo(() => blocksFrom(periods, Math.min(first, periods.length - 1), acts.length, size), [periods, first, acts.length, size]);
   const ready = blocks.length === acts.length && !!subject.trim() && acts.every((a) => a.roomId) && groups.length > 0 && from <= to;
 
@@ -57,7 +57,7 @@ export function HalfdayGenerator() {
     const cellRows = dates.flatMap((day) =>
       [...new Set(okSlots.map((p) => p.group))]
         .filter((g) => !cellsByKey.has(cellKey(day, g, part)))
-        .map((g) => ({ day, group_code: g, part, room_id: roomOf(g), tp_id: null, label: subject.trim().slice(0, 60), note: noteOf(planned, g) || null })),
+        .map((g) => ({ day, group_code: g, part, seq: 1, room_id: roomOf(g), tp_id: null, label: subject.trim().slice(0, 60), note: noteOf(planned, g) || null })),
     );
     let ids: string[] = [];
     const run = async () => {
@@ -71,7 +71,7 @@ export function HalfdayGenerator() {
     const undo = async () => {
       if (ids.length) await api.remove('timetable_slots', { id: ids });
       for (let i = 0; i < cellRows.length; i += 20)
-        await Promise.all(cellRows.slice(i, i + 20).map((r) => api.remove('planning_cells', { day: r.day, group_code: r.group_code, part: r.part })));
+        await Promise.all(cellRows.slice(i, i + 20).map((r) => api.remove('planning_cells', { day: r.day, group_code: r.group_code, part: r.part, seq: 1 })));
     };
     await act(run, {
       ok: `${okSlots.length} créneau${okSlots.length > 1 ? 'x' : ''} créé${okSlots.length > 1 ? 's' : ''}${fill ? `, ${cellRows.length} case${cellRows.length > 1 ? 's' : ''} du semainier remplie${cellRows.length > 1 ? 's' : ''}` : ''}.`,
