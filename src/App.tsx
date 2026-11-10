@@ -262,13 +262,13 @@ function Login() {
   );
 }
 
-/** En-tête des impressions : titre du site, logo du lycée et date */
+/** En-tête des impressions : logo du lycée (le titre du site s'il n'y en a pas) et date */
 function PrintHead() {
   const { title, schoolLogo } = useBranding();
   return (
     <div className="print-head" aria-hidden="true">
-      <b>{title}</b>
-      <span><Img url={schoolLogo} alt="" width={200} /> Imprimé le {new Date().toLocaleDateString('fr-FR')}</span>
+      {schoolLogo ? <Img url={schoolLogo} alt="" width={400} className="print-logo" eager /> : <b>{title}</b>}
+      <span>Imprimé le {new Date().toLocaleDateString('fr-FR')}</span>
     </div>
   );
 }

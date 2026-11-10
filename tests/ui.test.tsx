@@ -670,3 +670,20 @@ describe('couleurs des domaines', () => {
     expect(cell.closest('td')?.className).toMatch(/cc dom-/);
   });
 });
+
+describe('en-tête d’impression', () => {
+  it('affiche le logo du lycée à la place du titre du site', async () => {
+    await openWith('admin', '', async () => {
+      await api.upsert('settings', [{ key: 'school_logo_url', value: 'https://example.com/logo-lycee.png' }], 'key');
+    });
+    await screen.findByText('Tableau de bord');
+    await waitFor(() => expect(document.querySelector('.print-head img')).not.toBeNull());
+    expect(document.querySelector('.print-head b')).toBeNull();
+    expect(document.querySelector('.print-head')?.textContent).toMatch(/Imprimé le/);
+  });
+  it('garde le titre du site tant qu’aucun logo n’est renseigné', async () => {
+    await open('admin', '');
+    await screen.findByText('Tableau de bord');
+    expect(document.querySelector('.print-head b')?.textContent).toBe('Parc MELEC');
+  });
+});

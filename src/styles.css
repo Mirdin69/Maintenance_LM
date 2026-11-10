@@ -436,7 +436,7 @@ table.sem .dom, .dom { font-weight: bold; }
 .print-head { display: none; }
 @media print {
   .print-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 2px solid #1f3864; padding-bottom: 6px; margin-bottom: 10px; font-size: 12px; }
-  .print-head img { max-height: 40px; }
+  .print-head img, .print-head .print-logo { max-height: 56px; max-width: 60%; width: auto; }
   tr, .card, .doc { break-inside: avoid; }
   thead { display: table-header-group; }
   .top, .crumbs, .subnav, .drawer-back, .modal-back, .toast { display: none !important; }
