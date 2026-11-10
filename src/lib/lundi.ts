@@ -3,10 +3,10 @@ import { minToHM } from './dates';
 import type { Room, Session, Slot } from './types';
 
 /** Ce que fait un groupe pendant une séance : un enseignant, une salle et, au choix, un TP ou une activité (« valeur » du semainier) */
-export interface Station { teacherId: string | null; roomId: string | null; value: string }
+export interface Station { teacherId: string | null; roomId: string | null; value: string; teacherLabel?: string | null }
 export type Grid = Array<Array<Station | null>>; // [séance][groupe]
 
-export const emptyStation = (s: Station | null | undefined) => !s || (!s.teacherId && !s.roomId && !s.value);
+export const emptyStation = (s: Station | null | undefined) => !s || (!s.teacherId && !s.teacherLabel && !s.roomId && !s.value);
 
 /**
  * Carrousel : la première séance décide qui commence avec quel groupe, les suivantes en découlent.
@@ -34,16 +34,33 @@ export function gridConflicts(inp: LundiInput, slots: Slot[], sessions: Session[
       if (emptyStation(st) || !inp.periods[b]) return;
       const { start, end } = inp.periods[b];
       const msgs = sessionConflicts(
-        { date: inp.date, start, end, roomId: st!.roomId, groupCode: inp.groups[g], teacherId: st!.teacherId },
+        { date: inp.date, start, end, roomId: st!.roomId, groupCode: inp.groups[g], teacherId: st!.teacherId, teacherLabel: st!.teacherLabel ?? null },
         slots, [...kept, ...virtual], rooms,
       );
       out.push(...msgs.map((m) => `${inp.groups[g]} à ${minToHM(start)} : ${m}`));
       virtual.push({
         id: `plan-${b}-${g}`, slot_id: null, session_date: inp.date, start_time: minToHM(start), end_time: minToHM(end), room_id: st!.roomId,
-        group_code: inp.groups[g], tp_id: null, system_id: null, teacher_id: st!.teacherId, teacher_label: null, label: null, note: null,
+        group_code: inp.groups[g], tp_id: null, system_id: null, teacher_id: st!.teacherId, teacher_label: st!.teacherLabel ?? null, label: null, note: null,
         status: 'planned', created_by: null, created_at: '',
       } as Session);
     }),
   );
   return [...new Set(out)];
+}
+
+/**
+ * Première séance proposée d'après le semainier de l'année : pour chaque groupe, la case du jour (demi-journée, sinon journée entière)
+ * donne le TP (avec son enseignant) ou l'activité, et la salle de la case.
+ */
+export function firstFromSemainier(
+  groups: string[], date: string, part: 'M' | 'A',
+  cells: Map<string, { tp_id: string | null; label: string | null; room_id: string | null }>,
+  tpById: Map<string, { teacher_id: string | null; teacher_label: string | null }>,
+): Array<Station | null> {
+  return groups.map((g) => {
+    const c = cells.get(`${date}|${g}|${part}`) ?? cells.get(`${date}|${g}|J`);
+    if (!c || (!c.tp_id && !c.label)) return null;
+    const tp = c.tp_id ? tpById.get(c.tp_id) : undefined;
+    return { teacherId: tp?.teacher_id ?? null, teacherLabel: tp && !tp.teacher_id ? tp.teacher_label : null, roomId: c.room_id, value: c.tp_id ? `tp:${c.tp_id}` : `lab:${c.label}` };
+  });
 }

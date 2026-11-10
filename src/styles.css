@@ -491,3 +491,10 @@ select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 
 .lundi-grid td.derived { background: var(--sunken); }
 .print-only-title { display: none; }
 @media print { .print-only-title { display: block; font-size: 14px; margin: 0 0 6px; } }
+.lundi-print { width: 100%; border-collapse: collapse; }
+.lundi-print th, .lundi-print td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; }
+.lundi-print td.dom { background: var(--cbg); color: var(--cfg); }
+@media print {
+  table.only-print { display: table; }
+  .lundi-print, .lundi-print * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

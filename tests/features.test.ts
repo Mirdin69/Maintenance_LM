@@ -231,3 +231,22 @@ describe('planning du lundi en carrousel', () => {
     expect(gridConflicts({ date: '2026-11-16', groups: ['G1'], periods, grid: [[st('A')], [null], [null]] }, [], existing, rooms, new Set(['x']))).toEqual([]);
   });
 });
+
+describe('carrousel de base d’après le semainier de l’année', () => {
+  it('reprend le TP (et son enseignant) et la salle de chaque case du lundi, puis fait tourner', async () => {
+    const { firstFromSemainier, carouselGrid } = await import('@/lib/lundi');
+    const cells = new Map<string, { tp_id: string | null; label: string | null; room_id: string | null }>([
+      ['2026-11-16|G1|M', { tp_id: 'a', label: null, room_id: 'r1' }],
+      ['2026-11-16|G2|J', { tp_id: 'b', label: null, room_id: null }],
+      ['2026-11-16|G3|M', { tp_id: null, label: 'REM', room_id: null }],
+    ]);
+    const tps = new Map([['a', { teacher_id: 't1', teacher_label: null }], ['b', { teacher_id: null, teacher_label: 'M. S' }]]);
+    const first = firstFromSemainier(['G1', 'G2', 'G3', 'G4'], '2026-11-16', 'M', cells, tps);
+    expect(first[0]).toEqual({ teacherId: 't1', teacherLabel: null, roomId: 'r1', value: 'tp:a' });
+    expect(first[1]).toMatchObject({ teacherId: null, teacherLabel: 'M. S', value: 'tp:b' });
+    expect(first[2]).toMatchObject({ value: 'lab:REM' });
+    expect(first[3]).toBeNull();
+    const g = carouselGrid(first.slice(0, 3), 3);
+    expect(g[1].map((s) => s!.value)).toEqual(['lab:REM', 'tp:a', 'tp:b']);
+  });
+});

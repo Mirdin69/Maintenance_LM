@@ -6,7 +6,8 @@ import { addDays, fmtDate, iso, mondayOf, minToHM, parseISO, toMin } from '@/lib
 import { periodOn } from '@/lib/calendar';
 import { periodsOf } from '@/lib/schedule';
 import { SPECIAL_LABELS, cellPatch } from '@/lib/semainier';
-import { carouselGrid, emptyStation, gridConflicts, type Grid, type Station } from '@/lib/lundi';
+import { carouselGrid, emptyStation, firstFromSemainier, gridConflicts, type Grid, type Station } from '@/lib/lundi';
+import { domainClass } from '@/lib/domain';
 import type { Level, Part, Session, Tp } from '@/lib/types';
 import { Seg } from '@/components/ui';
 
@@ -35,10 +36,19 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
       && periods.some((p) => toMin(s.start_time) === p.start)),
     [data.sessions, monday, groups, periods],
   );
-  const grid: Grid = periods.map((p) => groups.map((g) => {
+  const stored: Grid = periods.map((p) => groups.map((g) => {
     const s = existing.find((x) => x.group_code === g && toMin(x.start_time) === p.start);
-    return s ? { teacherId: s.teacher_id, roomId: s.room_id, value: valueOf(s) } : null;
+    return s ? { teacherId: s.teacher_id, teacherLabel: s.teacher_label, roomId: s.room_id, value: valueOf(s) } : null;
   }));
+  // Tant que rien n'est enregistré, on propose un carrousel de base d'après le semainier de l'année
+  const cellsByKey = useMemo(() => new Map(data.planning_cells.map((c) => [`${c.day}|${c.group_code}|${c.part ?? 'J'}`, c])), [data.planning_cells]);
+  const tpById = useMemo(() => new Map(data.tps.map((t) => [t.id, t])), [data.tps]);
+  const proposal: Grid = useMemo(
+    () => carouselGrid(firstFromSemainier(groups, monday, part, cellsByKey, tpById), periods.length),
+    [groups, monday, part, cellsByKey, tpById, periods.length],
+  );
+  const isProposal = !existing.length && proposal.some((r) => r.some((s) => !emptyStation(s)));
+  const grid: Grid = isProposal ? proposal : stored;
 
   const commit = (next: Grid, ok: string) => {
     const replaced = new Set(existing.map((s) => s.id));
@@ -47,7 +57,7 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
     let created: string[] = [];
     const rows = next.flatMap((row, b) => row.map((st, g) => (emptyStation(st) ? null : {
       session_date: monday, start_time: minToHM(periods[b].start), end_time: minToHM(periods[b].end), group_code: groups[g],
-      room_id: st!.roomId, teacher_id: st!.teacherId, teacher_label: null, ...cellPatch(st!.value), note: null, status: 'planned',
+      room_id: st!.roomId, teacher_id: st!.teacherId, teacher_label: st!.teacherLabel ?? null, ...cellPatch(st!.value), note: null, status: 'planned',
     }))).filter((r): r is NonNullable<typeof r> => !!r);
     return act(async () => {
       if (conflicts.length) throw new Error(conflicts.slice(0, 3).join(' '));
@@ -72,7 +82,7 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
   const reapply = () => commit(carouselGrid(grid[0], periods.length), 'Rotation appliquée aux séances suivantes.');
   const clear = () => commit(grid.map((r) => r.map(() => null)), 'Planning du lundi effacé.');
 
-  const label = (st: Station | null) => !st ? '' : [st.teacherId ? who(st.teacherId) : '', st.roomId ? data.rooms.find((r) => r.id === st.roomId)?.name ?? '' : ''].filter(Boolean).join(' · ');
+  const label = (st: Station | null) => !st ? '' : [st.teacherId ? who(st.teacherId) : st.teacherLabel ?? '', st.roomId ? data.rooms.find((r) => r.id === st.roomId)?.name ?? '' : ''].filter(Boolean).join(' · ');
   const editable = (b: number) => canWrite && (mode === 'construire' || b === 0);
 
   return (
@@ -90,8 +100,14 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
           : 'À construire : chaque séance se règle indépendamment, heure par heure. Les cases vides ne créent rien.'}
       </p>
       <h2 className="print-only-title">{level} · lundi {fmtDate(monday)}</h2>
+      {isProposal && (
+        <div className="notice no-print" role="status">
+          <span>Proposition d’après le semainier de l’année (non enregistrée) : la première séance reprend les cours prévus ce lundi, les suivantes tournent entre les groupes.</span>
+          {canWrite && <button type="button" className="btn sm" onClick={() => void commit(mode === 'carrousel' ? carouselGrid(grid[0], periods.length) : grid, 'Proposition enregistrée.')}>Enregistrer cette proposition</button>}
+        </div>
+      )}
       {off && <div className="notice" role="status"><span>Ce lundi est en période « {off.label} » : pas de cours prévu.</span></div>}
-      <div className="scroll">
+      <div className="scroll no-print">
         <table className="tbl lundi-grid" aria-label={`Planning du lundi ${fmtDate(monday)}`}>
           <thead><tr><th>Horaire</th>{groups.map((g) => <th key={g}>{g}</th>)}</tr></thead>
           <tbody>
@@ -116,7 +132,7 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
                       <select className="in" aria-label={`Activité, ${where}`} value={st?.value ?? ''} onChange={(e) => void setCell(b, gi, { value: e.target.value })}>
                         <option value="">Activité…</option>
                         <optgroup label="TP">{tps.map((t) => <option key={t.id} value={`tp:${t.id}`}>{t.code ?? t.title}</option>)}</optgroup>
-                        <optgroup label="Autres">{[...SPECIAL_LABELS, 'À construire'].filter((l, i, a) => a.indexOf(l) === i).map((l) => <option key={l} value={`lab:${l}`}>{l}</option>)}</optgroup>
+                        <optgroup label="Autres">{[...SPECIAL_LABELS, 'À construire', ...(st?.value.startsWith('lab:') ? [st.value.slice(4)] : [])].filter((l, i, arr) => arr.indexOf(l) === i).map((l) => <option key={l} value={`lab:${l}`}>{l}</option>)}</optgroup>
                       </select>
                     </td>
                   );
@@ -125,6 +141,29 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
             ))}
           </tbody>
         </table>
+      </div>
+      <table className="tbl lundi-print only-print" aria-hidden="true">
+        <thead><tr><th>Horaire</th>{groups.map((g) => <th key={g}>{g}</th>)}</tr></thead>
+        <tbody>
+          {periods.map((p, b) => (
+            <tr key={p.start}>
+              <th scope="row">{minToHM(p.start)} – {minToHM(p.end)}</th>
+              {groups.map((g, gi) => {
+                const st = grid[b][gi];
+                const tp = st?.value.startsWith('tp:') ? data.tps.find((t) => t.id === st.value.slice(3)) : undefined;
+                return (
+                  <td key={g} className={tp ? `dom ${domainClass(tp.domain)}` : ''}>
+                    {label(st)}
+                    {st?.value && <div><b>{tp ? tp.code ?? tp.title : st.value.slice(4)}</b></div>}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="actions no-print">
+        <button type="button" className="btn" onClick={() => window.print()}>Imprimer le planning du lundi</button>
       </div>
       {canWrite && (
         <div className="actions no-print">

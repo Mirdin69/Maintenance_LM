@@ -723,3 +723,29 @@ describe('planning du lundi', () => {
     expect(screen.queryByLabelText(/Enseignant, TPB1.1/)).toBeNull();
   });
 });
+
+describe('planning du lundi : proposition et impression', () => {
+  it('propose un carrousel d’après le semainier de l’année et permet de l’imprimer', async () => {
+    const { mondayOf, iso } = await import('@/lib/dates');
+    const monday = iso(mondayOf(new Date()));
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    await openWith('admin', 'semainier', async () => {
+      const [t1, t2] = (await api.select<{ id: string }>('tps')).filter((t: any) => t.level === 'Terminale' || true).slice(0, 2);
+      await api.upsert('planning_cells', [
+        { day: monday, group_code: 'TPB1.1', part: 'M', tp_id: t1.id, label: null },
+        { day: monday, group_code: 'TPB1.2', part: 'M', tp_id: t2.id, label: null },
+        { day: monday, group_code: 'TPB2', part: 'M', tp_id: null, label: 'REM' },
+      ], 'day,group_code,part');
+    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Lundi' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Terminale' }));
+    expect(await screen.findByText(/Proposition d’après le semainier de l’année/)).toBeInTheDocument();
+    const table = await screen.findByRole('table', { name: /Planning du lundi/ });
+    const rows = [...table.querySelectorAll('tbody tr')];
+    expect((screen.getByLabelText('Activité, TPB2, 08:40') as HTMLSelectElement).value).toBe('lab:REM');
+    expect(rows[1].querySelectorAll('td')[0].textContent).toContain('REM'); // la séance suivante a tourné
+    await userEvent.click(screen.getByRole('button', { name: 'Imprimer le planning du lundi' }));
+    expect(print).toHaveBeenCalled();
+    print.mockRestore();
+  });
+});

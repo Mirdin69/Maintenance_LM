@@ -56,6 +56,7 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 
 ### Planning du lundi, heure par heure
 - **Semainier > Lundi** (à côté de *Semaine*) : un tableau comme le planning papier du lundi. Lignes = séances de 55 min (matin 8h40-11h40 ou après-midi), colonnes = groupes du niveau, case = enseignant + salle (+ TP ou activité). On choisit le lundi avec les flèches ou la date.
+- **Proposition de base** : tant que rien n'est enregistré pour ce lundi, la première séance reprend le semainier de l'année (le TP de chaque groupe avec son enseignant, et la salle de la case) et le carrousel en découle. *Enregistrer cette proposition* la transforme en séances. *Imprimer le planning du lundi* sort un tableau propre, aux couleurs des domaines.
 - **Mode Carrousel** : on renseigne la première séance (qui commence avec quel groupe) ; les séances suivantes tournent automatiquement (le groupe suivant reprend ce que le précédent faisait). Toute modification de la première séance réapplique la rotation.
 - **Mode À construire** : chaque séance, chaque case, se règle séparément, y compris avec l'activité « À construire ».
 - Les cases sont enregistrées comme des séances datées (table `sessions`) : les conflits de salle, de groupe et d'enseignant (avec l'emploi du temps récurrent) sont contrôlés avant l'enregistrement. Tout est annulable.
