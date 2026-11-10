@@ -14,6 +14,7 @@ const migration10 = readFileSync(new URL('../supabase/migrations/0010_plusieurs_
 const migration11 = readFileSync(new URL('../supabase/migrations/0011_enseignants_binomes.sql', import.meta.url), 'utf8');
 const migration12 = readFileSync(new URL('../supabase/migrations/0012_suppression_tp.sql', import.meta.url), 'utf8');
 const migration13 = readFileSync(new URL('../supabase/migrations/0013_salles_multiples.sql', import.meta.url), 'utf8');
+const migration14 = readFileSync(new URL('../supabase/migrations/0014_sous_tp.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -82,6 +83,7 @@ beforeAll(async () => {
   await db.exec(migration11);
   await db.exec(migration12);
   await db.exec(migration13);
+  await db.exec(migration14);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -693,5 +695,16 @@ describe('migration 0010 : plusieurs cours dans une demi-journée', () => {
     const ids = [1, 2, 3].map(() => 'gen_random_uuid()').join(', ');
     await sql(`update public.planning_cells set extra_room_ids = array[${ids}] where day = '2026-12-02'`);
     expect(await fails(`update public.planning_cells set extra_room_ids = array[${ids}, gen_random_uuid()] where day = '2026-12-02'`)).toMatch(/extra_rooms_check/);
+  });
+
+  it('sous-TP : un seul niveau, et la suppression du principal libère les sous-TP (0014)', async () => {
+    await as('admin');
+    const [main] = await sql(`insert into public.tps (title, level) values ('Principal', 'Première') returning id`);
+    const [kid] = await sql(`insert into public.tps (title, level, parent_id) values ('Sous 1', 'Première', $1) returning id`, [main.id]);
+    expect(await fails(`insert into public.tps (title, level, parent_id) values ('Sous du sous', 'Première', '${kid.id}')`)).toMatch(/sous-TP/);
+    expect(await fails(`update public.tps set parent_id = '${kid.id}' where id = '${main.id}'`)).toMatch(/sous-TP/);
+    expect(await fails(`update public.tps set parent_id = id where id = '${main.id}'`)).toMatch(/parent_check|sous-TP/);
+    await sql(`delete from public.tps where id = $1`, [main.id]);
+    expect((await sql(`select parent_id from public.tps where id = $1`, [kid.id]))[0].parent_id).toBeNull();
   });
 });

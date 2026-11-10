@@ -10,6 +10,7 @@ import { CONFLICT_COLS, MAX_SEQ, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarning
 import { usePersisted } from '@/hooks/usePersisted';
 import { useMedia } from '@/hooks/useMedia';
 import type { Level, Part, PlanningCell, Tp } from '@/lib/types';
+import { effectiveTps } from '@/lib/subtp';
 import { Lundi } from './Lundi';
 import { PlanningImport } from '@/components/PlanningImport';
 import { Chip, Empty, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
@@ -24,8 +25,8 @@ export default function Semainier() {
   const [level, setLevel] = usePersisted<Level>('sem-level', 'Seconde', LEVELS);
 
   const groups = GROUP_CODES.filter((g) => levelOfGroup(g) === level);
-  const tps = useMemo(() => data.tps.filter((t) => t.level === level).sort(byText((t) => t.code ?? t.title)), [data.tps, level]);
-  const tpById = useMemo(() => new Map(data.tps.map((t) => [t.id, t])), [data.tps]);
+  const tps = useMemo(() => data.tps.filter((t) => t.level === level && !t.parent_id).sort(byText((t) => t.code ?? t.title)), [data.tps, level]);
+  const tpById = useMemo(() => effectiveTps(data.tps), [data.tps]);
   const cells = useMemo(() => indexCells(data.planning_cells), [data.planning_cells]);
   const weekdays = weekdaysFor(settings, level);
   const dayParts = partsFor(settings, level);
@@ -63,7 +64,7 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
   const { data, who } = useStore();
   const { profile } = useAuth();
   const act = useAct();
-  const tpById = useMemo(() => new Map(data.tps.map((t) => [t.id, t])), [data.tps]);
+  const tpById = useMemo(() => effectiveTps(data.tps), [data.tps]);
   /** En Première on gère des séquences (les TP tournent à part, par élève) : elles sont proposées en tête de liste */
   const sequences = useMemo(() => (level === 'Première' ? data.fiches.filter((f) => f.kind === 'sequence' && (!f.level || f.level === level)).sort(byText((f) => f.title)) : []), [data.fiches, level]);
   const months = useMemo(() => monthBlocks(from, to, weekdays), [from, to, weekdays]);

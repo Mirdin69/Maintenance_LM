@@ -1,3 +1,4 @@
+import { effectiveTps } from '@/lib/subtp';
 import { saving } from './saving';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/api';
@@ -105,7 +106,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       data, loading, error, reload,
       roomById: new Map(data.rooms.map((r) => [r.id, r])),
       systemById: new Map(data.systems.map((s) => [s.id, s])),
-      tpById: new Map(data.tps.map((t) => [t.id, t])),
+      tpById: effectiveTps(data.tps),
       profileById,
       settings: Object.fromEntries(data.settings.map((x) => [x.key, x.value])),
       who: (id, label) => (id && profileById.has(id) ? displayName(profileById.get(id)) : label || '—'),

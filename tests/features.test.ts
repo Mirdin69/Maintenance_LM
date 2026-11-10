@@ -431,3 +431,14 @@ describe('cours à moi selon les enseignants de la case', () => {
     expect(isMyCell({ teacher_ids: [], teacher_labels: [] }, { teacher_id: 'me', teacher_label: null }, me)).toBe(true);
   });
 });
+
+describe('sous-TP', () => {
+  it('le principal réunit les systèmes, outils et compétences de ses sous-TP', async () => {
+    const { effectiveTps } = await import('@/lib/subtp');
+    const t = (id: string, parent: string | null, sys: string[], comp: string[]) => ({ id, parent_id: parent, system_ids: sys, tool_ids: [], competences: comp }) as never;
+    const m = effectiveTps([t('m', null, ['s0'], ['C2']), t('a', 'm', ['s1'], ['C10']), t('b', 'm', ['s1', 's2'], ['C1']), t('x', null, ['s9'], [])]);
+    expect(m.get('m')!.system_ids).toEqual(['s0', 's1', 's2']);
+    expect(m.get('m')!.competences).toEqual(['C1', 'C2', 'C10']);
+    expect(m.get('x')!.system_ids).toEqual(['s9']);
+  });
+});

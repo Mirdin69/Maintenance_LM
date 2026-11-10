@@ -96,6 +96,11 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Plusieurs salles pour un cours** : une fois la salle principale choisie, « Autres salles » permet d'en cocher jusqu'à 3 de plus (rotations en ateliers). Toutes sont affichées (semainier, export CSV) et comptées dans l'occupation des salles. Nécessite la migration `0013_salles_multiples.sql`.
 - **Première : des séquences plutôt que des TP.** Dans la vue année de la Première, la liste d'une case propose en tête les **séquences** créées dans Fiches (celles de Première ou sans niveau) ; le nom de la séquence est inscrit dans la case. Les TP restent disponibles, et la répartition des élèves sur les TP se fait dans « Rotations des groupes ».
 
+## Sous-TP
+
+- Dans le catalogue, le champ **« Sous-TP de (TP principal) »** rattache un TP à un principal (un seul niveau). Le semainier et le planning du lundi ne proposent que les **TP principaux** ; un principal regroupe les systèmes, outils et compétences de ses sous-TP (alertes, besoins matériel, vue semaine).
+- Dans **Rotations des groupes**, cocher un principal coche tous ses sous-TP, qui deviennent les postes de la rotation (on peut décocher un sous-TP). Supprimer un principal libère ses sous-TP, qui redeviennent des TP principaux. Nécessite la migration `0014_sous_tp.sql`.
+
 ## Salles et occupation
 
 - **Salles** (Administration, gestionnaire) : nom, bâtiment, type, places, option *partagée* (grand atelier : plusieurs groupes en même temps sans conflit).

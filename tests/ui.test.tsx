@@ -855,3 +855,29 @@ describe('salles multiples et séquences de Première', () => {
     expect(within(first).getByRole('option', { name: 'Séquence moteur asynchrone' })).toBeInTheDocument();
   });
 });
+
+describe('sous-TP', () => {
+  it('le semainier ne propose que le principal ; la rotation coche le principal et ses sous-TP', async () => {
+    const { api } = await import('@/lib/api');
+    configureDemo({ as: 'admin' as never, studentsOn: true });
+    const [main] = await api.insert<{ id: string }>('tps', { code: 'ZMAIN', title: 'Principal Z', level: 'Seconde' });
+    await api.insert('tps', { code: 'ZSUB1', title: 'Sous Z1', level: 'Seconde', parent_id: main.id });
+    await api.insert('tps', { code: 'ZSUB2', title: 'Sous Z2', level: 'Seconde', parent_id: main.id });
+    window.location.hash = 'semainier';
+    const { unmount } = render(<App />);
+    const cell = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ }))[0];
+    const names = within(cell).getAllByRole('option').map((o) => o.textContent);
+    expect(names).toContain('ZMAIN');
+    expect(names).not.toContain('ZSUB1');
+    unmount();
+    window.location.hash = 'planning';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Rotations des groupes' }));
+    await userEvent.selectOptions(await screen.findByLabelText('Groupe'), '2PB1.1');
+    await userEvent.click(await screen.findByLabelText(/^ZMAIN/));
+    expect(screen.getByLabelText(/^↳ ZSUB1/)).toBeChecked();
+    expect(screen.getByLabelText(/^↳ ZSUB2/)).toBeChecked();
+    expect(await screen.findByLabelText(/^Postes, ZSUB1/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Postes, ZMAIN/)).toBeNull();
+  });
+});

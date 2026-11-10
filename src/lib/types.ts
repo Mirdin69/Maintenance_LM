@@ -72,6 +72,8 @@ export interface Tp {
   reusable: boolean;
   /** Taille des équipes : 1 individuel, 2 binôme, 3 trinôme… */
   pair_size: number;
+  /** TP principal, si celui-ci est un sous-TP */
+  parent_id?: string | null;
   created_at: string;
 }
 

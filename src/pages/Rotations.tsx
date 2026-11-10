@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useStore } from '@/state/store';
 import { GROUP_CODES, byText, levelOfGroup } from '@/lib/domain';
 import { addDays, fmtShort, iso, mondayOf, parseISO } from '@/lib/dates';
+import { childrenOf } from '@/lib/subtp';
 import { capacity, proposeRotation, teamsOf, type RotationStation } from '@/lib/rotation';
 import { TEAM_LABEL, rotationWorkbook } from '@/lib/rotationExport';
 import { studentsEnabled } from '@/lib/studentsFeature';
@@ -29,14 +30,21 @@ export default function Rotations() {
     const sys = (t?.system_ids ?? []).map((sid) => data.systems.find((s) => s.id === sid)).filter((s): s is NonNullable<typeof s> => !!s);
     return sys.length ? Math.min(...sys.map((s) => (s.state === 'service' ? s.qty : 0))) : 1;
   };
-  const stations: RotationStation[] = picked.flatMap((id) => {
+  const kids = useMemo(() => childrenOf(data.tps), [data.tps]);
+  /** Un TP principal qui a des sous-TP n'est pas un poste en lui-même : la rotation se fait entre ses sous-TP */
+  const stations: RotationStation[] = picked.filter((id) => !(kids.get(id)?.length)).flatMap((id) => {
     const t = data.tps.find((x) => x.id === id);
     return t ? [{ id, name: t.code ? `${t.code} · ${t.title}` : t.title, postes: postes[id] ?? defaultPostes(id), team: team[id] ?? t.pair_size ?? 1 }] : [];
   });
   const names = useMemo(() => Array.from({ length: n }, (_, i) => (roster.length === n ? roster[i] : `Élève ${i + 1}`)), [n, roster]);
   const plan = useMemo(() => proposeRotation(names, stations), [names, stations.map((s) => `${s.id}${s.postes}${s.team}`).join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const dates = plan.rounds.map((_, r) => iso(addDays(parseISO(start), r * step)));
-  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const toggle = (id: string) => setPicked((p) => {
+    const sub = (kids.get(id) ?? []).map((k) => k.id);
+    const on = p.includes(id);
+    // Le principal entraîne tous ses sous-TP ; décocher un sous-TP laisse les autres
+    return on ? p.filter((x) => x !== id && !sub.includes(x)) : [...new Set([...p, id, ...sub])];
+  });
   const title = `Rotation ${group} — ${n} élèves`;
   const label = (g: number, r: number) => (plan.rounds[r][g] < 0 ? 'Attente' : plan.stations[plan.rounds[r][g]].name);
 
@@ -57,7 +65,7 @@ export default function Rotations() {
         <Field label="Intervalle (jours)"><input className="in" type="number" min={1} max={60} value={step} onChange={(e) => setStep(Math.max(1, Number(e.target.value) || 7))} /></Field>
       </div>
       <div className="f no-print"><span className="lab">TP de la rotation ({level ?? '—'})</span>
-        {tps.length === 0 ? <p className="muted">Aucun TP de ce niveau dans le catalogue.</p> : <div className="picks">{tps.map((t) => <label key={t.id} className="pick"><input type="checkbox" checked={picked.includes(t.id)} onChange={() => toggle(t.id)} />{t.code ? `${t.code} · ` : ''}{t.title}</label>)}</div>}</div>
+        {tps.length === 0 ? <p className="muted">Aucun TP de ce niveau dans le catalogue.</p> : <div className="picks">{tps.filter((t) => !t.parent_id).flatMap((t) => [t, ...(kids.get(t.id) ?? [])]).map((t) => <label key={t.id} className="pick" style={t.parent_id ? { marginLeft: 18 } : undefined}><input type="checkbox" checked={picked.includes(t.id)} onChange={() => toggle(t.id)} />{t.parent_id ? '↳ ' : ''}{t.code ? `${t.code} · ` : ''}{t.title}{kids.get(t.id)?.length ? ` (${kids.get(t.id)!.length} sous-TP)` : ''}</label>)}</div>}</div>
       {stations.length > 0 && (
         <div className="scroll no-print"><table className="tbl">
           <thead><tr><th>TP</th><th>Postes</th><th>Élèves par poste</th><th>Capacité</th></tr></thead>

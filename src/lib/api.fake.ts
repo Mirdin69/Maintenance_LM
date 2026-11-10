@@ -262,7 +262,7 @@ function defaults(table: string, row: Row): Row {
   const base: Row = { created_at: now() };
   switch (table) {
     case 'systems': Object.assign(base, { domain: 'ind', qty: 1, state: 'service', created_by: me }); break;
-    case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [], documents: [], tool_ids: [], reusable: false, pair_size: 1 }); break;
+    case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [], documents: [], tool_ids: [], reusable: false, pair_size: 1, parent_id: null }); break;
     case 'maintenance_plans': Object.assign(base, { priority: 'n', checklist: [], active: true }); break;
     case 'pfmp_periods': Object.assign(base, { status: 'planned' }); break;
     case 'ideas': Object.assign(base, { category: 'autre', status: 'nouvelle', answer: null, body: null, votes: [], created_by: me }); break;
@@ -325,6 +325,7 @@ function cascade(table: string, removed: Row[]) {
   };
   if (table === 'tps') drop('planning_cells', (r) => ids.includes(r.tp_id) && !r.label && !r.note);
   if (table === 'tps') nullify('planning_cells', 'tp_id');
+  if (table === 'tps') nullify('tps', 'parent_id');
   if (table === 'fiches') nullify('fiches', 'sequence_id');
   if (table === 'students') drop('progress', (r) => ids.includes(r.student_id));
   if (table === 'tps') drop('progress', (r) => ids.includes(r.tp_id));
