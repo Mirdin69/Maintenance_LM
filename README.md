@@ -51,6 +51,11 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - `0008` ajoute la boîte à idées (table `ideas`, vote par fonction). Sans elle, la page *Aide > Idées d'amélioration* affiche une erreur de chargement.
 - Documents : dépôt direct de PDF, Word, Excel, PowerPoint ou OpenDocument (10 Mo max, bucket privé `documents`, lecture réservée aux comptes actifs). Aperçu intégré des PDF, .docx et .xlsx ; les .doc, .xls et .ppt se téléchargent. Les liens Google Drive restent possibles.
 
+### Catalogue des TP : recherche, sélection et tri
+- **Recherche** : un champ cherche tous les mots saisis (sans accents ni majuscules) dans le code, le titre, l'objectif, l'enseignant, la séquence et les compétences.
+- **Sélection** : niveau, enseignant (ceux qui ont des TP, avec ou sans compte), domaine, durée (2 h ou moins, 2 à 4 h, 4 à 7 h, plus de 7 h, non précisée) et compétences (le TP doit les travailler toutes). *Réinitialiser les filtres* remet tout à zéro.
+- **Tri** : clic sur les en-têtes TP, Niveau, Enseignant, Durée, Compétences (aller-retour croissant/décroissant) ou liste « Trier par ». Les codes sont triés naturellement (TP2 avant TP10), les valeurs vides restent en bas.
+
 ### Couleurs des domaines
 - **Administration > Domaines > Couleurs des domaines** : chaque domaine (prédéfini ou ajouté) a un sélecteur de couleur libre. La couleur remplit toute la case du cours dans le semainier (vues Année et Semaine). Le texte est calculé pour rester lisible (contraste AA) et une variante assombrie est générée pour le thème sombre. *Couleur d'origine* rétablit la couleur par défaut. Réglage `domain_colors`, sans migration.
 

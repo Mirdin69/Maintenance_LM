@@ -250,3 +250,47 @@ describe('carrousel de base d’après le semainier de l’année', () => {
     expect(g[1].map((s) => s!.value)).toEqual(['lab:REM', 'tp:a', 'tp:b']);
   });
 });
+
+describe('catalogue des TP : recherche, sélection et tri', () => {
+  const tp = (o: Partial<import('@/lib/types').Tp>) => ({ id: o.title, code: null, title: 'T', level: 'Seconde', domain: 'ind', hours: null, system_ids: [], competences: [], objective: null, teacher_id: null, teacher_label: null, sequence_name: null, documents: [], tool_ids: [], reusable: false, created_at: '', ...o }) as import('@/lib/types').Tp;
+  const list = [
+    tp({ title: 'Câblage d’une armoire', code: 'TP10', level: 'Première', hours: 7, teacher_label: 'Sadky', competences: ['C3', 'C5'], objective: 'Réaliser le câblage' }),
+    tp({ title: 'Éclairage', code: 'TP2', level: 'Seconde', hours: 3, teacher_id: 'u1', competences: ['C3'] }),
+    tp({ title: 'Habilitation électrique', code: 'TP1', level: 'Seconde', hours: 2, teacher_label: 'Sadky', competences: ['C5'] }),
+    tp({ title: 'Sans durée', code: 'TP3', level: 'Terminale' }),
+  ];
+  const name = (t: import('@/lib/types').Tp) => (t.teacher_id ? 'Alexandre V.' : t.teacher_label ?? '');
+  it('cherche sans tenir compte des accents ni de la casse, dans tous les champs', async () => {
+    const { filterTps, NO_FILTER } = await import('@/lib/tpFilter');
+    const ids = (q: string) => filterTps(list, { ...NO_FILTER, q }, name).map((t) => t.code);
+    expect(ids('cablage')).toEqual(['TP10']);
+    expect(ids('ECLAIRAGE')).toEqual(['TP2']);
+    expect(ids('alexandre')).toEqual(['TP2']);
+    expect(ids('sadky habilitation')).toEqual(['TP1']);
+    expect(ids('c5')).toEqual(['TP10', 'TP1']);
+  });
+  it('sélectionne par niveau, enseignant, durée et compétences (toutes celles cochées)', async () => {
+    const { filterTps, NO_FILTER } = await import('@/lib/tpFilter');
+    const ids = (f: object) => filterTps(list, { ...NO_FILTER, ...f }, name).map((t) => t.code);
+    expect(ids({ level: 'Seconde' })).toEqual(['TP2', 'TP1']);
+    expect(ids({ teacher: 'label:Sadky' })).toEqual(['TP10', 'TP1']);
+    expect(ids({ teacher: 'u1' })).toEqual(['TP2']);
+    expect(ids({ duration: 'short' })).toEqual(['TP1']);
+    expect(ids({ duration: 'half' })).toEqual(['TP2']);
+    expect(ids({ duration: 'long' })).toEqual(['TP10']);
+    expect(ids({ duration: 'none' })).toEqual(['TP3']);
+    expect(ids({ comps: ['C3'] })).toEqual(['TP10', 'TP2']);
+    expect(ids({ comps: ['C3', 'C5'] })).toEqual(['TP10']);
+    expect(ids({ level: 'Seconde', comps: ['C5'] })).toEqual(['TP1']);
+  });
+  it('trie dans les deux sens, les valeurs vides restent en bas', async () => {
+    const { sortTps } = await import('@/lib/tpFilter');
+    const codes = (k: never, d: 1 | -1) => sortTps(list, k, d, name).map((t) => t.code);
+    expect(codes('code' as never, 1)).toEqual(['TP1', 'TP2', 'TP3', 'TP10']); // tri naturel : TP2 avant TP10
+    expect(codes('hours' as never, 1)).toEqual(['TP1', 'TP2', 'TP10', 'TP3']);
+    expect(codes('hours' as never, -1)).toEqual(['TP10', 'TP2', 'TP1', 'TP3']);
+    expect(codes('title' as never, 1)[0]).toBe('TP10');
+    expect(codes('level' as never, -1)[0]).toBe('TP3');
+    expect(codes('teacher' as never, 1).at(-1)).toBe('TP3');
+  });
+});

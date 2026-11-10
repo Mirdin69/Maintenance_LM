@@ -752,3 +752,27 @@ describe('planning du lundi : proposition et impression', () => {
     print.mockRestore();
   });
 });
+
+describe('catalogue des TP : recherche et tri', () => {
+  it('filtre par recherche, par niveau et peut être réinitialisé', async () => {
+    await open('prof', 'catalogue');
+    const body = async () => (await screen.findAllByRole('row')).length - 1;
+    const total = await body();
+    expect(total).toBeGreaterThan(2);
+    await userEvent.type(screen.getByLabelText('Rechercher un TP'), 'zzzintrouvable');
+    expect(await screen.findByText('Aucun TP ne correspond à cette recherche.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Réinitialiser les filtres' }));
+    expect(await body()).toBe(total);
+    await userEvent.click(within(screen.getByRole('group', { name: 'Niveau' })).getByRole('button', { name: 'Terminale' }));
+    await waitFor(() => expect(Math.max(0, screen.queryAllByRole('row').length - 1)).toBeLessThan(total));
+  });
+  it('trie en cliquant sur un en-tête', async () => {
+    await open('prof', 'catalogue');
+    const durHeader = await screen.findByRole('columnheader', { name: /Durée/ });
+    expect(durHeader).toHaveAttribute('aria-sort', 'none');
+    await userEvent.click(within(durHeader).getByRole('button'));
+    expect(screen.getByRole('columnheader', { name: /Durée/ })).toHaveAttribute('aria-sort', 'ascending');
+    await userEvent.click(within(screen.getByRole('columnheader', { name: /Durée/ })).getByRole('button'));
+    expect(screen.getByRole('columnheader', { name: /Durée/ })).toHaveAttribute('aria-sort', 'descending');
+  });
+});

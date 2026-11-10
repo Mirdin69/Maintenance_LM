@@ -508,3 +508,12 @@ select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 
 .lundi-grid td.cc { background: var(--cbg); color: var(--cfg); }
 .lundi-grid td.cc select.in { background: var(--surface); color: var(--ink); }
 .lundi-print td.cc { background: var(--cbg); color: var(--cfg); }
+
+/* Catalogue des TP : recherche, filtres et tri */
+.tp-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; margin: 8px 0; }
+.tp-filters input[type='search'] { flex: 1 1 260px; min-width: 200px; }
+.tp-filters select.in { flex: 0 1 auto; max-width: 220px; }
+.tp-comps { flex: 1 1 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.tp-comps summary { cursor: pointer; font-weight: 700; }
+.th-sort { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: inherit; }
+.th-sort:hover { text-decoration: underline; }

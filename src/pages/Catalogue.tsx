@@ -4,6 +4,7 @@ import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
 import { COMPETENCES, DOMAINS, LEVELS } from '@/lib/domain';
 import type { Level, Tp } from '@/lib/types';
+import { DURATIONS, NO_FILTER, filterTps, isFiltered, sortTps, teacherKey, type Duration, type SortKey, type TpFilters } from '@/lib/tpFilter';
 import { AddPanel, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
 import { DocsEditor, DocsViewer } from '@/components/Docs';
 import { PasteImport } from '@/components/PasteImport';
@@ -16,7 +17,9 @@ export default function Catalogue() {
   const act = useAct();
   const [formKey, setFormKey] = useState(0);
   const [editing, setEditing] = useState<Tp | null>(null);
-  const [level, setLevel] = useState<Level | ''>('');
+  const [filters, setFilters] = useState<TpFilters>(NO_FILTER);
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'code', dir: 1 });
+  const setF = (patch: Partial<TpFilters>) => setFilters((f) => ({ ...f, ...patch }));
   const [sys, setSys] = useState<string[]>([]);
   const [comp, setComp] = useState<string[]>([]);
   const [toolIds, setToolIds] = useState<string[]>([]);
@@ -43,7 +46,17 @@ export default function Catalogue() {
     if (ok) { edit(null); setFormKey((k) => k + 1); }
   };
 
-  const list = data.tps.filter((t) => !level || t.level === level).sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level) || (a.code ?? '').localeCompare(b.code ?? '', 'fr', { numeric: true }));
+  const teacherName = (t: Tp) => (t.teacher_id ? who(t.teacher_id) : t.teacher_label ?? '');
+  const list = sortTps(filterTps(data.tps, filters, teacherName), sort.key, sort.dir, teacherName);
+  // Enseignants proposés dans le filtre : ceux qui ont au moins un TP
+  const teacherOptions = [...new Map(data.tps.filter((t) => teacherKey(t)).map((t) => [teacherKey(t), teacherName(t)])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'fr'));
+  const usedDomains = [...new Set(data.tps.map((t) => t.domain))];
+  const sortBy = (key: SortKey) => setSort((s) => ({ key, dir: s.key === key && s.dir === 1 ? -1 : 1 }));
+  const th = (k: SortKey, children: string, num?: boolean) => (
+    <th key={k} className={num ? 'num' : ''} aria-sort={sort.key === k ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className="th-sort" onClick={() => sortBy(k)}>{children}{sort.key === k ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}</button>
+    </th>
+  );
 
   return (
     <>
@@ -82,11 +95,38 @@ export default function Catalogue() {
           }} />
       )}
       <section className="panel">
-        <div className="row between"><h2>Catalogue ({list.length})</h2>
-          <Seg<Level | ''> label="Niveau" value={level} onChange={setLevel} items={[['', 'Tous'], ...LEVELS.map((l) => [l, l] as [Level, string])]} /></div>
-        {list.length === 0 ? <Empty>Aucun TP.</Empty> : (
+        <div className="row between"><h2>Catalogue ({list.length}{list.length !== data.tps.length ? ` sur ${data.tps.length}` : ''})</h2>
+          <Seg<Level | ''> label="Niveau" value={filters.level as Level | ''} onChange={(v) => setF({ level: v })} items={[['', 'Tous'], ...LEVELS.map((l) => [l, l] as [Level, string])]} /></div>
+        <div className="tp-filters no-print" role="search" aria-label="Rechercher et filtrer les TP">
+          <input className="in" type="search" aria-label="Rechercher un TP" placeholder="Rechercher : titre, code, objectif, enseignant, compétence…" value={filters.q} onChange={(e) => setF({ q: e.target.value })} />
+          <select className="in" aria-label="Filtrer par enseignant" value={filters.teacher} onChange={(e) => setF({ teacher: e.target.value })}>
+            <option value="">Tous les enseignants</option>
+            {teacherOptions.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
+          </select>
+          <select className="in" aria-label="Filtrer par domaine" value={filters.domain} onChange={(e) => setF({ domain: e.target.value })}>
+            <option value="">Tous les domaines</option>
+            {usedDomains.map((d) => <option key={d} value={d}>{DOMAINS[d] ?? d}</option>)}
+          </select>
+          <select className="in" aria-label="Filtrer par durée" value={filters.duration} onChange={(e) => setF({ duration: e.target.value as Duration })}>
+            {DURATIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <select className="in" aria-label="Trier par" value={`${sort.key}:${sort.dir}`} onChange={(e) => { const [key, dir] = e.target.value.split(':'); setSort({ key: key as SortKey, dir: Number(dir) as 1 | -1 }); }}>
+            {([['code', 'Code'], ['title', 'Titre'], ['level', 'Niveau'], ['teacher', 'Enseignant'], ['hours', 'Durée'], ['competences', 'Compétences']] as Array<[SortKey, string]>).flatMap(([k, l]) => [
+              <option key={`${k}1`} value={`${k}:1`}>Trier : {l} ↑</option>, <option key={`${k}-1`} value={`${k}:-1`}>Trier : {l} ↓</option>,
+            ])}
+          </select>
+          <details className="tp-comps" open={filters.comps.length > 0}>
+            <summary>Compétences{filters.comps.length ? ` (${filters.comps.length})` : ''}</summary>
+            <div className="picks" role="group" aria-label="Compétences travaillées">
+              {Object.keys(COMPETENCES).map((c) => <label key={c} className="pick" title={COMPETENCES[c]}><input type="checkbox" checked={filters.comps.includes(c)} onChange={() => setF({ comps: toggle(filters.comps, c) })} />{c}</label>)}
+            </div>
+            <p className="muted small">Le TP doit travailler toutes les compétences cochées.</p>
+          </details>
+          {isFiltered(filters) && <button type="button" className="btn ghost sm" onClick={() => setFilters(NO_FILTER)}>Réinitialiser les filtres</button>}
+        </div>
+        {list.length === 0 ? <Empty>{isFiltered(filters) ? 'Aucun TP ne correspond à cette recherche.' : 'Aucun TP.'}</Empty> : (
           <div className="scroll"><table className="tbl">
-            <thead><tr><th>TP</th><th>Niveau</th><th>Enseignant</th><th className="num">Durée</th><th>Systèmes</th><th>Compétences</th><th>Documents</th>{canWrite && <th />}</tr></thead>
+            <thead><tr>{th('code', 'TP')}{th('level', 'Niveau')}{th('teacher', 'Enseignant')}{th('hours', 'Durée', true)}<th>Systèmes</th>{th('competences', 'Compétences')}<th>Documents</th>{canWrite && <th />}</tr></thead>
             <tbody>{list.map((t) => (
               <tr key={t.id}>
                 <td><b>{t.code}</b> {t.title}{t.objective && <span className="sub">{t.objective}</span>}</td><td>{t.level}</td><td>{t.teacher_id ? who(t.teacher_id) : t.teacher_label ?? '—'}</td><td className="num">{t.hours ? `${t.hours} h` : '—'}</td>
