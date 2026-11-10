@@ -37,3 +37,23 @@ describe('couleurs des domaines du semainier', () => {
     for (const k of Object.keys(DOMAIN_PALETTE)) expect(css).toContain(`.dom-${k} {`);
   });
 });
+
+describe('couleurs de domaine choisies librement', () => {
+  it('le texte reste lisible (4,5) en clair et en sombre quelle que soit la couleur choisie', async () => {
+    const { deriveColors } = await import('@/lib/colors');
+    for (let r = 0; r < 256; r += 51) for (let g = 0; g < 256; g += 51) for (let b = 0; b < 256; b += 51) {
+      const hex = '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
+      const c = deriveColors(hex);
+      expect(ratio(c.fg, c.bg), hex).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(c.dfg, c.dbg), hex).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  it('lit les couleurs enregistrées en ignorant les valeurs invalides et génère les règles CSS', async () => {
+    const { parseDomainColors, domainColorsCss } = await import('@/lib/domain');
+    const m = parseDomainColors('{"ind":"#FF0000","bat":"rouge","c-x":"#00ff00","BAD!":"#000000"}');
+    expect(m).toEqual({ ind: '#ff0000', 'c-x': '#00ff00' });
+    const css2 = domainColorsCss(m);
+    expect(css2).toContain('.dom-ind{--cbg:#ff0000;');
+    expect(css2).toContain("[data-theme='dark'] .dom-c-x");
+  });
+});

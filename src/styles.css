@@ -287,6 +287,11 @@ tr.sel td { background: var(--sunken); }
 .wk thead th { background: var(--navy); color: var(--on-navy); text-align: left; }
 .wk th.row-h { background: var(--sunken); width: 92px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 .wk td.dom { background: var(--cbg); color: var(--cfg); font-weight: 700; }
+.wk td.dom.sub { font-weight: 400; }
+/* Semainier : toute la case du cours prend la couleur de son domaine */
+.sem td.cc { background: var(--cbg); color: var(--cfg); }
+.sem td.cc .pc, .sem td.cc select.pc-room { background: transparent; color: inherit; }
+.sem td.cc .who { color: inherit; }
 .wk td.dim { color: var(--muted); font-style: italic; background: var(--sunken); }
 .fiche-grid { display: grid; gap: 10px; }
 .fiche-sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }

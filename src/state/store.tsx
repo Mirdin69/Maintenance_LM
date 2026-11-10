@@ -1,7 +1,7 @@
 import { saving } from './saving';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/api';
-import { displayName, parseCustomDomains, registerDomains } from '@/lib/domain';
+import { displayName, domainColorsCss, parseCustomDomains, parseDomainColors, registerDomainColors, registerDomains } from '@/lib/domain';
 import { useToast, friendlyError } from './toast';
 import type { DataSet, Profile, Room, System, TableName, Tp } from '@/lib/types';
 
@@ -86,10 +86,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [reload]);
 
+  // Couleurs des domaines choisies par un gestionnaire : règles CSS ajoutées après la feuille de style
+  const colorsRaw = data.settings.find((x) => x.key === 'domain_colors')?.value;
+  useEffect(() => {
+    let el = document.getElementById('domain-colors') as HTMLStyleElement | null;
+    if (!el) { el = document.createElement('style'); el.id = 'domain-colors'; document.head.appendChild(el); }
+    el.textContent = domainColorsCss(parseDomainColors(colorsRaw));
+  }, [colorsRaw]);
+
   const value = useMemo<Store>(() => {
     const profileById = new Map(data.profiles.map((p) => [p.id, p]));
     // Les domaines ajoutés par un gestionnaire sont enregistrés avant que les pages ne s'affichent
     registerDomains(parseCustomDomains(data.settings.find((x) => x.key === 'custom_domains')?.value));
+    registerDomainColors(parseDomainColors(data.settings.find((x) => x.key === 'domain_colors')?.value));
     return {
       data, loading, error, reload,
       roomById: new Map(data.rooms.map((r) => [r.id, r])),

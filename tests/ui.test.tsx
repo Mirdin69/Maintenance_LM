@@ -534,7 +534,7 @@ describe('interface', () => {
     await userEvent.type(await screen.findByLabelText('Nom du domaine *'), 'Froid et clim');
     await userEvent.click(screen.getByRole('button', { name: 'Ajouter le domaine' }));
     expect(await screen.findByText('Domaine ajouté.')).toBeInTheDocument();
-    expect(await screen.findByRole('cell', { name: 'Froid et clim' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByRole('cell', { name: 'Froid et clim' })).toHaveLength(2));
     await userEvent.type(screen.getByLabelText('Nom du domaine *'), 'Industriel');
     await userEvent.click(screen.getByRole('button', { name: 'Ajouter le domaine' }));
     expect(await screen.findByText('Ce domaine existe déjà.')).toBeInTheDocument();
@@ -649,5 +649,24 @@ describe('demi-journées, salle et carrousel', () => {
     const sel = (await screen.findAllByLabelText(/^Partie de la journée, lundi Seconde/i))[0];
     await userEvent.selectOptions(sel, 'MA');
     expect(await screen.findByText('Enregistré.')).toBeInTheDocument();
+  });
+});
+
+describe('couleurs des domaines', () => {
+  it('un gestionnaire change la couleur d’un domaine prédéfini et peut la rétablir', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Domaines' }));
+    const input = (await screen.findByLabelText('Couleur de Industriel')) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '#ff8800' } });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(await screen.findByText('Couleur modifiée.')).toBeInTheDocument();
+    await waitFor(() => expect(document.getElementById('domain-colors')?.textContent).toContain('.dom-ind{--cbg:#ff8800;'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Couleur d’origine' }));
+    await waitFor(() => expect(document.getElementById('domain-colors')?.textContent).not.toContain('#ff8800'));
+  });
+  it('colore toute la case du cours dans le semainier', async () => {
+    await open('prof', 'semainier');
+    const cell = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ })).find((c) => (c as HTMLSelectElement).value.startsWith('tp:'))!;
+    expect(cell.closest('td')?.className).toMatch(/cc dom-/);
   });
 });

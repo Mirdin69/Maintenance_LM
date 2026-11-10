@@ -1,3 +1,4 @@
+import { HEX, deriveColors, type DomainColor } from './colors';
 import type { Domain, Level, MarkLevel, Profile, RoomKind, Role, SystemState } from './types';
 
 export const LEVELS: Level[] = ['Seconde', 'Première', 'Terminale'];
@@ -82,8 +83,45 @@ export function registerDomains(list: CustomDomain[]) {
   customColor.clear();
   for (const d of list) { DOMAINS[d.id] = d.label; customColor.set(d.id, d.color); }
 }
+
+/** Couleurs choisies librement par un gestionnaire (réglage `domain_colors`, { identifiant: '#rrggbb' }) */
+export function parseDomainColors(raw: string | undefined): Record<string, string> {
+  try {
+    const v: unknown = JSON.parse(raw || '{}');
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    return Object.fromEntries(Object.entries(v).filter(([k, c]) => /^[a-z0-9-]{1,20}$/.test(k) && typeof c === 'string' && HEX.test(c)).map(([k, c]) => [k, (c as string).toLowerCase()]));
+  } catch {
+    return {};
+  }
+}
+
+let overrides: Record<string, string> = {};
+export function registerDomainColors(map: Record<string, string>) { overrides = map; }
+
+/** Couleurs effectives d'un domaine : choix du gestionnaire, sinon couleur prédéfinie ou palette du domaine ajouté */
+export function colorsOf(id: Domain): DomainColor {
+  if (overrides[id]) return deriveColors(overrides[id]);
+  const c = customColor.get(id);
+  return DOMAIN_PALETTE[c ?? '']
+    ?? DOMAIN_COLORS[id]
+    ?? DOMAIN_PALETTE.p8;
+}
+
+/** Règles CSS des couleurs choisies, calquées sur celles de la feuille de style (thème clair, sombre automatique, sombre forcé) */
+export function domainColorsCss(map: Record<string, string>): string {
+  const rules = Object.entries(map).map(([id, hex]) => ({ id, c: deriveColors(hex) }));
+  const one = (sel: string, bg: string, fg: string) => `${sel}{--cbg:${bg};--cfg:${fg};}`;
+  return [
+    ...rules.map(({ id, c }) => one(`.dom-${id}`, c.bg, c.fg)),
+    '@media (prefers-color-scheme: dark){',
+    ...rules.map(({ id, c }) => one(`:root:not([data-theme='light']) .dom-${id}`, c.dbg, c.dfg)),
+    '}',
+    ...rules.map(({ id, c }) => one(`:root[data-theme='dark'] .dom-${id}`, c.dbg, c.dfg)),
+  ].join('\n');
+}
+
 /** Classe CSS de couleur d'un domaine dans le semainier */
-export const domainClass = (id: Domain) => `dom-${customColor.get(id) ?? id}`;
+export const domainClass = (id: Domain) => (overrides[id] ? `dom-${id}` : `dom-${customColor.get(id) ?? id}`);
 /** Nom d'un domaine, même si on ne le connaît plus */
 export const domainLabel = (id: Domain) => DOMAINS[id] ?? id;
 

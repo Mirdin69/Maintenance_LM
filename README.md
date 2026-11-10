@@ -51,6 +51,9 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - `0008` ajoute la boîte à idées (table `ideas`, vote par fonction). Sans elle, la page *Aide > Idées d'amélioration* affiche une erreur de chargement.
 - Documents : dépôt direct de PDF, Word, Excel, PowerPoint ou OpenDocument (10 Mo max, bucket privé `documents`, lecture réservée aux comptes actifs). Aperçu intégré des PDF, .docx et .xlsx ; les .doc, .xls et .ppt se téléchargent. Les liens Google Drive restent possibles.
 
+### Couleurs des domaines
+- **Administration > Domaines > Couleurs des domaines** : chaque domaine (prédéfini ou ajouté) a un sélecteur de couleur libre. La couleur remplit toute la case du cours dans le semainier (vues Année et Semaine). Le texte est calculé pour rester lisible (contraste AA) et une variante assombrie est générée pour le thème sombre. *Couleur d'origine* rétablit la couleur par défaut. Réglage `domain_colors`, sans migration.
+
 ### Demi-journées, salle et carrousel
 - **Administration > Calendrier** : pour chaque jour affiché d'un niveau, choisissez *Journée*, *Matin*, *Après-midi* ou *Matin et après-midi* (deux lignes séparées dans le semainier).
 - **Semainier** : chaque case a une liste *Salle…* modifiable (annulable) ; la salle apparaît dans la vue Semaine, « Mes cours » et l'export CSV. Une demi-journée compte 0,5 jour dans la répartition annuelle.

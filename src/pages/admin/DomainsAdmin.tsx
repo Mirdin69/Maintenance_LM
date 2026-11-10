@@ -1,10 +1,25 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { useAct, useStore } from '@/state/store';
-import { BUILTIN_DOMAINS, DOMAIN_PALETTE, MAX_CUSTOM_DOMAINS, parseCustomDomains, type CustomDomain } from '@/lib/domain';
+import { BUILTIN_DOMAINS, DOMAIN_PALETTE, MAX_CUSTOM_DOMAINS, colorsOf, domainLabel, parseCustomDomains, parseDomainColors, type CustomDomain } from '@/lib/domain';
 import { ConfirmButton, Field } from '@/components/ui';
 
 const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 14);
+
+/** Sélecteur de couleur : n'enregistre qu'à la validation (fermeture du sélecteur), pas à chaque déplacement du curseur */
+function ColorInput({ value, label, onCommit }: { value: string; label: string; onCommit: (hex: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const on = () => onCommit(el.value);
+    el.addEventListener('change', on);
+    return () => el.removeEventListener('change', on);
+  });
+  return <input ref={ref} type="color" aria-label={label} value={draft} onChange={(e) => setDraft(e.target.value)} />;
+}
 
 export default function DomainsAdmin() {
   const { data, settings } = useStore();
@@ -15,6 +30,11 @@ export default function DomainsAdmin() {
   const [error, setError] = useState('');
 
   const save = (next: CustomDomain[], ok: string) => act(() => api.upsert('settings', [{ key: 'custom_domains', value: JSON.stringify(next) }], 'key'), { ok, tables: ['settings'] });
+  const colors = parseDomainColors(settings.domain_colors);
+  const allIds = [...Object.keys(BUILTIN_DOMAINS), ...list.map((d) => d.id)];
+  const saveColors = (next: Record<string, string>, ok: string) => act(() => api.upsert('settings', [{ key: 'domain_colors', value: JSON.stringify(next) }], 'key'), { ok, tables: ['settings'] });
+  const pickColor = (id: string, hex: string) => saveColors({ ...colors, [id]: hex }, 'Couleur modifiée.');
+  const resetColor = (id: string) => { const { [id]: _drop, ...rest } = colors; return saveColors(rest, 'Couleur d’origine rétablie.'); };
   const used = (id: string) => data.tps.filter((t) => t.domain === id).length + data.systems.filter((s) => s.domain === id).length;
 
   const add = async (e: FormEvent<HTMLFormElement>) => {
@@ -44,6 +64,24 @@ export default function DomainsAdmin() {
           {error && <div className="alert wide" role="alert">{error}</div>}
           <div className="actions"><button className="btn" type="submit">Ajouter le domaine</button></div>
         </form>
+      </section>
+      <section className="panel stack">
+        <h2>Couleurs des domaines</h2>
+        <p className="muted small">Choisissez la couleur de chaque domaine : elle colore toute la case du cours dans le semainier. Le texte est ajusté automatiquement pour rester lisible, en thème clair comme en thème sombre.</p>
+        <div className="scroll"><table className="tbl" aria-label="Couleurs des domaines">
+          <thead><tr><th>Domaine</th><th>Couleur</th><th>Aperçu</th><th /></tr></thead>
+          <tbody>{allIds.map((id) => {
+            const c = colorsOf(id);
+            return (
+              <tr key={id}>
+                <td><b>{domainLabel(id)}</b></td>
+                <td><ColorInput label={`Couleur de ${domainLabel(id)}`} value={colors[id] ?? c.bg} onCommit={(hex) => void pickColor(id, hex)} /></td>
+                <td><span className="swatch" style={{ background: c.bg, color: c.fg }}>TP exemple</span></td>
+                <td>{colors[id] ? <button type="button" className="btn ghost sm" onClick={() => void resetColor(id)}>Couleur d’origine</button> : <span className="muted small">Couleur d’origine</span>}</td>
+              </tr>
+            );
+          })}</tbody>
+        </table></div>
       </section>
       <section className="panel stack">
         <h2>Domaines ajoutés ({list.length})</h2>

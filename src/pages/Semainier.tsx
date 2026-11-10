@@ -216,12 +216,12 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
                       const known = !!c?.label && SPECIAL_LABELS.includes(c.label);
                       const where = `${g}, ${DAY_LONG[dow - 1]} ${fmtShort(d)}${part === 'J' ? '' : ` ${PART_LABEL[part].toLowerCase()}`}`;
                       return (
-                        <td key={g} className={onlyMine && isMine(tp, profile) ? 'mine' : ''}
+                        <td key={g} className={`${tp ? `cc ${domainClass(tp.domain)}` : ''} ${onlyMine && isMine(tp, profile) ? 'mine' : ''}`}
                           onDragOver={canWrite ? (e) => e.preventDefault() : undefined} onDrop={canWrite ? (e) => drop(e, d, g, part) : undefined}>
                           {canWrite && value && <span className="grip no-print" draggable aria-hidden="true" title="Glisser pour copier (Maj : déplacer)"
                             onDragStart={(e) => { e.dataTransfer.setData('text/plain', `${d}|${g}|${part}`); e.dataTransfer.effectAllowed = 'copyMove'; }}>⠿</span>}
                           {warnings.get(cellKey(d, g, part)) && <span className="cell-warn" role="img" aria-label={`Attention : ${warnings.get(cellKey(d, g, part))!.join(' ; ')}`} title={warnings.get(cellKey(d, g, part))!.join('\n')}>⚠</span>}
-                          <select className={`pc ${tp ? `dom-${tp.domain}` : value ? 'lab' : 'empty'}`} value={value} disabled={!canWrite}
+                          <select className={`pc ${tp ? '' : value ? 'lab' : 'empty'}`} value={value} disabled={!canWrite}
                             aria-label={where} onChange={(e) => change(d, g, part, e.target.value)}>
                             <option value="">—</option>
                             {c?.tp_id && !tp && <option value={`tp:${c.tp_id}`}>(TP d’un autre niveau)</option>}
@@ -310,13 +310,13 @@ function Week({ groups, cells, weekdays, dayParts, tpById, teacherOf }: CommonPr
                       const c = cells.get(cellKey(d, g, part));
                       const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
                       if (onlyMine && !isMine(tp, profile)) return <td key={k} className="dim">{ri === 0 ? '·' : ''}</td>;
-                      if (ri === 2) return <td key={k}>{c && (tp || c.label) ? roomName(c.room_id) : ''}</td>;
+                      if (ri === 2) return <td key={k} className={tp ? `dom sub ${domainClass(tp.domain)}` : ''}>{c && (tp || c.label) ? roomName(c.room_id) : ''}</td>;
                       if (!tp) return <td key={k} className={c?.label ? 'dim' : ''}>{ri === 0 ? c?.label ?? '' : ri === 4 ? c?.note ?? '' : ''}</td>;
                       if (ri === 0) return <td key={k} className={`dom ${domainClass(tp.domain)}`} title={tp.code ?? undefined}>{domainLabel(tp.domain)}</td>;
-                      if (ri === 1) return <td key={k}>{teacherOf(tp)}</td>;
-                      if (ri === 3) return <td key={k}>{tp.title}</td>;
-                      if (ri === 4) return <td key={k}>{tp.objective}</td>;
-                      return <td key={k}>{tp.competences.join(' · ')}</td>;
+                      if (ri === 1) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{teacherOf(tp)}</td>;
+                      if (ri === 3) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{tp.title}</td>;
+                      if (ri === 4) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{tp.objective}</td>;
+                      return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{tp.competences.join(' · ')}</td>;
                     })}
                   </tr>
                 ))}
