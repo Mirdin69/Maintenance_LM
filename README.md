@@ -91,6 +91,11 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - L'outil propose le nombre de sous-groupes (au moins un par TP, davantage si l'effectif dépasse la capacité du TP le plus contraint), les équipes de chaque sous-groupe et un planning où chaque sous-groupe passe une fois sur chaque TP. S'il y a plus de sous-groupes que de TP, certains attendent à chaque séance et le nombre de séances augmente.
 - **Export Excel** (feuilles Rotation, Équipes, Effectifs), CSV et impression. Le fichier Excel s'ouvre dans Google Sheets (Drive, Nouveau, Importer le fichier).
 
+## Salles multiples et séquences de Première
+
+- **Plusieurs salles pour un cours** : une fois la salle principale choisie, « Autres salles » permet d'en cocher jusqu'à 3 de plus (rotations en ateliers). Toutes sont affichées (semainier, export CSV) et comptées dans l'occupation des salles. Nécessite la migration `0013_salles_multiples.sql`.
+- **Première : des séquences plutôt que des TP.** Dans la vue année de la Première, la liste d'une case propose en tête les **séquences** créées dans Fiches (celles de Première ou sans niveau) ; le nom de la séquence est inscrit dans la case. Les TP restent disponibles, et la répartition des élèves sur les TP se fait dans « Rotations des groupes ».
+
 ## Salles et occupation
 
 - **Salles** (Administration, gestionnaire) : nom, bâtiment, type, places, option *partagée* (grand atelier : plusieurs groupes en même temps sans conflit).

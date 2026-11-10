@@ -13,6 +13,7 @@ const migration9 = readFileSync(new URL('../supabase/migrations/0009_demi_journe
 const migration10 = readFileSync(new URL('../supabase/migrations/0010_plusieurs_cours.sql', import.meta.url), 'utf8');
 const migration11 = readFileSync(new URL('../supabase/migrations/0011_enseignants_binomes.sql', import.meta.url), 'utf8');
 const migration12 = readFileSync(new URL('../supabase/migrations/0012_suppression_tp.sql', import.meta.url), 'utf8');
+const migration13 = readFileSync(new URL('../supabase/migrations/0013_salles_multiples.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -80,6 +81,7 @@ beforeAll(async () => {
   await db.exec(migration10);
   await db.exec(migration11);
   await db.exec(migration12);
+  await db.exec(migration13);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -683,5 +685,13 @@ describe('migration 0010 : plusieurs cours dans une demi-journée', () => {
     expect(await sql(`select 1 from public.planning_cells where day = '2026-12-01' and group_code = '2PB1.1'`)).toHaveLength(0);
     const [kept] = await sql(`select tp_id, note from public.planning_cells where day = '2026-12-01' and group_code = '2PB1.2'`);
     expect(kept).toEqual({ tp_id: null, note: 'Note' });
+  });
+
+  it('un cours peut avoir jusqu’à trois salles supplémentaires (0013)', async () => {
+    await as('prof');
+    await sql(`insert into public.planning_cells (day, group_code, label) values ('2026-12-02', '2PB1.1', 'Séquence')`);
+    const ids = [1, 2, 3].map(() => 'gen_random_uuid()').join(', ');
+    await sql(`update public.planning_cells set extra_room_ids = array[${ids}] where day = '2026-12-02'`);
+    expect(await fails(`update public.planning_cells set extra_room_ids = array[${ids}, gen_random_uuid()] where day = '2026-12-02'`)).toMatch(/extra_rooms_check/);
   });
 });

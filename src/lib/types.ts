@@ -215,6 +215,8 @@ export interface PlanningCell {
   teacher_ids: string[];
   /** Enseignants sans compte */
   teacher_labels: string[];
+  /** Salles supplémentaires du cours (la principale est room_id) */
+  extra_room_ids?: string[];
   tp_id: string | null;
   label: string | null;
   note: string | null;

@@ -64,6 +64,8 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
   const { profile } = useAuth();
   const act = useAct();
   const tpById = useMemo(() => new Map(data.tps.map((t) => [t.id, t])), [data.tps]);
+  /** En Première on gère des séquences (les TP tournent à part, par élève) : elles sont proposées en tête de liste */
+  const sequences = useMemo(() => (level === 'Première' ? data.fiches.filter((f) => f.kind === 'sequence' && (!f.level || f.level === level)).sort(byText((f) => f.title)) : []), [data.fiches, level]);
   const months = useMemo(() => monthBlocks(from, to, weekdays), [from, to, weekdays]);
   const [onlyMine, setOnlyMine] = useState(false);
   const thisMonth = iso(new Date()).slice(0, 7);
@@ -109,6 +111,14 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
     });
   };
 
+  /** Salles supplémentaires d'un cours (annulable) */
+  const setExtraRooms = (c: PlanningCell, ids: string[]) => {
+    const key = { day: c.day, group_code: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1 };
+    void act(() => api.update('planning_cells', key, { extra_room_ids: ids.slice(0, 3) }), {
+      ok: 'Salles modifiées.', tables: ['planning_cells'], undo: () => api.update('planning_cells', key, { extra_room_ids: c.extra_room_ids ?? [] }),
+    });
+  };
+
   /** Change la salle d'une case (annulable) */
   const setRoom = (c: PlanningCell, room: string) =>
     void act(() => api.update('planning_cells', { day: c.day, group_code: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1 }, { room_id: room || null }), {
@@ -128,6 +138,8 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
 
   const rooms = data.rooms.filter((r) => r.active);
   const roomName = (id: string | null | undefined) => (id ? data.rooms.find((r) => r.id === id)?.name ?? '' : '');
+  /** Toutes les salles d'un cours : la principale puis les supplémentaires */
+  const roomsLabel = (c: PlanningCell | undefined) => [c?.room_id, ...(c?.extra_room_ids ?? [])].map(roomName).filter(Boolean).join(' + ');
   /** Parties de journée affichées un jour donné : celles du réglage, plus celles qui contiennent déjà des cases */
   const partsOf = (d: string): Part[] => {
     const conf = dayParts[isoDow(parseISO(d))] ?? ['J'];
@@ -166,7 +178,7 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
           if (p) return p.label;
           const c = cells.get(cellKey(d, g, part));
           const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
-          const room = roomName(c?.room_id);
+          const room = roomsLabel(c);
           return (tp ? `${domainLabel(tp.domain)} (${courseTeachers(c, tp, who).join(' / ')})` : c?.label ?? '') + (room && (tp || c?.label) ? ` – ${room}` : '');
         })]);
       }
@@ -253,10 +265,11 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
                                   aria-label={where} onChange={(e) => change(d, g, part, seq, e.target.value)}>
                                   <option value="">—</option>
                                   {c?.tp_id && !tp && <option value={`tp:${c.tp_id}`}>(TP d’un autre niveau)</option>}
+                                  {sequences.length > 0 && <optgroup label="Séquences">{sequences.map((f) => <option key={f.id} value={`lab:${f.title.slice(0, 60)}`}>{f.title}</option>)}</optgroup>}
                                   <optgroup label="TP">{tps.map((t) => <option key={t.id} value={`tp:${t.id}`}>{t.code ?? t.title}</option>)}</optgroup>
                                   <optgroup label="Autres">
                                     {SPECIAL_LABELS.map((l) => <option key={l} value={`lab:${l}`}>{l}</option>)}
-                                    {c?.label && !known && <option value={`lab:${c.label}`}>{c.label}</option>}
+                                    {c?.label && !known && !sequences.some((f) => f.title.slice(0, 60) === c.label) && <option value={`lab:${c.label}`}>{c.label}</option>}
                                   </optgroup>
                                 </select>
                                 {c && value && (canWrite ? (
@@ -266,6 +279,18 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
                                     {c.room_id && !rooms.some((r) => r.id === c.room_id) && <option value={c.room_id}>{roomName(c.room_id)}</option>}
                                   </select>
                                 ) : c.room_id ? <span className="who">{roomName(c.room_id)}</span> : null)}
+                                {c && value && canWrite && c.room_id && (
+                                  <details className="pc-teachers no-print">
+                                    <summary aria-label={`Autres salles, ${where}`}>Autres salles{c.extra_room_ids?.length ? ` (${c.extra_room_ids.length})` : ''}</summary>
+                                    <div className="stack">
+                                      {rooms.filter((r) => r.id !== c.room_id).map((r) => (
+                                        <label key={r.id} className="row small"><input type="checkbox" checked={(c.extra_room_ids ?? []).includes(r.id)} disabled={!(c.extra_room_ids ?? []).includes(r.id) && (c.extra_room_ids ?? []).length >= 3}
+                                          onChange={(e) => setExtraRooms(c, e.target.checked ? [...(c.extra_room_ids ?? []), r.id] : (c.extra_room_ids ?? []).filter((x) => x !== r.id))} /> {r.name}</label>
+                                      ))}
+                                    </div>
+                                  </details>
+                                )}
+                                {!canWrite && c?.extra_room_ids?.length ? <span className="who">+ {c.extra_room_ids.map(roomName).filter(Boolean).join(' + ')}</span> : null}
                                 {(tp || c?.teacher_ids?.length || c?.teacher_labels?.length) ? <span className="who">{courseTeachers(c, tp, who).join(' / ')}</span> : null}
                                 {c && value && canWrite && (
                                   <details className="pc-teachers no-print">
@@ -316,6 +341,7 @@ function Week({ groups, cells, weekdays, dayParts, tpById }: CommonProps & { tpB
   // Sur téléphone : un jour à la fois
   const days = narrow ? [allDays[f]] : allDays;
   const roomName = (id: string | null | undefined) => (id ? data.rooms.find((r) => r.id === id)?.name ?? '' : '');
+  const roomsLabel = (c: PlanningCell | undefined) => [c?.room_id, ...(c?.extra_room_ids ?? [])].map(roomName).filter(Boolean).join(' + ');
   // Colonnes : chaque jour, découpé en matin / après-midi selon le réglage ou les cases existantes
   const cols = days.flatMap((d) => {
     const conf = dayParts[isoDow(parseISO(d))] ?? ['J'];
@@ -366,7 +392,7 @@ function Week({ groups, cells, weekdays, dayParts, tpById }: CommonProps & { tpB
                       const c = cells.get(cellKey(d, g, part, seq));
                       const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
                       if (onlyMine && !isMyCell(c, tp, profile)) return <td key={k} className="dim">{ri === 0 ? '·' : ''}</td>;
-                      if (ri === 2) return <td key={k} className={tp ? `dom sub ${domainClass(tp.domain)}` : ''}>{c && (tp || c.label) ? roomName(c.room_id) : ''}</td>;
+                      if (ri === 2) return <td key={k} className={tp ? `dom sub ${domainClass(tp.domain)}` : ''}>{c && (tp || c.label) ? roomsLabel(c) : ''}</td>;
                       if (!tp) return <td key={k} className={c?.label ? 'dim' : ''}>{ri === 0 ? c?.label ?? '' : ri === 1 ? courseTeachers(c, undefined, who).join(' / ') : ri === 4 ? c?.note ?? '' : ''}</td>;
                       if (ri === 0) return <td key={k} className={`dom ${domainClass(tp.domain)}`} title={tp.code ?? undefined}>{domainLabel(tp.domain)}</td>;
                       if (ri === 1) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{courseTeachers(c, tp, who).join(' / ')}</td>;

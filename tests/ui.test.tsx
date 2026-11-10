@@ -840,3 +840,18 @@ describe('import de planning', () => {
     expect(await screen.findByText('Planning importé.')).toBeInTheDocument();
   });
 });
+
+describe('salles multiples et séquences de Première', () => {
+  it('propose les séquences en Première, pas en Seconde, et des salles supplémentaires', async () => {
+    const { api } = await import('@/lib/api');
+    configureDemo({ as: 'admin' as never, studentsOn: true });
+    await api.insert('fiches', { kind: 'sequence', title: 'Séquence moteur asynchrone', level: 'Première', data: {} });
+    window.location.hash = 'semainier';
+    render(<App />);
+    const second = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ }))[0];
+    expect(within(second).queryByRole('option', { name: 'Séquence moteur asynchrone' })).toBeNull();
+    await userEvent.click(await screen.findByRole('button', { name: 'Première' }));
+    const first = (await screen.findAllByRole('combobox', { name: /^1PB1\.1,/ }))[0];
+    expect(within(first).getByRole('option', { name: 'Séquence moteur asynchrone' })).toBeInTheDocument();
+  });
+});

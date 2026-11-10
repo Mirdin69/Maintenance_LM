@@ -129,7 +129,8 @@ export function semainierOccurrences(
     rank.set(k, [...(rank.get(k) ?? []), c].sort((x, y) => (x.seq ?? 1) - (y.seq ?? 1)));
   }
   for (const c of filled) {
-    if (!c.room_id || c.day < from || c.day > to) continue;
+    const rooms = [c.room_id, ...(c.extra_room_ids ?? [])].filter((x): x is string => !!x);
+    if (!rooms.length || c.day < from || c.day > to) continue;
     const dow = isoDow(parseISO(c.day));
     if (dow > 5) continue;
     const mates = rank.get(`${c.day}|${c.group_code}|${c.part}`)!;
@@ -144,11 +145,13 @@ export function semainierOccurrences(
       const detailed = existing.some((o) => o.date === c.day && o.groupCode === c.group_code && o.start < end && start < o.end);
       if (detailed) continue;
       const tp = c.tp_id ? tpById.get(c.tp_id) : undefined;
-      out.push({
-        key: `cell:${c.day}|${c.group_code}|${c.part}|${c.seq ?? 1}|${p}`, source: 'semainier', slotId: null, sessionId: null, date: c.day, start, end, roomId: c.room_id,
-        groupCode: c.group_code, teacherId: tp?.teacher_id ?? null, teacherLabel: tp?.teacher_label ?? null, label: c.label, tpId: c.tp_id, systemId: null,
-        status: 'planned', moved: false,
-      });
+      for (const roomId of rooms) {
+        out.push({
+          key: `cell:${c.day}|${c.group_code}|${c.part}|${c.seq ?? 1}|${p}${roomId === c.room_id ? '' : `|${roomId}`}`, source: 'semainier', slotId: null, sessionId: null, date: c.day, start, end, roomId,
+          groupCode: c.group_code, teacherId: tp?.teacher_id ?? null, teacherLabel: tp?.teacher_label ?? null, label: c.label, tpId: c.tp_id, systemId: null,
+          status: 'planned', moved: false,
+        });
+      }
     }
   }
   return out;

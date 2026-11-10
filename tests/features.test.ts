@@ -307,6 +307,13 @@ describe('occupation des salles d’après le semainier de l’année', () => {
     ]);
     expect(m[0].teacherId).toBe('t1');
   });
+  it('un cours en plusieurs salles les occupe toutes', async () => {
+    const { semainierOccurrences } = await import('@/lib/occupancy');
+    const cell = { ...(c('2026-11-16', 'G1', 'M', 'r1') as object), extra_room_ids: ['r2', 'r3'] } as never;
+    const m = semainierOccurrences([cell], tps, [], '2026-11-16', '2026-11-20');
+    expect(m.map((o) => o.roomId)).toEqual(['r1', 'r2', 'r3']);
+    expect(new Set(m.map((o) => o.key)).size).toBe(3);
+  });
   it('une journée entière occupe le matin et l’après-midi ; sans salle, ou hors période, rien', async () => {
     const { semainierOccurrences } = await import('@/lib/occupancy');
     expect(semainierOccurrences([c('2026-11-18', 'G1', 'J', 'r1')], tps, [], '2026-11-16', '2026-11-20')).toHaveLength(2);
