@@ -85,6 +85,12 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - Plusieurs cours sur une même demi-journée sont importés en cours 1, 2, 3… Les cases déjà remplies sont conservées sauf si « Remplacer » est coché. « Annuler » dans le message de confirmation rétablit les cases ; les TP, domaines et salles créés restent.
 - **Plusieurs enseignants par cours** : dans chaque case de la vue année, « Enseignants » permet de cocher des comptes et d'ajouter des noms libres (jusqu'à 6). Sans enseignant sur la case, c'est celui du TP qui s'affiche. Nécessite la migration `0011_enseignants_binomes.sql`.
 
+## TP tournants et binômes
+
+- **Planning des TP, Rotations des groupes** : choisissez le groupe, l'effectif (repris de la liste d'élèves si elle est activée, sinon à saisir) et les TP à faire tourner. Les **postes** d'un TP sont le plus petit nombre de systèmes en service qu'il utilise (modifiable), et le **travail en équipe** (individuel, binôme, trinôme, par 4) vient de la fiche du TP (champ « Travail en équipe » dans le catalogue). La capacité d'un TP = postes × élèves par poste.
+- L'outil propose le nombre de sous-groupes (au moins un par TP, davantage si l'effectif dépasse la capacité du TP le plus contraint), les équipes de chaque sous-groupe et un planning où chaque sous-groupe passe une fois sur chaque TP. S'il y a plus de sous-groupes que de TP, certains attendent à chaque séance et le nombre de séances augmente.
+- **Export Excel** (feuilles Rotation, Équipes, Effectifs), CSV et impression. Le fichier Excel s'ouvre dans Google Sheets (Drive, Nouveau, Importer le fichier).
+
 ## Salles et occupation
 
 - **Salles** (Administration, gestionnaire) : nom, bâtiment, type, places, option *partagée* (grand atelier : plusieurs groupes en même temps sans conflit).

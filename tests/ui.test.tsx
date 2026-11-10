@@ -387,15 +387,20 @@ describe('nouvelles fonctions', () => {
     expect(await screen.findByText('Élèves au moins PA')).toBeInTheDocument();
   });
 
-  it('rotation des groupes sur les systèmes', async () => {
+  it('propose des TP tournants selon l’effectif, les postes et les binômes', async () => {
     await open('prof', 'planning');
     await userEvent.click(await screen.findByRole('button', { name: 'Rotations des groupes' }));
-    await userEvent.selectOptions(await screen.findByLabelText('Groupe'), '1PB1.1');
-    await userEvent.click(screen.getByLabelText(/Banc API M221/));
-    await userEvent.click(screen.getByLabelText(/Banc Zelio/));
+    await userEvent.selectOptions(await screen.findByLabelText('Groupe'), '2PB1.1');
+    await userEvent.click(await screen.findByLabelText(/P1 ·/));
+    await userEvent.click(screen.getByLabelText(/P2 ·/));
+    const postes = await screen.findByLabelText(/^Postes, P1/);
+    await userEvent.clear(postes);
+    await userEvent.type(postes, '6');
+    await userEvent.selectOptions(screen.getByLabelText(/^Équipes, P1/), '2');
     expect(await screen.findByText('Groupe 1')).toBeInTheDocument();
     expect(screen.getByText('Groupe 2')).toBeInTheDocument();
     expect(screen.getAllByText(/Séance/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole('button', { name: 'Exporter en Excel' })).toBeInTheDocument();
   });
 
   it('dépose une image pour un système', async () => {

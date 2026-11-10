@@ -34,7 +34,7 @@ export default function Catalogue() {
     const f = new FormData(e.currentTarget);
     const row = {
       code: String(f.get('code')).trim() || null, title: String(f.get('title')).trim(), level: f.get('level'), domain: f.get('domain'),
-      hours: Number(f.get('hours')) || null, system_ids: sys, competences: comp, tool_ids: toolIds, reusable: f.get('reusable') === 'on',
+      hours: Number(f.get('hours')) || null, system_ids: sys, competences: comp, tool_ids: toolIds, reusable: f.get('reusable') === 'on', pair_size: Number(f.get('pair_size')) || 1,
       objective: String(f.get('objective')).trim() || null,
       teacher_id: String(f.get('teacher_id')) || null,
       teacher_label: String(f.get('teacher_id')) ? null : String(f.get('teacher_label')).trim() || null,
@@ -68,6 +68,7 @@ export default function Catalogue() {
             <Field label="Titre *" wide><input className="in" name="title" required maxLength={160} defaultValue={editing?.title} /></Field>
             <Field label="Niveau"><select className="in" name="level" defaultValue={editing?.level ?? 'Seconde'}><Options items={LEVELS.map((l) => [l, l])} /></select></Field>
             <Field label="Domaine"><select className="in" name="domain" defaultValue={editing?.domain ?? 'ind'}><Options items={Object.entries(DOMAINS)} /></select></Field>
+            <Field label="Travail en équipe"><select className="in" name="pair_size" defaultValue={editing?.pair_size ?? 1}><option value={1}>Individuel</option><option value={2}>En binôme</option><option value={3}>En trinôme</option><option value={4}>Par 4</option></select></Field>
             <Field label="Durée (h)"><input className="in" name="hours" type="number" min={0} step="0.5" defaultValue={editing?.hours ?? ''} /></Field>
             <Field label="Enseignant (compte)"><select className="in" name="teacher_id" defaultValue={editing?.teacher_id ?? ''}><Options placeholder="Autre (saisir le nom)" items={data.profiles.filter((p) => p.active).map((p) => [p.id, who(p.id)])} /></select></Field>
             <Field label="Nom de l’enseignant (si sans compte)"><input className="in" name="teacher_label" maxLength={60} defaultValue={editing?.teacher_label ?? ''} /></Field>
@@ -129,7 +130,7 @@ export default function Catalogue() {
             <thead><tr>{th('code', 'TP')}{th('level', 'Niveau')}{th('teacher', 'Enseignant')}{th('hours', 'Durée', true)}<th>Systèmes</th>{th('competences', 'Compétences')}<th>Documents</th>{canWrite && <th />}</tr></thead>
             <tbody>{list.map((t) => (
               <tr key={t.id}>
-                <td><b>{t.code}</b> {t.title}{t.objective && <span className="sub">{t.objective}</span>}</td><td>{t.level}</td><td>{t.teacher_id ? who(t.teacher_id) : t.teacher_label ?? '—'}</td><td className="num">{t.hours ? `${t.hours} h` : '—'}</td>
+                <td><b>{t.code}</b> {t.title}{t.objective && <span className="sub">{t.objective}</span>}</td><td>{t.level}{(t.pair_size ?? 1) > 1 && <span className="sub">{t.pair_size === 2 ? 'Binôme' : t.pair_size === 3 ? 'Trinôme' : 'Par 4'}</span>}</td><td>{t.teacher_id ? who(t.teacher_id) : t.teacher_label ?? '—'}</td><td className="num">{t.hours ? `${t.hours} h` : '—'}</td>
                 <td>{t.system_ids.map((id) => systemById.get(id)?.name).filter(Boolean).join(', ') || '—'}</td>
                 <td>{t.competences.join(', ') || '—'}</td>
                 <td>{asDocs(t.documents).length ? <button className="btn ghost sm" aria-pressed={viewing === t.id} onClick={() => setViewing(viewing === t.id ? null : t.id)}>{asDocs(t.documents).length} document{asDocs(t.documents).length > 1 ? 's' : ''}</button> : <span className="muted">—</span>}</td>
@@ -137,7 +138,7 @@ export default function Catalogue() {
                   <button className="btn ghost sm" title="Copie le TP (les fichiers déposés ne sont pas copiés, seulement les liens)" onClick={() => void act(() => api.insert('tps', {
                     code: t.code ? `${t.code} (copie)` : null, title: t.title, level: t.level, domain: t.domain, hours: t.hours, system_ids: t.system_ids, tool_ids: t.tool_ids ?? [],
                     competences: t.competences, objective: t.objective, teacher_id: t.teacher_id, teacher_label: t.teacher_label, sequence_name: t.sequence_name,
-                    documents: asDocs(t.documents).filter((d) => d.url), reusable: false,
+                    documents: asDocs(t.documents).filter((d) => d.url), reusable: false, pair_size: t.pair_size ?? 1,
                   }), { ok: 'TP dupliqué.', tables: ['tps'] })}>Dupliquer</button>
                   {isAdmin && <ConfirmButton detail={`Supprimer le TP « ${t.title} » ? ${data.sessions.filter((x) => x.tp_id === t.id).length} séance(s), ${data.timetable_slots.filter((x) => x.tp_id === t.id).length} créneau(x) et le suivi des élèves associés seront supprimés, ainsi que les fichiers déposés.`} onConfirm={async () => { if (await act(() => api.remove('tps', { id: t.id }), { ok: 'TP supprimé.', tables: ['tps', 'progress', 'timetable_slots', 'sessions'] })) void dropFiles(orphanPaths(asDocs(t.documents), [])); }}>Supprimer</ConfirmButton>}</div></td>}
               </tr>))}</tbody>

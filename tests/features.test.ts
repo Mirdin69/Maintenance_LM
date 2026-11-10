@@ -371,3 +371,43 @@ describe('plusieurs cours dans une demi-journée', () => {
     expect(occ.map((o) => [o.roomId, o.start, o.end])).toEqual([['r1', 7 * 60 + 45, 9 * 60 + 45], ['r2', 9 * 60 + 45, 11 * 60 + 40]]);
   });
 });
+
+describe('proposition de TP tournants', () => {
+  const st = (name: string, postes: number, team = 1) => ({ id: name, name, postes, team });
+  it('fait passer chaque sous-groupe sur chaque TP, un seul par TP à la fois', async () => {
+    const { proposeRotation } = await import('@/lib/rotation');
+    const kids = Array.from({ length: 24 }, (_, i) => `E${i + 1}`);
+    const p = proposeRotation(kids, [st('A', 8), st('B', 6), st('C', 12)]);
+    expect(p.limit).toBe(6);
+    expect(p.groups).toHaveLength(4);
+    expect(p.rounds).toHaveLength(4);
+    for (let g = 0; g < 4; g++) expect(p.rounds.map((r) => r[g]).filter((x) => x >= 0).sort()).toEqual([0, 1, 2]);
+    for (const r of p.rounds) { const used = r.filter((x) => x >= 0); expect(new Set(used).size).toBe(used.length); }
+    expect(Math.max(...p.groups.map((g) => g.length))).toBeLessThanOrEqual(6);
+  });
+  it('le binôme double la capacité d’un poste', async () => {
+    const { proposeRotation, teamsOf } = await import('@/lib/rotation');
+    const kids = Array.from({ length: 16 }, (_, i) => `E${i + 1}`);
+    expect(proposeRotation(kids, [st('A', 4, 2), st('B', 4, 2)]).groups).toHaveLength(2);
+    expect(proposeRotation(kids, [st('A', 4, 1), st('B', 4, 1)]).groups).toHaveLength(4);
+    expect(teamsOf(['a', 'b', 'c', 'd', 'e'], 2)).toEqual([['a', 'b'], ['c', 'd', 'e']]);
+  });
+  it('signale un TP sans poste', async () => {
+    const { proposeRotation } = await import('@/lib/rotation');
+    expect(proposeRotation(['a'], [st('A', 0)]).problems).toHaveLength(1);
+  });
+});
+
+describe('export Excel de la rotation', () => {
+  it('produit trois feuilles lisibles', async () => {
+    const { proposeRotation } = await import('@/lib/rotation');
+    const { rotationWorkbook } = await import('@/lib/rotationExport');
+    const ExcelJS = (await import('exceljs')).default;
+    const p = proposeRotation(['a', 'b', 'c', 'd', 'e'], [{ id: '1', name: 'TP A', postes: 2, team: 2 }, { id: '2', name: 'TP B', postes: 2, team: 2 }]);
+    const blob = await rotationWorkbook(p, ['2026-11-03', '2026-11-10'], 'Test');
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await blob.arrayBuffer());
+    expect(wb.worksheets.map((w) => w.name)).toEqual(['Rotation', 'Équipes', 'Effectifs']);
+    expect(wb.getWorksheet('Équipes')!.rowCount).toBeGreaterThan(2);
+  });
+});
