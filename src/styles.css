@@ -484,3 +484,10 @@ select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 
   :root:root:root .dom-p7 { --cbg: #fcd9b8; --cfg: #6a2f00; }
   :root:root:root .dom-p8 { --cbg: #d9dee8; --cfg: #232c40; }
 }
+
+/* Semainier : planning du lundi heure par heure */
+.lundi-grid td { vertical-align: top; min-width: 150px; }
+.lundi-grid td select.in { width: 100%; margin-bottom: 3px; font-size: 0.78rem; padding: 2px 4px; }
+.lundi-grid td.derived { background: var(--sunken); }
+.print-only-title { display: none; }
+@media print { .print-only-title { display: block; font-size: 14px; margin: 0 0 6px; } }

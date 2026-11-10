@@ -687,3 +687,39 @@ describe('en-tête d’impression', () => {
     expect(document.querySelector('.print-head b')?.textContent).toBe('Parc MELEC');
   });
 });
+
+describe('planning du lundi', () => {
+  it('la première séance décide et les suivantes tournent entre les groupes', async () => {
+    await open('admin', 'semainier');
+    await userEvent.click(await screen.findByRole('button', { name: 'Lundi' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Terminale' }));
+    const cell = (label: string) => screen.getByLabelText(label) as HTMLSelectElement;
+    const names = (await screen.findByLabelText(/Enseignant, TPB1.1, 08:40/) as HTMLSelectElement).options;
+    const free = [...names].filter((o) => o.value).at(-1)!; // un enseignant sans cours le lundi dans les données de démonstration
+    await userEvent.selectOptions(cell('Enseignant, TPB1.1, 08:40'), free.value);
+    await waitFor(() => expect(screen.getByText('Première séance enregistrée, rotation appliquée aux suivantes.')).toBeInTheDocument());
+    const table = await screen.findByRole('table', { name: /Planning du lundi/ });
+    // le groupe suivant reprend la séance à l'heure suivante, puis le dernier à la troisième
+    await waitFor(() => {
+      const rows = [...table.querySelectorAll('tbody tr')];
+      expect(rows[1].querySelectorAll('td')[1].textContent).toContain(free.textContent);
+      expect(rows[2].querySelectorAll('td')[2].textContent).toContain(free.textContent);
+    });
+  });
+  it('en mode à construire, chaque séance se règle séparément', async () => {
+    await open('admin', 'semainier');
+    await userEvent.click(await screen.findByRole('button', { name: 'Lundi' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Terminale' }));
+    await userEvent.click(screen.getByRole('button', { name: 'À construire' }));
+    expect(await screen.findByLabelText('Salle, TPB1.1, 09:50')).toBeEnabled();
+    await userEvent.selectOptions(screen.getByLabelText('Activité, TPB1.1, 09:50'), 'À construire');
+    expect(await screen.findByText('Séance enregistrée.')).toBeInTheDocument();
+  });
+  it('un lecteur voit le planning sans pouvoir le modifier', async () => {
+    await open('lecture', 'semainier');
+    await userEvent.click(await screen.findByRole('button', { name: 'Lundi' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Terminale' }));
+    expect(await screen.findByRole('table', { name: /Planning du lundi/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Enseignant, TPB1.1/)).toBeNull();
+  });
+});

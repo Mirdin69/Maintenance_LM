@@ -54,6 +54,12 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 ### Couleurs des domaines
 - **Administration > Domaines > Couleurs des domaines** : chaque domaine (prédéfini ou ajouté) a un sélecteur de couleur libre. La couleur remplit toute la case du cours dans le semainier (vues Année et Semaine). Le texte est calculé pour rester lisible (contraste AA) et une variante assombrie est générée pour le thème sombre. *Couleur d'origine* rétablit la couleur par défaut. Réglage `domain_colors`, sans migration.
 
+### Planning du lundi, heure par heure
+- **Semainier > Lundi** (à côté de *Semaine*) : un tableau comme le planning papier du lundi. Lignes = séances de 55 min (matin 8h40-11h40 ou après-midi), colonnes = groupes du niveau, case = enseignant + salle (+ TP ou activité). On choisit le lundi avec les flèches ou la date.
+- **Mode Carrousel** : on renseigne la première séance (qui commence avec quel groupe) ; les séances suivantes tournent automatiquement (le groupe suivant reprend ce que le précédent faisait). Toute modification de la première séance réapplique la rotation.
+- **Mode À construire** : chaque séance, chaque case, se règle séparément, y compris avec l'activité « À construire ».
+- Les cases sont enregistrées comme des séances datées (table `sessions`) : les conflits de salle, de groupe et d'enseignant (avec l'emploi du temps récurrent) sont contrôlés avant l'enregistrement. Tout est annulable.
+
 ### Demi-journées, salle et carrousel
 - **Administration > Calendrier** : pour chaque jour affiché d'un niveau, choisissez *Journée*, *Matin*, *Après-midi* ou *Matin et après-midi* (deux lignes séparées dans le semainier).
 - **Semainier** : chaque case a une liste *Salle…* modifiable (annulable) ; la salle apparaît dans la vue Semaine, « Mes cours » et l'export CSV. Une demi-journée compte 0,5 jour dans la répartition annuelle.

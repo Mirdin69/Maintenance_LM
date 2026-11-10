@@ -10,10 +10,11 @@ import { CONFLICT_COLS, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKe
 import { usePersisted } from '@/hooks/usePersisted';
 import { useMedia } from '@/hooks/useMedia';
 import type { Level, Part, PlanningCell, Tp } from '@/lib/types';
+import { Lundi } from './Lundi';
 import { Chip, Empty, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
 
-type View = 'annee' | 'semaine' | 'besoins' | 'mes';
-const VIEWS: readonly View[] = ['annee', 'semaine', 'besoins', 'mes'];
+type View = 'annee' | 'semaine' | 'lundi' | 'besoins' | 'mes';
+const VIEWS: readonly View[] = ['annee', 'semaine', 'lundi', 'besoins', 'mes'];
 
 export default function Semainier() {
   const { data, settings, who } = useStore();
@@ -37,11 +38,12 @@ export default function Semainier() {
     <>
       <PageHead tab="semainier" title="Semainier" />
       <div className="tools">
-        <Seg<View> label="Vue" value={view} onChange={setView} items={[['annee', 'Année'], ['semaine', 'Semaine'], ['besoins', 'Besoins matériel'], ['mes', 'Mes cours']]} />
+        <Seg<View> label="Vue" value={view} onChange={setView} items={[['annee', 'Année'], ['semaine', 'Semaine'], ['lundi', 'Lundi'], ['besoins', 'Besoins matériel'], ['mes', 'Mes cours']]} />
         {view !== 'mes' && view !== 'besoins' && <Seg<Level> label="Niveau" value={level} onChange={setLevel} items={LEVELS.map((l) => [l, l])} />}
       </div>
       {view === 'annee' && <Year groups={groups} tps={tps} cells={cells} weekdays={weekdays} dayParts={dayParts} from={from} to={to} level={level} canWrite={canWrite} teacherOf={teacherOf} />}
       {view === 'semaine' && <Week groups={groups} cells={cells} weekdays={weekdays} dayParts={dayParts} tpById={tpById} teacherOf={teacherOf} />}
+      {view === 'lundi' && <Lundi groups={groups} tps={tps} level={level} canWrite={canWrite} />}
       {view === 'besoins' && <Needs />}
       {view === 'mes' && <Mine cells={data.planning_cells} tpById={tpById} />}
     </>

@@ -202,3 +202,32 @@ describe('trame horaire du lycée (séances de 55 min)', () => {
     expect(blocksFrom(periodsOf(1, 'M'), 1, 3)).toHaveLength(2);
   });
 });
+
+describe('planning du lundi en carrousel', () => {
+  const st = (t: string) => ({ teacherId: t, roomId: 'r-' + t, value: '' });
+  it('reproduit la rotation du planning du lycée : la première séance décide, les suivantes tournent', async () => {
+    const { carouselGrid } = await import('@/lib/lundi');
+    // colonnes : 2ProB2, 2ProB1.1, 2ProB1.2 ; première séance : Morel, Verwaerde, Sadky
+    const g = carouselGrid([st('Morel'), st('Verwaerde'), st('Sadky')], 3);
+    const names = g.map((row) => row.map((s) => s!.teacherId));
+    expect(names).toEqual([
+      ['Morel', 'Verwaerde', 'Sadky'],
+      ['Sadky', 'Morel', 'Verwaerde'],
+      ['Verwaerde', 'Sadky', 'Morel'],
+    ]);
+  });
+  it('une case vide à la première séance reste vide, sans planter', async () => {
+    const { carouselGrid } = await import('@/lib/lundi');
+    const g = carouselGrid([st('A'), null], 2);
+    expect(g[1]).toEqual([null, st('A')]);
+  });
+  it('détecte un enseignant déjà pris à cette heure', async () => {
+    const { gridConflicts } = await import('@/lib/lundi');
+    const rooms = [{ id: 'r-A', name: 'A', shared: false, active: true }] as never;
+    const periods = periodsOf(1, 'M');
+    const existing = [{ id: 'x', slot_id: null, session_date: '2026-11-16', start_time: '08:40', end_time: '09:35', room_id: null, group_code: 'AUTRE', teacher_id: 'A', teacher_label: null, status: 'planned' }] as never;
+    const msgs = gridConflicts({ date: '2026-11-16', groups: ['G1'], periods, grid: [[st('A')], [null], [null]] }, [], existing, rooms, new Set());
+    expect(msgs.join(' ')).toMatch(/Conflit d’enseignant|Conflit de salle/);
+    expect(gridConflicts({ date: '2026-11-16', groups: ['G1'], periods, grid: [[st('A')], [null], [null]] }, [], existing, rooms, new Set(['x']))).toEqual([]);
+  });
+});
