@@ -730,7 +730,7 @@ describe('planning du lundi : proposition et impression', () => {
     const monday = iso(mondayOf(new Date()));
     const print = vi.spyOn(window, 'print').mockImplementation(() => {});
     await openWith('admin', 'semainier', async () => {
-      const [t1, t2] = (await api.select<{ id: string }>('tps')).filter((t: any) => t.level === 'Terminale' || true).slice(0, 2);
+      const [t1, t2] = (await api.select<{ id: string }>('tps')).filter((t: any) => t.objective && t.competences?.length).slice(0, 2);
       await api.upsert('planning_cells', [
         { day: monday, group_code: 'TPB1.1', part: 'M', tp_id: t1.id, label: null },
         { day: monday, group_code: 'TPB1.2', part: 'M', tp_id: t2.id, label: null },
@@ -744,6 +744,9 @@ describe('planning du lundi : proposition et impression', () => {
     const rows = [...table.querySelectorAll('tbody tr')];
     expect((screen.getByLabelText('Activité, TPB2, 08:40') as HTMLSelectElement).value).toBe('lab:REM');
     expect(rows[1].querySelectorAll('td')[0].textContent).toContain('REM'); // la séance suivante a tourné
+    // chaque case détaille domaine, enseignant, TP, objectif et compétences comme la vue Semaine
+    const text = table.textContent ?? '';
+    for (const word of ['Domaine', 'Enseignant', 'Objectif', 'Compétences']) expect(text).toContain(word);
     await userEvent.click(screen.getByRole('button', { name: 'Imprimer le planning du lundi' }));
     expect(print).toHaveBeenCalled();
     print.mockRestore();

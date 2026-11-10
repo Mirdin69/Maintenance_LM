@@ -498,3 +498,13 @@ select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 
   table.only-print { display: table; }
   .lundi-print, .lundi-print * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Planning du lundi : détail d'une case (comme la vue Semaine) */
+.lundi-detail { margin: 4px 0 0; font-size: 0.78rem; display: grid; gap: 2px; }
+.lundi-detail div { display: flex; gap: 4px; }
+.lundi-detail dt { flex: 0 0 5.6em; opacity: 0.8; }
+.lundi-detail dt::after { content: ' :'; }
+.lundi-detail dd { margin: 0; flex: 1; overflow-wrap: anywhere; }
+.lundi-grid td.cc { background: var(--cbg); color: var(--cfg); }
+.lundi-grid td.cc select.in { background: var(--surface); color: var(--ink); }
+.lundi-print td.cc { background: var(--cbg); color: var(--cfg); }

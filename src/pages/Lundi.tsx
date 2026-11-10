@@ -7,7 +7,7 @@ import { periodOn } from '@/lib/calendar';
 import { periodsOf } from '@/lib/schedule';
 import { SPECIAL_LABELS, cellPatch } from '@/lib/semainier';
 import { carouselGrid, emptyStation, firstFromSemainier, gridConflicts, type Grid, type Station } from '@/lib/lundi';
-import { domainClass } from '@/lib/domain';
+import { domainClass, domainLabel } from '@/lib/domain';
 import type { Level, Part, Session, Tp } from '@/lib/types';
 import { Seg } from '@/components/ui';
 
@@ -82,7 +82,27 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
   const reapply = () => commit(carouselGrid(grid[0], periods.length), 'Rotation appliquée aux séances suivantes.');
   const clear = () => commit(grid.map((r) => r.map(() => null)), 'Planning du lundi effacé.');
 
-  const label = (st: Station | null) => !st ? '' : [st.teacherId ? who(st.teacherId) : st.teacherLabel ?? '', st.roomId ? data.rooms.find((r) => r.id === st.roomId)?.name ?? '' : ''].filter(Boolean).join(' · ');
+  /** Détail d'une case, comme la vue Semaine : domaine, enseignant, salle, TP ou activité, objectif, compétences */
+  const detail = (st: Station | null) => {
+    if (!st || emptyStation(st)) return null;
+    const tp = st.value.startsWith('tp:') ? data.tps.find((t) => t.id === st.value.slice(3)) : undefined;
+    const teacher = st.teacherId ? who(st.teacherId) : st.teacherLabel ?? (tp ? (tp.teacher_id ? who(tp.teacher_id) : tp.teacher_label ?? '') : '');
+    const room = st.roomId ? data.rooms.find((r) => r.id === st.roomId)?.name ?? '' : '';
+    return (
+      <dl className="lundi-detail">
+        {tp && <div><dt>Domaine</dt><dd><b>{domainLabel(tp.domain)}</b></dd></div>}
+        {teacher && <div><dt>Enseignant</dt><dd>{teacher}</dd></div>}
+        {room && <div><dt>Salle</dt><dd>{room}</dd></div>}
+        {(tp || st.value) && <div><dt>{tp ? 'TP' : 'Activité'}</dt><dd><b>{tp ? tp.title : st.value.slice(4)}</b></dd></div>}
+        {tp?.objective && <div><dt>Objectif</dt><dd>{tp.objective}</dd></div>}
+        {tp && tp.competences.length > 0 && <div><dt>Compétences</dt><dd>{tp.competences.join(' · ')}</dd></div>}
+      </dl>
+    );
+  };
+  const tone = (st: Station | null) => {
+    const tp = st?.value.startsWith('tp:') ? data.tps.find((t) => t.id === st.value.slice(3)) : undefined;
+    return tp ? `cc dom ${domainClass(tp.domain)}` : '';
+  };
   const editable = (b: number) => canWrite && (mode === 'construire' || b === 0);
 
   return (
@@ -117,10 +137,9 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
                 {groups.map((g, gi) => {
                   const st = grid[b][gi];
                   const where = `${g}, ${minToHM(p.start)}`;
-                  const tp = st?.value.startsWith('tp:') ? tps.find((t) => t.id === st.value.slice(3)) : undefined;
-                  if (!editable(b)) return <td key={g} className={b > 0 && mode === 'carrousel' ? 'derived' : ''}>{label(st)}{st?.value && <span className="who">{tp ? tp.code ?? tp.title : st.value.slice(4)}</span>}</td>;
+                  if (!editable(b)) return <td key={g} className={`${tone(st)} ${b > 0 && mode === 'carrousel' && !tone(st) ? 'derived' : ''}`}>{detail(st)}</td>;
                   return (
-                    <td key={g}>
+                    <td key={g} className={tone(st)}>
                       <select className="in" aria-label={`Enseignant, ${where}`} value={st?.teacherId ?? ''} onChange={(e) => void setCell(b, gi, { teacherId: e.target.value || null })}>
                         <option value="">Enseignant…</option>
                         {teachers.map((t) => <option key={t.id} value={t.id}>{who(t.id)}</option>)}
@@ -134,6 +153,7 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
                         <optgroup label="TP">{tps.map((t) => <option key={t.id} value={`tp:${t.id}`}>{t.code ?? t.title}</option>)}</optgroup>
                         <optgroup label="Autres">{[...SPECIAL_LABELS, 'À construire', ...(st?.value.startsWith('lab:') ? [st.value.slice(4)] : [])].filter((l, i, arr) => arr.indexOf(l) === i).map((l) => <option key={l} value={`lab:${l}`}>{l}</option>)}</optgroup>
                       </select>
+                      {detail(st)}
                     </td>
                   );
                 })}
@@ -150,13 +170,7 @@ export function Lundi({ groups, tps, level, canWrite }: { groups: string[]; tps:
               <th scope="row">{minToHM(p.start)} – {minToHM(p.end)}</th>
               {groups.map((g, gi) => {
                 const st = grid[b][gi];
-                const tp = st?.value.startsWith('tp:') ? data.tps.find((t) => t.id === st.value.slice(3)) : undefined;
-                return (
-                  <td key={g} className={tp ? `dom ${domainClass(tp.domain)}` : ''}>
-                    {label(st)}
-                    {st?.value && <div><b>{tp ? tp.code ?? tp.title : st.value.slice(4)}</b></div>}
-                  </td>
-                );
+                return <td key={g} className={tone(st)}>{detail(st)}</td>;
               })}
             </tr>
           ))}
