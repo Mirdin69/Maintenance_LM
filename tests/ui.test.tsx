@@ -639,6 +639,7 @@ describe('demi-journées, salle et carrousel', () => {
     await userEvent.selectOptions(screen.getByLabelText('Salle de l’activité 3'), 'A103');
     const preview = await screen.findByRole('table', { name: /Aperçu de la rotation/ });
     expect(within(preview).getAllByText(/^TP · B201/).length).toBeGreaterThan(0);
+    expect(within(preview).getByText('13:10')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /^Générer \d+ créneaux?/ }));
     expect(await screen.findByText(/créneaux? créés?, \d+ cases? du semainier/)).toBeInTheDocument();
   });

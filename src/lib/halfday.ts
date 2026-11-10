@@ -1,6 +1,6 @@
 import { eachDay, isoDow, minToHM, parseISO } from './dates';
 import { slotConflicts } from './conflicts';
-import type { Part, Room, Session, Slot } from './types';
+import type { Room, Session, Slot } from './types';
 
 /** Une activité de la demi-journée : TP, TD ou cours, dans une salle, avec un enseignant éventuel */
 export interface Activity {
@@ -24,10 +24,8 @@ export interface HalfdayInput {
   groups: string[];
   activities: Activity[];
   weekday: number;
-  /** Heure de début de la demi-journée, en minutes */
-  start: number;
-  /** Durée d'une séance, en minutes */
-  slotMin: number;
+  /** Les séances successives (une par activité), en minutes depuis minuit : voir lib/schedule */
+  blocks: Array<{ start: number; end: number }>;
   from: string;
   to: string;
 }
@@ -41,12 +39,11 @@ export const activityIndex = (gi: number, block: number, n: number) => (((gi + b
  */
 export function planHalfday(inp: HalfdayInput, slots: Slot[], sessions: Session[], rooms: Room[]): PlannedSlot[] {
   const n = inp.activities.length;
-  if (!n || !inp.groups.length) return [];
+  if (!n || !inp.groups.length || inp.blocks.length < n) return [];
   const out: PlannedSlot[] = [];
   const virtual: Slot[] = [];
   for (let b = 0; b < n; b++) {
-    const start = inp.start + b * inp.slotMin;
-    const end = start + inp.slotMin;
+    const { start, end } = inp.blocks[b];
     for (const [gi, group] of inp.groups.entries()) {
       const activity = inp.activities[activityIndex(gi, b, n)];
       const conflicts = slotConflicts(
@@ -80,4 +77,3 @@ export function datesFor(from: string, to: string, weekday: number, blocked: (d:
   return eachDay(from, to).filter((d) => isoDow(parseISO(d)) === weekday && !blocked(d));
 }
 
-export const DEFAULT_START: Record<Exclude<Part, 'J'>, string> = { M: '08:00', A: '13:30' };

@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAct, useStore } from '@/state/store';
 import { GROUP_CODES, LEVELS, levelOfGroup } from '@/lib/domain';
-import { DAY_LONG, minToHM, schoolYearBounds, schoolYearOf, toMin } from '@/lib/dates';
+import { DAY_LONG, minToHM, schoolYearBounds, schoolYearOf } from '@/lib/dates';
+import { blocksFrom, periodsOf } from '@/lib/schedule';
 import { periodOn } from '@/lib/calendar';
 import { CONFLICT_COLS, cellKey } from '@/lib/semainier';
-import { DEFAULT_START, datesFor, noteOf, planHalfday, type Activity } from '@/lib/halfday';
+import { datesFor, noteOf, planHalfday, type Activity } from '@/lib/halfday';
 import type { Level, Part, Slot } from '@/lib/types';
 import { AddPanel, Field, Options } from './ui';
 
@@ -24,8 +25,8 @@ export function HalfdayGenerator() {
   const [picked, setPicked] = useState<string[] | null>(null);
   const [weekday, setWeekday] = useState(1);
   const [part, setPart] = useState<Exclude<Part, 'J'>>('A');
-  const [start, setStart] = useState(DEFAULT_START.A);
-  const [slotMin, setSlotMin] = useState(60);
+  const [first, setFirst] = useState(0);
+  const [size, setSize] = useState(1);
   const [acts, setActs] = useState<Activity[]>(() => KINDS.map((kind) => ({ kind, roomId: '', teacherId: null })));
   const [from, setFrom] = useState(settings.year_start || sy.from);
   const [to, setTo] = useState(settings.year_end || sy.to);
@@ -33,11 +34,13 @@ export function HalfdayGenerator() {
 
   const levelGroups = GROUP_CODES.filter((g) => levelOfGroup(g) === level);
   const groups = (picked ?? levelGroups).filter((g) => levelGroups.includes(g));
-  const ready = !!subject.trim() && acts.every((a) => a.roomId) && groups.length > 0 && from <= to;
+  const periods = useMemo(() => periodsOf(weekday, part), [weekday, part]);
+  const blocks = useMemo(() => blocksFrom(periods, Math.min(first, periods.length - 1), acts.length, size), [periods, first, acts.length, size]);
+  const ready = blocks.length === acts.length && !!subject.trim() && acts.every((a) => a.roomId) && groups.length > 0 && from <= to;
 
   const planned = useMemo(
-    () => (ready ? planHalfday({ subject, groups, activities: acts, weekday, start: toMin(start), slotMin, from, to }, data.timetable_slots, data.sessions, data.rooms) : []),
-    [ready, subject, groups.join(), acts, weekday, start, slotMin, from, to, data.timetable_slots, data.sessions, data.rooms],
+    () => (ready ? planHalfday({ subject, groups, activities: acts, weekday, blocks, from, to }, data.timetable_slots, data.sessions, data.rooms) : []),
+    [ready, subject, groups.join(), acts, weekday, blocks, from, to, data.timetable_slots, data.sessions, data.rooms],
   );
   const okSlots = planned.filter((p) => !p.conflicts.length);
   const bad = planned.filter((p) => p.conflicts.length);
@@ -97,19 +100,27 @@ export function HalfdayGenerator() {
           </div>
         </div>
         <Field label="Jour">
-          <select className="in" value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
+          <select className="in" value={weekday} onChange={(e) => { setWeekday(Number(e.target.value)); setFirst(0); }}>
             <Options items={DAY_LONG.slice(0, 5).map((d, i) => [String(i + 1), d])} />
           </select>
         </Field>
         <Field label="Partie de la journée">
-          <select className="in" value={part} onChange={(e) => { const p = e.target.value as Exclude<Part, 'J'>; setPart(p); setStart(DEFAULT_START[p]); }}>
+          <select className="in" value={part} onChange={(e) => { const p = e.target.value as Exclude<Part, 'J'>; setPart(p); setFirst(0); }}>
             <option value="M">Matin</option><option value="A">Après-midi</option>
           </select>
         </Field>
-        <Field label="Début"><input className="in" type="time" step={300} value={start} onChange={(e) => setStart(e.target.value)} /></Field>
-        <Field label="Durée d’une séance (min)"><input className="in" type="number" min={15} max={240} step={5} value={slotMin} onChange={(e) => setSlotMin(Number(e.target.value) || 60)} /></Field>
+        <Field label="Première séance">
+          <select className="in" value={first} onChange={(e) => setFirst(Number(e.target.value))}>
+            {periods.map((p, i) => <option key={p.start} value={i}>{minToHM(p.start)} – {minToHM(p.end)}</option>)}
+          </select>
+        </Field>
+        <Field label="Heures par séance">
+          <select className="in" value={size} onChange={(e) => setSize(Number(e.target.value))}>
+            <option value={1}>1 heure (55 min)</option><option value={2}>2 heures</option><option value={3}>3 heures</option>
+          </select>
+        </Field>
         <div className="f wide">
-          <span className="lab">Activités en rotation ({acts.length} séances de {slotMin} min, soit {Math.round((acts.length * slotMin) / 6) / 10} h)</span>
+          <span className="lab">Activités en rotation ({acts.length} séances de {size} h, de {blocks.length ? minToHM(blocks[0].start) : '…'} à {blocks.length ? minToHM(blocks[blocks.length - 1].end) : '…'})</span>
           {acts.map((a, i) => (
             <div key={i} className="row">
               <select className="in" aria-label={`Type de l’activité ${i + 1}`} value={a.kind} onChange={(e) => setAct(i, { kind: e.target.value as Activity['kind'] })}>
@@ -132,7 +143,7 @@ export function HalfdayGenerator() {
         {ready && (
           <div className="wide scroll">
             <table className="tbl" aria-label="Aperçu de la rotation">
-              <thead><tr><th>Groupe</th>{acts.map((_, b) => <th key={b}>{minToHM(toMin(start) + b * slotMin)}</th>)}</tr></thead>
+              <thead><tr><th>Groupe</th>{acts.map((_, b) => <th key={b}>{blocks[b] ? minToHM(blocks[b].start) : ''}</th>)}</tr></thead>
               <tbody>
                 {groups.map((g) => (
                   <tr key={g}><th scope="row">{g}</th>{acts.map((_, b) => {

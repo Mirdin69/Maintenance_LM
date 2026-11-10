@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildWarnings, copyWeekOps, indexCells, weekNeeds } from '@/lib/semainier';
 import { buildRotation } from '@/lib/rotation';
+import { blocksFrom, periodsOf } from '@/lib/schedule';
 import { competencesOf, groupShare, studentCompetence } from '@/lib/competences';
 import { buildBilan } from '@/lib/bilan';
 import { undoPlan, entryLabel } from '@/lib/restore';
@@ -145,7 +146,7 @@ describe('générateur de demi-journée en carrousel', () => {
   const room = (id: string, shared = false) => ({ id, name: id, shared, active: true }) as never;
   const rooms = [room('A'), room('B'), room('C')];
   const acts = [{ kind: 'TP' as const, roomId: 'A', teacherId: null }, { kind: 'TD' as const, roomId: 'B', teacherId: null }, { kind: 'Cours' as const, roomId: 'C', teacherId: null }];
-  const inp = { subject: 'REM', groups: ['2PB1.1', '2PB1.2', '2PB2'], activities: acts, weekday: 1, start: 13 * 60 + 30, slotMin: 60, from: '2026-09-01', to: '2027-06-30' };
+  const inp = { subject: 'REM', groups: ['2PB1.1', '2PB1.2', '2PB2'], activities: acts, weekday: 1, blocks: blocksFrom(periodsOf(1, 'A'), 0, 3), from: '2026-09-01', to: '2027-06-30' };
 
   it('fait tourner chaque groupe sur toutes les activités, sans jamais deux groupes dans la même salle', async () => {
     const { planHalfday } = await import('@/lib/halfday');
@@ -156,19 +157,19 @@ describe('générateur de demi-journée en carrousel', () => {
     expect(of('2PB1.1')).toEqual(['TP', 'TD', 'Cours']);
     expect(of('2PB1.2')).toEqual(['TD', 'Cours', 'TP']);
     expect(of('2PB2')).toEqual(['Cours', 'TP', 'TD']);
-    expect(p[0].start).toBe(810);
-    expect(p[p.length - 1].end).toBe(810 + 180);
+    expect(p[0].start).toBe(13 * 60 + 10);
+    expect(p[p.length - 1].end).toBe(15 * 60 + 55);
     expect(p[0].label).toBe('REM · TP');
   });
   it('signale un créneau en conflit avec l’emploi du temps existant et ne le compte pas', async () => {
     const { planHalfday, noteOf } = await import('@/lib/halfday');
-    const existing = [{ id: 'x', room_id: 'B', group_code: 'AUTRE', teacher_id: null, teacher_label: null, weekday: 1, start_time: '13:30', end_time: '14:30', label: null, tp_id: null, system_id: null, valid_from: '2026-09-01', valid_to: '2027-06-30', created_by: null, created_at: '' }] as never;
+    const existing = [{ id: 'x', room_id: 'B', group_code: 'AUTRE', teacher_id: null, teacher_label: null, weekday: 1, start_time: '13:10', end_time: '14:05', label: null, tp_id: null, system_id: null, valid_from: '2026-09-01', valid_to: '2027-06-30', created_by: null, created_at: '' }] as never;
     const p = planHalfday(inp, existing, [], rooms);
     const bad = p.filter((x) => x.conflicts.length);
     expect(bad).toHaveLength(1);
     expect(bad[0].group).toBe('2PB1.2');
     expect(bad[0].conflicts[0]).toMatch(/Conflit de salle/);
-    expect(noteOf(p, '2PB1.1')).toBe('TP 13:30 · TD 14:30 · Cours 15:30');
+    expect(noteOf(p, '2PB1.1')).toBe('TP 13:10 · TD 14:05 · Cours 15:00');
   });
   it('détecte deux groupes envoyés dans la même salle quand il y a plus de groupes que d’activités', async () => {
     const { planHalfday } = await import('@/lib/halfday');
@@ -178,5 +179,26 @@ describe('générateur de demi-journée en carrousel', () => {
   it('liste les dates du jour choisi en évitant les vacances', async () => {
     const { datesFor } = await import('@/lib/halfday');
     expect(datesFor('2026-10-05', '2026-10-26', 1, (d) => d === '2026-10-19')).toEqual(['2026-10-05', '2026-10-12', '2026-10-26']);
+  });
+});
+
+describe('trame horaire du lycée (séances de 55 min)', () => {
+  const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const starts = (w: number, p: 'M' | 'A') => periodsOf(w, p).map((x) => hm(x.start));
+  it('lundi la matinée commence à 8h40, du mardi au vendredi à 7h45, pause 9h35-9h50, fin 11h40', () => {
+    expect(starts(1, 'M')).toEqual(['08:40', '09:50', '10:45']);
+    expect(starts(2, 'M')).toEqual(['07:45', '08:40', '09:50', '10:45']);
+    expect(hm(periodsOf(3, 'M').at(-1)!.end)).toBe('11:40');
+  });
+  it('l’après-midi : 13h10 à 18h avec la pause de 15h55 à 16h10 (14h05 est la 2e séance)', () => {
+    expect(starts(1, 'A')).toEqual(['13:10', '14:05', '15:00', '16:10', '17:05']);
+    expect(hm(periodsOf(1, 'A').at(-1)!.end)).toBe('18:00');
+  });
+  it('3 séances de 1 h à partir de 14h05 se terminent à 16h55 en sautant la pause', () => {
+    const b = blocksFrom(periodsOf(2, 'A'), 1, 3);
+    expect(b.map((x) => `${hm(x.start)}-${hm(x.end)}`)).toEqual(['14:05-15:00', '15:00-15:55', '16:10-17:05']);
+  });
+  it('refuse de déborder de la demi-journée', () => {
+    expect(blocksFrom(periodsOf(1, 'M'), 1, 3)).toHaveLength(2);
   });
 });
