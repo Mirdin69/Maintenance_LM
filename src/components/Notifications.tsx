@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '@/state/auth';
 import { useStore } from '@/state/store';
 import { iso } from '@/lib/dates';
-import { isMine } from '@/lib/semainier';
+import { isMyCell } from '@/lib/semainier';
 
 interface Note { key: string; text: string; tab: string; tone: 'bad' | 'warn' | 'info' }
 
@@ -31,7 +31,7 @@ export function useNotes(): Note[] {
     }
     const down = data.systems.filter((s) => s.state === 'hs').length;
     if (down) out.push({ key: 'down', text: `${down} système${down > 1 ? 's' : ''} hors service`, tab: 'systemes', tone: 'bad' });
-    const mineToday = data.planning_cells.filter((c) => c.day === today && isMine(c.tp_id ? tpById.get(c.tp_id) : undefined, profile));
+    const mineToday = data.planning_cells.filter((c) => c.day === today && isMyCell(c, c.tp_id ? tpById.get(c.tp_id) : undefined, profile));
     const blocked = mineToday.filter((c) => c.tp_id && tpById.get(c.tp_id)?.system_ids.some((id) => data.systems.find((s) => s.id === id)?.state === 'hs'));
     if (blocked.length) out.push({ key: 'blocked', text: `${blocked.length} de vos cours du jour utilisent un système hors service`, tab: 'semainier', tone: 'bad' });
     return out;

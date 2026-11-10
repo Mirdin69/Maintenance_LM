@@ -411,3 +411,16 @@ describe('export Excel de la rotation', () => {
     expect(wb.getWorksheet('Équipes')!.rowCount).toBeGreaterThan(2);
   });
 });
+
+describe('cours à moi selon les enseignants de la case', () => {
+  it('la case prime sur le TP, sinon c’est l’enseignant du TP', async () => {
+    const { isMyCell } = await import('@/lib/semainier');
+    const me = { id: 'me', email: 'alex@lamache.org', full_name: 'Alexandre Verwaerde' } as never;
+    const tp = { teacher_id: 'autre', teacher_label: null };
+    expect(isMyCell(undefined, tp, me)).toBe(false);
+    expect(isMyCell({ teacher_ids: ['me'], teacher_labels: [] }, tp, me)).toBe(true);
+    expect(isMyCell({ teacher_ids: ['autre'], teacher_labels: [] }, { teacher_id: 'me', teacher_label: null }, me)).toBe(false);
+    expect(isMyCell({ teacher_ids: [], teacher_labels: ['Verwaerde'] }, tp, me)).toBe(true);
+    expect(isMyCell({ teacher_ids: [], teacher_labels: [] }, { teacher_id: 'me', teacher_label: null }, me)).toBe(true);
+  });
+});

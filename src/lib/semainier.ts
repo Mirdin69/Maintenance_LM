@@ -41,6 +41,19 @@ export function isMine(tp: Pick<Tp, 'teacher_id' | 'teacher_label'> | undefined,
   return hay.includes(label);
 }
 
+/**
+ * Le cours (une case du semainier) est-il à moi ? Si la case précise ses enseignants (jour et groupe par groupe),
+ * eux seuls comptent ; sinon c'est l'enseignant du TP.
+ */
+export function isMyCell(c: Pick<PlanningCell, 'teacher_ids' | 'teacher_labels'> | undefined, tp: Pick<Tp, 'teacher_id' | 'teacher_label'> | undefined, me: Profile | null): boolean {
+  if (!me) return false;
+  const ids = c?.teacher_ids ?? [];
+  const labels = c?.teacher_labels ?? [];
+  if (!ids.length && !labels.length) return isMine(tp, me);
+  if (ids.includes(me.id)) return true;
+  return labels.some((l) => isMine({ teacher_id: null, teacher_label: l }, me));
+}
+
 /** Valeur d'une liste déroulante de case : tp:<id>, lab:<texte> ou vide */
 export const cellValue = (c: PlanningCell | undefined) =>
   !c ? '' : c.tp_id ? `tp:${c.tp_id}` : c.label ? `lab:${c.label}` : '';

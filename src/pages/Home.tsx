@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '@/state/store';
 import { useAuth } from '@/state/auth';
 import { useNotes } from '@/components/Notifications';
-import { buildWarnings, isMine } from '@/lib/semainier';
+import { buildWarnings, isMyCell } from '@/lib/semainier';
 import { buildOccurrences } from '@/lib/occupancy';
 import { addDays, fmtShort, iso, mondayOf, minToHM } from '@/lib/dates';
 import { PRIORITIES, MAINT_STATUS, PURCHASE_STATUS, SYSTEM_STATES, eur } from '@/lib/domain';
@@ -14,7 +14,7 @@ export default function Home({ go }: { go: (tab: string) => void }) {
   const { profile, canWrite, isAdmin } = useAuth();
   const notes = useNotes();
   const mineToday = data.planning_cells
-    .filter((c) => c.day === today && c.tp_id && isMine(tpById.get(c.tp_id), profile))
+    .filter((c) => c.day === today && c.tp_id && isMyCell(c, tpById.get(c.tp_id), profile))
     .sort((a, b) => a.group_code.localeCompare(b.group_code));
   const warnings = buildWarnings(data.planning_cells, tpById, systemById);
   const myMaint = data.maintenance.filter((m) => m.created_by === profile?.id && m.status !== 'done');

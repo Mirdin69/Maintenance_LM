@@ -6,7 +6,7 @@ import { LEVELS, byText, domainClass, domainLabel, levelOfGroup } from '@/lib/do
 import { GROUP_CODES } from '@/lib/domain';
 import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf, parseISO, schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { isoWeek, monthBlocks, partsFor, periodOn, weekdaysFor } from '@/lib/calendar';
-import { CONFLICT_COLS, MAX_SEQ, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, courseTeachers, hoursOf, indexCells, isMine, rowOfOp, weekNeeds, type CellOp } from '@/lib/semainier';
+import { CONFLICT_COLS, MAX_SEQ, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, courseTeachers, hoursOf, indexCells, isMyCell, rowOfOp, weekNeeds, type CellOp } from '@/lib/semainier';
 import { usePersisted } from '@/hooks/usePersisted';
 import { useMedia } from '@/hooks/useMedia';
 import type { Level, Part, PlanningCell, Tp } from '@/lib/types';
@@ -233,7 +233,7 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
                     {p ? <td colSpan={groups.length}>{p.label}</td> : groups.map((g) => {
                       const n = seqsOf(d, g, part);
                       const mkey = `${d}|${g}|${part}`;
-                      const mine = onlyMine && Array.from({ length: n }, (_, i) => cells.get(cellKey(d, g, part, i + 1))).some((c) => c?.tp_id && isMine(tpById.get(c.tp_id), profile));
+                      const mine = onlyMine && Array.from({ length: n }, (_, i) => cells.get(cellKey(d, g, part, i + 1))).some((c) => c?.tp_id && isMyCell(c, tpById.get(c.tp_id), profile));
                       return (
                         <td key={g} className={mine ? 'mine' : ''}
                           onDragOver={canWrite ? (e) => e.preventDefault() : undefined} onDrop={canWrite ? (e) => drop(e, d, g, part) : undefined}>
@@ -365,7 +365,7 @@ function Week({ groups, cells, weekdays, dayParts, tpById }: CommonProps & { tpB
                       if (p) return ri === 0 && first ? <td key={k} className="dim" rowSpan={6} colSpan={span}>{p.label}</td> : null;
                       const c = cells.get(cellKey(d, g, part, seq));
                       const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
-                      if (onlyMine && !isMine(tp, profile)) return <td key={k} className="dim">{ri === 0 ? '·' : ''}</td>;
+                      if (onlyMine && !isMyCell(c, tp, profile)) return <td key={k} className="dim">{ri === 0 ? '·' : ''}</td>;
                       if (ri === 2) return <td key={k} className={tp ? `dom sub ${domainClass(tp.domain)}` : ''}>{c && (tp || c.label) ? roomName(c.room_id) : ''}</td>;
                       if (!tp) return <td key={k} className={c?.label ? 'dim' : ''}>{ri === 0 ? c?.label ?? '' : ri === 1 ? courseTeachers(c, undefined, who).join(' / ') : ri === 4 ? c?.note ?? '' : ''}</td>;
                       if (ri === 0) return <td key={k} className={`dom ${domainClass(tp.domain)}`} title={tp.code ?? undefined}>{domainLabel(tp.domain)}</td>;
@@ -390,7 +390,7 @@ function Mine({ cells, tpById }: { cells: PlanningCell[]; tpById: Map<string, Tp
   const { data } = useStore();
   const today = iso(new Date());
   const mine = useMemo(
-    () => cells.filter((c) => isMine(c.tp_id ? tpById.get(c.tp_id) : undefined, profile)).sort((a, b) => a.day.localeCompare(b.day) || (a.part ?? 'J').localeCompare(b.part ?? 'J') || (a.seq ?? 1) - (b.seq ?? 1) || a.group_code.localeCompare(b.group_code)),
+    () => cells.filter((c) => isMyCell(c, c.tp_id ? tpById.get(c.tp_id) : undefined, profile)).sort((a, b) => a.day.localeCompare(b.day) || (a.part ?? 'J').localeCompare(b.part ?? 'J') || (a.seq ?? 1) - (b.seq ?? 1) || a.group_code.localeCompare(b.group_code)),
     [cells, tpById, profile],
   );
   const upcoming = mine.filter((c) => c.day >= today && !periodOn(c.day, data.calendar_periods));
