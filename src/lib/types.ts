@@ -199,9 +199,14 @@ export interface CalendarPeriod {
   end_date: string;
 }
 
+/** Partie de la journée d'une case du semainier : J = journée entière, M = matin, A = après-midi */
+export type Part = 'J' | 'M' | 'A';
+
 export interface PlanningCell {
   day: string;
   group_code: string;
+  part: Part;
+  room_id: string | null;
   tp_id: string | null;
   label: string | null;
   note: string | null;

@@ -7,16 +7,16 @@ import { undoPlan, entryLabel } from '@/lib/restore';
 import { checkImage, newImagePath } from '@/lib/images';
 import type { AuditEntry, PlanningCell } from '@/lib/types';
 
-const cell = (day: string, group_code: string, tp_id: string | null, label: string | null = null): PlanningCell => ({ day, group_code, tp_id, label, note: null, updated_by: null, updated_at: '' });
+const cell = (day: string, group_code: string, tp_id: string | null, label: string | null = null, part: PlanningCell['part'] = 'J'): PlanningCell => ({ day, group_code, part, room_id: null, tp_id, label, note: null, updated_by: null, updated_at: '' });
 
 describe('avertissements du semainier', () => {
   const tps = new Map([['a', { system_ids: ['s1'] }], ['b', { system_ids: ['s1', 's2'] }], ['c', { system_ids: [] as string[] }]]);
   const systems = new Map([['s1', { name: 'Banc API', state: 'service' }], ['s2', { name: 'Zelio', state: 'hs' }]]);
   it('signale un système hors service et un système réclamé par deux groupes le même jour', () => {
     const w = buildWarnings([cell('2026-10-05', '2PB1.1', 'a'), cell('2026-10-05', '2PB1.2', 'b'), cell('2026-10-06', '2PB1.1', 'a'), cell('2026-10-06', '2PB1.2', 'c')], tps, systems);
-    expect(w.get('2026-10-05|2PB1.1')).toEqual(['« Banc API » aussi prévu pour 2PB1.2']);
-    expect(w.get('2026-10-05|2PB1.2')).toEqual(expect.arrayContaining(['« Zelio » est hors service', '« Banc API » aussi prévu pour 2PB1.1']));
-    expect(w.has('2026-10-06|2PB1.1')).toBe(false);
+    expect(w.get('2026-10-05|2PB1.1|J')).toEqual(['« Banc API » aussi prévu pour 2PB1.2']);
+    expect(w.get('2026-10-05|2PB1.2|J')).toEqual(expect.arrayContaining(['« Zelio » est hors service', '« Banc API » aussi prévu pour 2PB1.1']));
+    expect(w.has('2026-10-06|2PB1.1|J')).toBe(false);
   });
 });
 
@@ -24,7 +24,7 @@ describe('copie de semaine', () => {
   it('copie lundi-vendredi, respecte les cases remplies et les jours bloqués', () => {
     const cells = indexCells([cell('2026-10-05', 'G', 'a'), cell('2026-10-06', 'G', null, 'Évaluation'), cell('2026-10-12', 'G', 'z'), cell('2026-10-14', 'G', 'a')]);
     const base = { overwrite: false, blocked: (d: string) => d === '2026-10-14' };
-    expect(copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', base)).toEqual([{ day: '2026-10-13', group: 'G', value: 'lab:Évaluation' }]);
+    expect(copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', base)).toEqual([{ day: '2026-10-13', group: 'G', part: 'J', room: null, value: 'lab:Évaluation' }]);
     const ow = copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', { ...base, overwrite: true });
     expect(ow.map((o) => o.day)).toEqual(['2026-10-12', '2026-10-13']);
   });
@@ -109,5 +109,74 @@ describe('collage depuis Excel', () => {
     expect(num('1 234,5', 0)).toBe(1234.5);
     expect(num('abc', 7)).toBe(7);
     expect(num(undefined, 1)).toBe(1);
+  });
+});
+
+describe('demi-journées du semainier', () => {
+  it('lit et écrit les jours retenus avec matin / après-midi', async () => {
+    const { parsePartsByDay, formatPartsByDay, parseWeekdays } = await import('@/lib/calendar');
+    expect(parseWeekdays('1,2M,3A,4MA')).toEqual([1, 2, 3, 4]);
+    expect(parsePartsByDay('1,2M,3A,4MA')).toEqual({ 1: ['J'], 2: ['M'], 3: ['A'], 4: ['M', 'A'] });
+    expect(formatPartsByDay([1, 2, 3, 4], { 2: ['M'], 3: ['A'], 4: ['M', 'A'] })).toBe('1,2M,3A,4MA');
+  });
+  it('une case du matin et une de l’après-midi coexistent le même jour', () => {
+    const cells = indexCells([cell('2026-10-05', 'G', 'a', null, 'M'), cell('2026-10-05', 'G', null, 'REM', 'A')]);
+    expect(cells.size).toBe(2);
+    expect(cells.get('2026-10-05|G|M')?.tp_id).toBe('a');
+  });
+  it('compte une demi-journée pour 0,5 jour', async () => {
+    const { hoursOf } = await import('@/lib/semainier');
+    const tp = { id: 'a', code: 'X', title: 'X' } as never;
+    expect([...hoursOf([tp], [cell('2026-10-05', 'G', 'a', null, 'M'), cell('2026-10-05', 'H', 'a'), cell('2026-10-06', 'G', 'a', null, 'A')]).values()][0].days).toBe(2);
+  });
+  it('la copie de semaine garde la partie de journée et la salle', () => {
+    const c = { ...cell('2026-10-05', 'G', 'a', null, 'A'), room_id: 'r1' };
+    const ops = copyWeekOps(indexCells([c]), ['G'], '2026-10-05', '2026-10-12', { overwrite: false, blocked: () => false });
+    expect(ops).toEqual([{ day: '2026-10-12', group: 'G', part: 'A', room: 'r1', value: 'tp:a' }]);
+  });
+  it('deux avertissements de système ne se mélangent pas entre matin et après-midi', () => {
+    const tps = new Map([['a', { system_ids: ['s1'] }], ['b', { system_ids: ['s1'] }]]);
+    const w = buildWarnings([cell('2026-10-05', 'G1', 'a', null, 'M'), cell('2026-10-05', 'G2', 'b', null, 'A')], tps, new Map([['s1', { name: 'Banc', state: 'service' }]]));
+    expect(w.size).toBe(0);
+  });
+});
+
+describe('générateur de demi-journée en carrousel', () => {
+  const room = (id: string, shared = false) => ({ id, name: id, shared, active: true }) as never;
+  const rooms = [room('A'), room('B'), room('C')];
+  const acts = [{ kind: 'TP' as const, roomId: 'A', teacherId: null }, { kind: 'TD' as const, roomId: 'B', teacherId: null }, { kind: 'Cours' as const, roomId: 'C', teacherId: null }];
+  const inp = { subject: 'REM', groups: ['2PB1.1', '2PB1.2', '2PB2'], activities: acts, weekday: 1, start: 13 * 60 + 30, slotMin: 60, from: '2026-09-01', to: '2027-06-30' };
+
+  it('fait tourner chaque groupe sur toutes les activités, sans jamais deux groupes dans la même salle', async () => {
+    const { planHalfday } = await import('@/lib/halfday');
+    const p = planHalfday(inp, [], [], rooms);
+    expect(p).toHaveLength(9);
+    expect(p.every((x) => !x.conflicts.length)).toBe(true);
+    const of = (g: string) => p.filter((x) => x.group === g).sort((a, b) => a.start - b.start).map((x) => x.activity.kind);
+    expect(of('2PB1.1')).toEqual(['TP', 'TD', 'Cours']);
+    expect(of('2PB1.2')).toEqual(['TD', 'Cours', 'TP']);
+    expect(of('2PB2')).toEqual(['Cours', 'TP', 'TD']);
+    expect(p[0].start).toBe(810);
+    expect(p[p.length - 1].end).toBe(810 + 180);
+    expect(p[0].label).toBe('REM · TP');
+  });
+  it('signale un créneau en conflit avec l’emploi du temps existant et ne le compte pas', async () => {
+    const { planHalfday, noteOf } = await import('@/lib/halfday');
+    const existing = [{ id: 'x', room_id: 'B', group_code: 'AUTRE', teacher_id: null, teacher_label: null, weekday: 1, start_time: '13:30', end_time: '14:30', label: null, tp_id: null, system_id: null, valid_from: '2026-09-01', valid_to: '2027-06-30', created_by: null, created_at: '' }] as never;
+    const p = planHalfday(inp, existing, [], rooms);
+    const bad = p.filter((x) => x.conflicts.length);
+    expect(bad).toHaveLength(1);
+    expect(bad[0].group).toBe('2PB1.2');
+    expect(bad[0].conflicts[0]).toMatch(/Conflit de salle/);
+    expect(noteOf(p, '2PB1.1')).toBe('TP 13:30 · TD 14:30 · Cours 15:30');
+  });
+  it('détecte deux groupes envoyés dans la même salle quand il y a plus de groupes que d’activités', async () => {
+    const { planHalfday } = await import('@/lib/halfday');
+    const p = planHalfday({ ...inp, groups: ['a', 'b', 'c', 'd'] }, [], [], rooms);
+    expect(p.filter((x) => x.conflicts.length).length).toBeGreaterThan(0);
+  });
+  it('liste les dates du jour choisi en évitant les vacances', async () => {
+    const { datesFor } = await import('@/lib/halfday');
+    expect(datesFor('2026-10-05', '2026-10-26', 1, (d) => d === '2026-10-19')).toEqual(['2026-10-05', '2026-10-12', '2026-10-26']);
   });
 });

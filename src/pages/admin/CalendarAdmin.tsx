@@ -4,8 +4,8 @@ import { useAct, useStore } from '@/state/store';
 import { PERIOD_KINDS, byText } from '@/lib/domain';
 import { DAY_LONG, fmtDate, schoolYearOf } from '@/lib/dates';
 import { LEVELS } from '@/lib/domain';
-import { daysKey, frenchHolidays, weekdaysFor } from '@/lib/calendar';
-import type { CalendarPeriod } from '@/lib/types';
+import { daysKey, formatPartsByDay, frenchHolidays, partsFor, weekdaysFor } from '@/lib/calendar';
+import type { CalendarPeriod, Part } from '@/lib/types';
 import { NewYear, ZoneAImport } from './NewYear';
 import { AddPanel, Chip, ConfirmButton, Empty, Field, Options } from '@/components/ui';
 
@@ -24,7 +24,12 @@ export default function CalendarAdmin() {
     const shown = weekdaysFor(settings, level);
     const next = shown.includes(d) ? shown.filter((x) => x !== d) : [...shown, d].sort();
     if (!next.length) return;
-    void setSetting(daysKey(level), next.join(','));
+    void setSetting(daysKey(level), formatPartsByDay(next, partsFor(settings, level)));
+  };
+  /** Journée entière, matin, après-midi ou les deux (matin et après-midi séparés) pour un jour retenu */
+  const setParts = (level: string, d: number, value: string) => {
+    const parts = { ...partsFor(settings, level), [d]: (value === 'J' ? ['J'] : value.split('')) as Part[] };
+    void setSetting(daysKey(level), formatPartsByDay(weekdaysFor(settings, level), parts));
   };
 
   const add = async (e: FormEvent<HTMLFormElement>) => {
@@ -56,7 +61,14 @@ export default function CalendarAdmin() {
             <div key={l} className="f">
               <span className="lab">Jours affichés, {l}</span>
               <div className="picks" role="group" aria-label={`Jours affichés ${l}`}>{DAY_LONG.slice(0, 5).map((d, i) => (
-                <label key={d} className="pick"><input type="checkbox" checked={weekdaysFor(settings, l).includes(i + 1)} onChange={() => toggleDay(l, i + 1)} />{d}</label>
+                <span key={d} className="pick">
+                  <label><input type="checkbox" checked={weekdaysFor(settings, l).includes(i + 1)} onChange={() => toggleDay(l, i + 1)} /> {d}</label>
+                  {weekdaysFor(settings, l).includes(i + 1) && (
+                    <select className="in" aria-label={`Partie de la journée, ${d} ${l}`} value={(partsFor(settings, l)[i + 1] ?? ['J']).join('')} onChange={(e) => setParts(l, i + 1, e.target.value)}>
+                      <option value="J">Journée</option><option value="M">Matin</option><option value="A">Après-midi</option><option value="MA">Matin et après-midi</option>
+                    </select>
+                  )}
+                </span>
               ))}</div>
             </div>
           ))}

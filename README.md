@@ -43,12 +43,18 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Fiches** séquence et séance : saisie, partage entre collègues, impression.
 - **Images** des systèmes, outils et logos : collez le lien de partage d'un fichier du Drive, réglé sur « Tous les utilisateurs disposant du lien ». Si votre Drive est limité à l'établissement, les images ne s'afficheront que pour les personnes connectées à leur compte Google du lycée dans le même navigateur.
 - **Documents joints** (Word, PDF, Excel) sur les TP et les fiches : collez le lien de partage du fichier du Drive ; un bouton « Aperçu » l'affiche dans la page (aperçu limité à Google Drive/Docs, sinon lien « Ouvrir »). Une fiche séance se rattache à une fiche séquence.
-- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql`, `0004_stockage.sql` `0005_ameliorations.sql` `0006_domaines.sql` `0007_rgpd.sql` puis **`0008_idees.sql`**, après `0001_init.sql`.
+- Appliquez dans l'ordre `0002_semainier.sql`, `0003_documents.sql`, `0004_stockage.sql` `0005_ameliorations.sql` `0006_domaines.sql` `0007_rgpd.sql` `0008_idees.sql` puis **`0009_demi_journees.sql`**, après `0001_init.sql`.
 - `0005` ajoute : images déposées (espace public `images`, 5 Mo), historique des modifications (gestionnaires), contrôles préventifs récurrents, PFMP et entreprises, fournisseur et devis des achats, outils et « réutilisable » sur les TP et fiches. Elle peut être rejouée sans dommage. Tant qu'elle n'est pas appliquée, le reste du site fonctionne, mais l'enregistrement d'un TP, d'une fiche ou d'un achat avec ces nouveaux champs échoue.
 - `0006` autorise des domaines personnalisés sur les TP et les systèmes (liste gérée dans *Administration > Domaines*) et corrige la contrainte des systèmes, qui n'acceptait que 4 domaines. Sans elle, ajouter un domaine ou choisir « Atelier », « Annexe », etc. pour un système échoue.
 - `0007` (RGPD) ajoute la date de sortie des élèves, la purge selon les durées de conservation, l'export et l'effacement complet d'un élève (progression et traces dans l'historique comprises). Sans elle, les boutons Exporter, Effacer et Purge de l'administration échouent.
+- `0009` ajoute les demi-journées et la salle au semainier (colonnes `part` et `room_id`, clé primaire jour + groupe + partie). Les cases existantes deviennent des journées entières. À appliquer avant d'utiliser le semainier avec la nouvelle version, sinon l'enregistrement des cases échoue.
 - `0008` ajoute la boîte à idées (table `ideas`, vote par fonction). Sans elle, la page *Aide > Idées d'amélioration* affiche une erreur de chargement.
 - Documents : dépôt direct de PDF, Word, Excel, PowerPoint ou OpenDocument (10 Mo max, bucket privé `documents`, lecture réservée aux comptes actifs). Aperçu intégré des PDF, .docx et .xlsx ; les .doc, .xls et .ppt se téléchargent. Les liens Google Drive restent possibles.
+
+### Demi-journées, salle et carrousel
+- **Administration > Calendrier** : pour chaque jour affiché d'un niveau, choisissez *Journée*, *Matin*, *Après-midi* ou *Matin et après-midi* (deux lignes séparées dans le semainier).
+- **Semainier** : chaque case a une liste *Salle…* modifiable (annulable) ; la salle apparaît dans la vue Semaine, « Mes cours » et l'export CSV. Une demi-journée compte 0,5 jour dans la répartition annuelle.
+- **Emploi du temps > Générer une demi-journée** : intitulé (REM), niveau, groupes, jour, matin ou après-midi, heure de début, durée d'une séance et activités (TP, TD, cours, avec salle et enseignant). Chaque groupe passe successivement par toutes les activités (rotation). Un aperçu montre la rotation ; les créneaux en conflit (salle, groupe, enseignant) sont signalés et non créés. Le semainier reçoit une case sur la demi-journée de chaque semaine (hors vacances et jours fériés, sans écraser l'existant). Tout est annulable d'un clic.
 
 ## Salles et occupation
 

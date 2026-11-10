@@ -8,6 +8,7 @@ import { slotConflicts } from '@/lib/conflicts';
 import type { Slot } from '@/lib/types';
 import { AddPanel, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
 import { WeekGrid, type GridBlock } from '@/components/WeekGrid';
+import { HalfdayGenerator } from '@/components/HalfdayGenerator';
 
 type View = 'room' | 'group' | 'teacher';
 
@@ -165,6 +166,7 @@ export default function Timetable() {
           </form>
         </AddPanel>
       )}
+      {canWrite && <HalfdayGenerator />}
       <section className="panel">
         <div className="tools">
           <Seg<View> label="Vue" value={view} onChange={(v) => { setView(v); setTarget(''); }} items={[['room', 'Par salle'], ['group', 'Par groupe'], ['teacher', 'Par enseignant']]} />

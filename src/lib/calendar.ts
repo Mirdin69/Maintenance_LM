@@ -1,5 +1,5 @@
 import { addDays, eachDay, iso, isoDow, parseISO } from './dates';
-import type { CalendarPeriod } from './types';
+import type { CalendarPeriod, Part } from './types';
 
 /** Dimanche de Pâques (algorithme de Meeus/Jones/Butcher) */
 export function easter(year: number): Date {
@@ -84,9 +84,30 @@ export function monthBlocks(from: string, to: string, weekdays: number[]): Month
 export function parseWeekdays(raw: string | undefined, fallback = [1, 2, 3, 4]): number[] {
   const list = (raw ?? '')
     .split(',')
-    .map((x) => Number(x.trim()))
+    .map((x) => Number(x.trim().replace(/[MA]+$/i, '')))
     .filter((n) => Number.isInteger(n) && n >= 1 && n <= 5);
   return list.length ? [...new Set(list)].sort() : fallback;
+}
+
+/** Parties de journée par jour retenu : « 1,2M,3A,4MA » = lundi entier, mardi matin, mercredi après-midi, jeudi matin et après-midi */
+export function parsePartsByDay(raw: string | undefined): Record<number, Part[]> {
+  const out: Record<number, Part[]> = {};
+  for (const tok of (raw ?? '').split(',')) {
+    const m = /^\s*([1-5])\s*([MA]*)\s*$/i.exec(tok);
+    if (!m) continue;
+    const suffix = m[2].toUpperCase();
+    out[Number(m[1])] = !suffix ? ['J'] : (['M', 'A'] as Part[]).filter((p) => suffix.includes(p));
+  }
+  return out;
+}
+
+export function formatPartsByDay(days: number[], parts: Record<number, Part[]>): string {
+  return days
+    .map((d) => {
+      const p = parts[d] ?? ['J'];
+      return `${d}${p.includes('J') ? '' : (['M', 'A'] as Part[]).filter((x) => p.includes(x)).join('')}`;
+    })
+    .join(',');
 }
 
 /** Clé du réglage des jours affichés pour un niveau (les clés n'acceptent que lettres et _) */
@@ -96,3 +117,10 @@ export const daysKey = (level: string) => `shown_days_${LEVEL_KEY[level] ?? 'sec
 /** Jours affichés pour un niveau : réglage du niveau, sinon réglage commun, sinon lundi-jeudi */
 export const weekdaysFor = (settings: Record<string, string>, level: string) =>
   parseWeekdays(settings[daysKey(level)] || settings.shown_days);
+
+/** Parties de journée affichées pour chaque jour retenu d'un niveau (journée entière par défaut) */
+export function partsFor(settings: Record<string, string>, level: string): Record<number, Part[]> {
+  const raw = settings[daysKey(level)] || settings.shown_days;
+  const parsed = parsePartsByDay(raw);
+  return Object.fromEntries(parseWeekdays(raw).map((d) => [d, parsed[d] ?? ['J']]));
+}

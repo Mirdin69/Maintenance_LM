@@ -9,6 +9,7 @@ const migration5 = readFileSync(new URL('../supabase/migrations/0005_amelioratio
 const migration6 = readFileSync(new URL('../supabase/migrations/0006_domaines.sql', import.meta.url), 'utf8');
 const migration7 = readFileSync(new URL('../supabase/migrations/0007_rgpd.sql', import.meta.url), 'utf8');
 const migration8 = readFileSync(new URL('../supabase/migrations/0008_idees.sql', import.meta.url), 'utf8');
+const migration9 = readFileSync(new URL('../supabase/migrations/0009_demi_journees.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -72,6 +73,7 @@ beforeAll(async () => {
   await db.exec(migration6);
   await db.exec(migration7);
   await db.exec(migration8);
+  await db.exec(migration9);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -601,5 +603,35 @@ describe('migration 0008 : boîte à idées', () => {
     await as('admin');
     await sql("update public.ideas set status = 'retenue', answer = 'Bonne idée' where title = 'Exporter en PDF'");
     expect((await sql("select status from public.ideas where title = 'Exporter en PDF'"))[0].status).toBe('retenue');
+  });
+});
+
+describe('migration 0009 : demi-journées et salle dans le semainier', () => {
+  it('rejoue la migration sans erreur', async () => {
+    await db.exec('reset role');
+    await db.exec(migration9);
+  });
+  it('une journée, un matin et un après-midi coexistent, mais pas deux fois la même partie', async () => {
+    await as('prof');
+    expect(await fails("insert into public.planning_cells (day, group_code, part, label) values ('2026-12-07', '2PB1.1', 'M', 'REM')")).toBeNull();
+    expect(await fails("insert into public.planning_cells (day, group_code, part, label) values ('2026-12-07', '2PB1.1', 'A', 'TP')")).toBeNull();
+    expect(await fails("insert into public.planning_cells (day, group_code, part, label) values ('2026-12-07', '2PB1.1', 'A', 'doublon')")).toMatch(/duplicate/);
+    expect(await fails("insert into public.planning_cells (day, group_code, part, label) values ('2026-12-08', '2PB1.1', 'X', 'a')")).toMatch(/check/);
+    // sans précision : journée entière
+    expect(await fails("insert into public.planning_cells (day, group_code, label) values ('2026-12-09', '2PB1.1', 'a')")).toBeNull();
+    expect((await sql("select part from public.planning_cells where day = '2026-12-09'"))[0].part).toBe('J');
+  });
+  it('la salle est liée à une salle existante et se vide si la salle disparaît', async () => {
+    await as('admin');
+    const [room] = await sql("insert into public.rooms (name, kind) values ('Salle demi-journée', 'atelier') returning id");
+    expect(await fails(`insert into public.planning_cells (day, group_code, part, label, room_id) values ('2026-12-10', '2PB1.2', 'M', 'REM', '${room.id}')`)).toBeNull();
+    expect(await fails("insert into public.planning_cells (day, group_code, part, label, room_id) values ('2026-12-10', '2PB1.2', 'A', 'REM', gen_random_uuid())")).toMatch(/foreign key/);
+    await db.query('delete from public.rooms where id = $1', [room.id]);
+    expect((await sql("select room_id from public.planning_cells where day = '2026-12-10' and part = 'M'"))[0].room_id).toBeNull();
+  });
+  it('le journal d’audit distingue les parties de journée', async () => {
+    await as('admin');
+    const keys = (await sql("select row_key from public.audit_log where table_name = 'planning_cells' and row_key like '2026-12-07/%'")).map((r: { row_key: string }) => r.row_key);
+    expect(keys).toEqual(expect.arrayContaining(['2026-12-07/2PB1.1/M', '2026-12-07/2PB1.1/A']));
   });
 });

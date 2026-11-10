@@ -621,3 +621,32 @@ describe('boîte à idées', () => {
     expect(await screen.findByText(/Prévu en décembre/)).toBeInTheDocument();
   });
 });
+
+describe('demi-journées, salle et carrousel', () => {
+  it('permet de choisir la salle d’une case du semainier', async () => {
+    await open('prof', 'semainier');
+    const room = (await screen.findAllByRole('combobox', { name: /^Salle, 2PB1\.1,/ }))[0];
+    await userEvent.selectOptions(room, 'A101');
+    expect(await screen.findByText('Salle modifiée.')).toBeInTheDocument();
+    await waitFor(() => expect((screen.getAllByRole('combobox', { name: /^Salle, 2PB1\.1,/ })[0] as HTMLSelectElement).selectedOptions[0].textContent).toBe('A101'));
+  });
+  it('génère le carrousel d’une demi-journée et remplit le semainier', async () => {
+    await open('admin', 'edt');
+    await userEvent.click(await screen.findByText(/Générer une demi-journée/));
+    await userEvent.type(screen.getByLabelText(/Intitulé \*/), 'REM');
+    await userEvent.selectOptions(screen.getByLabelText('Salle de l’activité 1'), 'B201');
+    await userEvent.selectOptions(screen.getByLabelText('Salle de l’activité 2'), 'B202');
+    await userEvent.selectOptions(screen.getByLabelText('Salle de l’activité 3'), 'A103');
+    const preview = await screen.findByRole('table', { name: /Aperçu de la rotation/ });
+    expect(within(preview).getAllByText(/^TP · B201/).length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole('button', { name: /^Générer \d+ créneaux?/ }));
+    expect(await screen.findByText(/créneaux? créés?, \d+ cases? du semainier/)).toBeInTheDocument();
+  });
+  it('propose matin et après-midi pour chaque jour dans le calendrier', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Calendrier' }));
+    const sel = (await screen.findAllByLabelText(/^Partie de la journée, lundi Seconde/i))[0];
+    await userEvent.selectOptions(sel, 'MA');
+    expect(await screen.findByText('Enregistré.')).toBeInTheDocument();
+  });
+});

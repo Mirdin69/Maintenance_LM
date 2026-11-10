@@ -1,5 +1,5 @@
 import { normalize } from './domain';
-import type { PlanningCell, Profile, Tp } from './types';
+import type { Part, PlanningCell, Profile, Tp } from './types';
 
 export const SPECIAL_LABELS = [
   'Période d’observation',
@@ -12,10 +12,17 @@ export const SPECIAL_LABELS = [
   'Sortie pédagogique',
 ];
 
-export const cellKey = (day: string, group: string) => `${day}|${group}`;
+export const PARTS: readonly Part[] = ['J', 'M', 'A'];
+export const PART_LABEL: Record<Part, string> = { J: 'Journée', M: 'Matin', A: 'Après-midi' };
+
+export const cellKey = (day: string, group: string, part: Part = 'J') => `${day}|${group}|${part}`;
+/** Deux parties de journée se chevauchent si l'une est la journée entière, ou si elles sont identiques */
+export const partsOverlap = (a: Part, b: Part) => a === 'J' || b === 'J' || a === b;
+/** Poids d'une case en journées : une demi-journée compte 0,5 */
+export const partWeight = (p: Part | undefined) => (p === 'M' || p === 'A' ? 0.5 : 1);
 
 export function indexCells(cells: PlanningCell[]): Map<string, PlanningCell> {
-  return new Map(cells.map((c) => [cellKey(c.day, c.group_code), c]));
+  return new Map(cells.map((c) => [cellKey(c.day, c.group_code, c.part ?? 'J'), c]));
 }
 
 /**
@@ -48,14 +55,20 @@ export const hoursOf = (tps: Tp[], cells: PlanningCell[]) => {
     const tp = c.tp_id ? byId.get(c.tp_id) : undefined;
     if (!tp) continue;
     const cur = out.get(tp.id) ?? { days: 0, tp };
-    cur.days++;
+    cur.days += partWeight(c.part);
     out.set(tp.id, cur);
   }
   return out;
 };
 
 /** Une écriture dans le semainier : valeur vide = case effacée */
-export interface CellOp { day: string; group: string; value: string }
+export interface CellOp { day: string; group: string; value: string; part?: Part; room?: string | null }
+
+/** Ligne de la table planning_cells correspondant à une écriture (la salle n'est écrite que si elle est précisée) */
+export function rowOfOp(o: CellOp) {
+  return { day: o.day, group_code: o.group, part: o.part ?? 'J', ...(o.room !== undefined ? { room_id: o.room } : {}), ...cellPatch(o.value) };
+}
+export const CONFLICT_COLS = 'day,group_code,part';
 
 /** Avertissements par case : système hors service ou en maintenance, ou réclamé par un autre groupe le même jour */
 export function buildWarnings(
@@ -74,10 +87,10 @@ export function buildWarnings(
         if (!sys) continue;
         if (sys.state === 'hs') msgs.push(`« ${sys.name} » est hors service`);
         else if (sys.state === 'maint') msgs.push(`« ${sys.name} » est en maintenance`);
-        const others = list.filter((o) => o.group_code !== c.group_code && tpById.get(o.tp_id!)?.system_ids.includes(id)).map((o) => o.group_code);
+        const others = list.filter((o) => o.group_code !== c.group_code && partsOverlap(o.part ?? 'J', c.part ?? 'J') && tpById.get(o.tp_id!)?.system_ids.includes(id)).map((o) => o.group_code);
         if (others.length) msgs.push(`« ${sys.name} » aussi prévu pour ${others.join(', ')}`);
       }
-      if (msgs.length) out.set(cellKey(c.day, c.group_code), msgs);
+      if (msgs.length) out.set(cellKey(c.day, c.group_code, c.part ?? 'J'), msgs);
     }
   }
   return out;
@@ -104,11 +117,13 @@ export function copyWeekOps(
     for (const [gi, g] of groups.entries()) {
       // Carrousel : le groupe g reçoit ce que faisait, la semaine source, le groupe situé `shift` rangs avant lui
       const from = groups[(((gi - (opts.shift ?? 0)) % groups.length) + groups.length) % groups.length];
-      const c = cells.get(cellKey(src, from));
-      const value = cellValue(c);
-      if (!value) continue;
-      if (cells.get(cellKey(dst, g)) && !opts.overwrite) continue;
-      ops.push({ day: dst, group: g, value });
+      for (const part of PARTS) {
+        const c = cells.get(cellKey(src, from, part));
+        const value = cellValue(c);
+        if (!value) continue;
+        if (cells.get(cellKey(dst, g, part)) && !opts.overwrite) continue;
+        ops.push({ day: dst, group: g, part, value, room: c?.room_id ?? null });
+      }
     }
   }
   return ops;

@@ -451,3 +451,8 @@ table.sem .dom, .dom { font-weight: bold; }
 /* Fonctions désactivées (en attente de validation RGPD) : grisées mais gardent leur info-bulle */
 .nav button.off, .subnav button.off, .seg button.off { opacity: 0.5; cursor: not-allowed; text-decoration: line-through; }
 .seg button.off { color: var(--muted); }
+
+/* Semainier : demi-journées et salle */
+.part-tag { font-weight: 400; font-size: 0.72rem; color: var(--muted, #666); }
+select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 2px; border: 1px dashed var(--line); background: transparent; color: inherit; }
+.pick select.in { padding: 1px 4px; font-size: 0.75rem; }

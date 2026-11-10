@@ -115,8 +115,8 @@ function reset() {
       [2, '2PB1.1', 'Prod Ener (1)'], [2, '2PB1.2', 'Industrie (1)'], [2, '2PB2', 'Atelier'],
       [3, '2PB1.1', 'Atelier'], [3, '2PB1.2', 'Prod Ener (1)'], [3, '2PB2', 'Industrie (1)'],
     ];
-    for (const [d, g, c] of plan) out.push({ day: iso(addDays(wk, d)), group_code: g, tp_id: tpId(c), label: null, note: null, updated_by: ME.admin, updated_at: now() });
-    out.push({ day: iso(addDays(wk, 7)), group_code: '2PB1.1', tp_id: null, label: 'Période d’observation', note: null, updated_by: ME.admin, updated_at: now() });
+    for (const [d, g, c] of plan) out.push({ day: iso(addDays(wk, d)), group_code: g, part: 'J', room_id: null, tp_id: tpId(c), label: null, note: null, updated_by: ME.admin, updated_at: now() });
+    out.push({ day: iso(addDays(wk, 7)), group_code: '2PB1.1', part: 'J', room_id: null, tp_id: null, label: 'Période d’observation', note: null, updated_by: ME.admin, updated_at: now() });
     return out;
   })();
   const TP = (c: string) => tps.find((x) => x.code === c)!.id as string;
@@ -217,7 +217,7 @@ reset();
 
 const PK: Record<string, string[]> = {
   progress: ['student_id', 'tp_id'], teacher_groups: ['profile_id', 'group_code'], groups: ['code'],
-  planning_cells: ['day', 'group_code'], settings: ['key'],
+  planning_cells: ['day', 'group_code', 'part'], settings: ['key'],
 };
 const pkOf = (table: string) => PK[table] ?? ['id'];
 const same = (table: string, a: Row, b: Row) => pkOf(table).every((k) => a[k] === b[k]);
@@ -230,7 +230,7 @@ const notify = (table: string) => queueMicrotask(() => listeners.forEach((cb) =>
 const ADMIN_ONLY = new Set(['rooms', 'teacher_groups', 'tools', 'settings', 'calendar_periods', 'audit_log']);
 const AUDITED: Record<string, string[]> = {
   systems: ['id'], tps: ['id'], fiches: ['id'], maintenance: ['id'], maintenance_plans: ['id'], purchases: ['id'], rooms: ['id'], tools: ['id'],
-  students: ['id'], planning_cells: ['day', 'group_code'], companies: ['id'], pfmp_periods: ['id'], sessions: ['id'], timetable_slots: ['id'],
+  students: ['id'], planning_cells: ['day', 'group_code', 'part'], companies: ['id'], pfmp_periods: ['id'], sessions: ['id'], timetable_slots: ['id'],
 };
 let auditSeq = 0;
 function audit(table: string, op: 'INSERT' | 'UPDATE' | 'DELETE', before: Row | null, after: Row | null) {
@@ -274,7 +274,7 @@ function defaults(table: string, row: Row): Row {
     case 'rooms': Object.assign(base, { kind: 'salle', shared: false, active: true }); break;
     case 'progress': Object.assign(base, { updated_at: now(), updated_by: me }); break;
     case 'tools': Object.assign(base, { qty: 1, state: 'ok', image_url: null }); break;
-    case 'planning_cells': Object.assign(base, { tp_id: null, label: null, note: null, updated_by: me, updated_at: now() }); break;
+    case 'planning_cells': Object.assign(base, { part: 'J', room_id: null, tp_id: null, label: null, note: null, updated_by: me, updated_at: now() }); break;
     case 'fiches': Object.assign(base, { data: {}, documents: [], reusable: false, sequence_id: null, created_by: me, updated_at: now() }); break;
   }
   const out = { ...base, ...row };
@@ -398,7 +398,7 @@ export const api: Api = {
     guard(table, 'insert');
     const list = (Array.isArray(rows) ? rows : [rows]).map((r) => defaults(table, r));
     if (table === 'rooms' && list.some((r) => (T.rooms.some((x) => x.name === r.name)))) throw new Error('duplicate key value violates unique constraint "rooms_name_key"');
-    if (table === 'planning_cells' && list.some((r) => T.planning_cells.some((x) => x.day === r.day && x.group_code === r.group_code)))
+    if (table === 'planning_cells' && list.some((r) => T.planning_cells.some((x) => x.day === r.day && x.group_code === r.group_code && (x.part ?? 'J') === (r.part ?? 'J'))))
       throw new Error('duplicate key value violates unique constraint "planning_cells_pkey"');
     list.forEach((r) => checkConflicts(table, r));
     T[table] = [...(T[table] ?? []), ...list];

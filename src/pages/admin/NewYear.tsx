@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { useAct, useStore } from '@/state/store';
 import { fmtDate, fmtDayLong, schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { fetchZoneA, onlyNewPeriods, planNewYear, type NewPeriod } from '@/lib/newYear';
+import { CONFLICT_COLS, rowOfOp } from '@/lib/semainier';
 import { Chip, Field } from '@/components/ui';
 
 const CHUNK = 200;
@@ -64,14 +65,14 @@ export function NewYear() {
   const changed = plan.diffs.filter((d) => d.status !== 'identique');
 
   const confirm = async () => {
-    const rows = plan.ops.map((o) => ({ day: o.day, group_code: o.group, tp_id: o.value.startsWith('tp:') ? o.value.slice(3) : null, label: o.value.startsWith('lab:') ? o.value.slice(4) : null }));
+    const rows = plan.ops.map(rowOfOp);
     const prevSettings = { year_start: settings.year_start, year_end: settings.year_end };
     const run = async () => {
-      for (let i = 0; i < rows.length; i += CHUNK) await api.upsert('planning_cells', rows.slice(i, i + CHUNK), 'day,group_code');
+      for (let i = 0; i < rows.length; i += CHUNK) await api.upsert('planning_cells', rows.slice(i, i + CHUNK), CONFLICT_COLS);
       if (switchYear) await api.upsert('settings', [{ key: 'year_start', value: from }, { key: 'year_end', value: to }], 'key');
     };
     const undo = async () => {
-      for (let i = 0; i < rows.length; i += 20) await Promise.all(rows.slice(i, i + 20).map((r) => api.remove('planning_cells', { day: r.day, group_code: r.group_code })));
+      for (let i = 0; i < rows.length; i += 20) await Promise.all(rows.slice(i, i + 20).map((r) => api.remove('planning_cells', { day: r.day, group_code: r.group_code, part: r.part })));
       if (switchYear && prevSettings.year_start) await api.upsert('settings', [{ key: 'year_start', value: prevSettings.year_start }, { key: 'year_end', value: prevSettings.year_end ?? '' }], 'key');
     };
     if (await act(run, { ok: `Semainier ${from.slice(0, 4)}-${to.slice(0, 4)} prérempli : ${rows.length} case${rows.length > 1 ? 's' : ''}.`, tables: ['planning_cells', 'settings'], undo })) setOpen(false);
