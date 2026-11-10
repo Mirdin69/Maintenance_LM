@@ -521,3 +521,7 @@ select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 
 .tp-comps summary { cursor: pointer; font-weight: 700; }
 .th-sort { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: inherit; }
 .th-sort:hover { text-decoration: underline; }
+
+.pc-teachers { font-size: 0.72rem; }
+.pc-teachers summary { cursor: pointer; color: var(--muted, #555); }
+.pc-teachers .stack { padding: 4px 0; }

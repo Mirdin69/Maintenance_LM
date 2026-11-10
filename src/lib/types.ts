@@ -70,6 +70,8 @@ export interface Tp {
   documents: Array<{ title: string; url?: string; path?: string }>;
   tool_ids: string[];
   reusable: boolean;
+  /** Taille des équipes : 1 individuel, 2 binôme, 3 trinôme… */
+  pair_size: number;
   created_at: string;
 }
 
@@ -209,6 +211,10 @@ export interface PlanningCell {
   /** Rang du cours dans la demi-journée (1 par défaut, jusqu'à 4) */
   seq: number;
   room_id: string | null;
+  /** Enseignants du cours (comptes), en plus ou à la place de celui du TP */
+  teacher_ids: string[];
+  /** Enseignants sans compte */
+  teacher_labels: string[];
   tp_id: string | null;
   label: string | null;
   note: string | null;

@@ -172,3 +172,10 @@ export function weekNeeds(
   }
   return { systems: sys, tools };
 }
+
+/** Enseignants d'un cours : ceux de la case s'il y en a, sinon celui du TP */
+export function courseTeachers(c: Pick<PlanningCell, 'teacher_ids' | 'teacher_labels'> | undefined, tp: Pick<Tp, 'teacher_id' | 'teacher_label'> | undefined, who: (id: string | null, label?: string | null) => string): string[] {
+  const own = [...(c?.teacher_ids ?? []).map((id) => who(id)), ...(c?.teacher_labels ?? [])].filter(Boolean);
+  if (own.length) return own;
+  return tp ? [tp.teacher_id ? who(tp.teacher_id) : tp.teacher_label ?? ''].filter(Boolean) : [];
+}

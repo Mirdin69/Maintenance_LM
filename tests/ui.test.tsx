@@ -819,3 +819,19 @@ describe('horaires de TP et plusieurs cours', () => {
     expect(where).toMatch(/^2PB1\.1,/);
   });
 });
+
+describe('import de planning', () => {
+  it('propose de créer le TP inconnu puis écrit la case avec deux enseignants', async () => {
+    await open('admin', 'semainier');
+    const csv = 'Date;Groupe;Partie;TP;Enseignant;Salle\n2026-11-03;TPB1.1;Matin;ZZ9 Nouveau;Sophie S. / Zoe Inconnue;Salle Z\n';
+    const file = new File([csv], 'planning.csv', { type: 'text/csv' });
+    const input = await screen.findByLabelText('Fichier de planning');
+    await userEvent.upload(input, file);
+    await userEvent.click(await screen.findByRole('button', { name: /Continuer/ }));
+    expect(await screen.findByRole('dialog', { name: 'Éléments inconnus' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Action pour ZZ9 Nouveau')).toHaveValue('create');
+    expect(screen.getByLabelText('Enseignant Zoe Inconnue')).toHaveValue('label');
+    await userEvent.click(screen.getByRole('button', { name: 'Importer' }));
+    expect(await screen.findByText('Planning importé.')).toBeInTheDocument();
+  });
+});

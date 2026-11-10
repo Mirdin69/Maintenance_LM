@@ -92,7 +92,7 @@ function reset() {
   const S = (n: string) => systems.find((s) => s.name.startsWith(n))!.id as string;
 
   const tp = (code: string, title: string, level: string, hours: number | null, systemIds: string[], competences: string[]) => ({
-    id: uid(), code, title, level, domain: 'ind', hours, system_ids: systemIds, competences, objective: null, teacher_id: null, teacher_label: null, sequence_name: null, documents: [], tool_ids: [], reusable: false, created_at: now(),
+    id: uid(), code, title, level, domain: 'ind', hours, system_ids: systemIds, competences, objective: null, teacher_id: null, teacher_label: null, sequence_name: null, documents: [], tool_ids: [], reusable: false, pair_size: 1, created_at: now(),
   });
   const tps = [
     tp('P1', 'Câblage avec fiches bananes sur platine à bornes repérées', 'Seconde', 4, [S('Armoire')], ['C1', 'C4', 'C5', 'C11']),
@@ -115,8 +115,8 @@ function reset() {
       [2, '2PB1.1', 'Prod Ener (1)'], [2, '2PB1.2', 'Industrie (1)'], [2, '2PB2', 'Atelier'],
       [3, '2PB1.1', 'Atelier'], [3, '2PB1.2', 'Prod Ener (1)'], [3, '2PB2', 'Industrie (1)'],
     ];
-    for (const [d, g, c] of plan) out.push({ day: iso(addDays(wk, d)), group_code: g, part: 'J', seq: 1, room_id: null, tp_id: tpId(c), label: null, note: null, updated_by: ME.admin, updated_at: now() });
-    out.push({ day: iso(addDays(wk, 7)), group_code: '2PB1.1', part: 'J', seq: 1, room_id: null, tp_id: null, label: 'Période d’observation', note: null, updated_by: ME.admin, updated_at: now() });
+    for (const [d, g, c] of plan) out.push({ day: iso(addDays(wk, d)), group_code: g, part: 'J', seq: 1, room_id: null, teacher_ids: [], teacher_labels: [], tp_id: tpId(c), label: null, note: null, updated_by: ME.admin, updated_at: now() });
+    out.push({ day: iso(addDays(wk, 7)), group_code: '2PB1.1', part: 'J', seq: 1, room_id: null, teacher_ids: [], teacher_labels: [], tp_id: null, label: 'Période d’observation', note: null, updated_by: ME.admin, updated_at: now() });
     return out;
   })();
   const TP = (c: string) => tps.find((x) => x.code === c)!.id as string;
@@ -262,7 +262,7 @@ function defaults(table: string, row: Row): Row {
   const base: Row = { created_at: now() };
   switch (table) {
     case 'systems': Object.assign(base, { domain: 'ind', qty: 1, state: 'service', created_by: me }); break;
-    case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [], documents: [], tool_ids: [], reusable: false }); break;
+    case 'tps': Object.assign(base, { domain: 'ind', system_ids: [], competences: [], documents: [], tool_ids: [], reusable: false, pair_size: 1 }); break;
     case 'maintenance_plans': Object.assign(base, { priority: 'n', checklist: [], active: true }); break;
     case 'pfmp_periods': Object.assign(base, { status: 'planned' }); break;
     case 'ideas': Object.assign(base, { category: 'autre', status: 'nouvelle', answer: null, body: null, votes: [], created_by: me }); break;
@@ -274,7 +274,7 @@ function defaults(table: string, row: Row): Row {
     case 'rooms': Object.assign(base, { kind: 'salle', shared: false, active: true }); break;
     case 'progress': Object.assign(base, { updated_at: now(), updated_by: me }); break;
     case 'tools': Object.assign(base, { qty: 1, state: 'ok', image_url: null }); break;
-    case 'planning_cells': Object.assign(base, { part: 'J', seq: 1, room_id: null, tp_id: null, label: null, note: null, updated_by: me, updated_at: now() }); break;
+    case 'planning_cells': Object.assign(base, { part: 'J', seq: 1, room_id: null, teacher_ids: [], teacher_labels: [], tp_id: null, label: null, note: null, updated_by: me, updated_at: now() }); break;
     case 'fiches': Object.assign(base, { data: {}, documents: [], reusable: false, sequence_id: null, created_by: me, updated_at: now() }); break;
   }
   const out = { ...base, ...row };

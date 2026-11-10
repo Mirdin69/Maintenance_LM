@@ -11,6 +11,7 @@ const migration7 = readFileSync(new URL('../supabase/migrations/0007_rgpd.sql', 
 const migration8 = readFileSync(new URL('../supabase/migrations/0008_idees.sql', import.meta.url), 'utf8');
 const migration9 = readFileSync(new URL('../supabase/migrations/0009_demi_journees.sql', import.meta.url), 'utf8');
 const migration10 = readFileSync(new URL('../supabase/migrations/0010_plusieurs_cours.sql', import.meta.url), 'utf8');
+const migration11 = readFileSync(new URL('../supabase/migrations/0011_enseignants_binomes.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -76,6 +77,7 @@ beforeAll(async () => {
   await db.exec(migration8);
   await db.exec(migration9);
   await db.exec(migration10);
+  await db.exec(migration11);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -656,5 +658,17 @@ describe('migration 0010 : plusieurs cours dans une demi-journée', () => {
     await as('admin');
     const keys = (await sql("select row_key from public.audit_log where table_name = 'planning_cells' and row_key like '2027-01-11/%'")).map((r: { row_key: string }) => r.row_key);
     expect(keys).toEqual(expect.arrayContaining(['2027-01-11/2PB2/M', '2027-01-11/2PB2/M/2', '2027-01-11/2PB2/M/3', '2027-01-11/2PB2/A']));
+  });
+
+  it('plusieurs enseignants par cours et taille des équipes (0011)', async () => {
+    await as('prof');
+    const [u] = await sql(`select auth.uid() as id`).catch(async () => [{ id: null }]);
+    void u;
+    await sql(`insert into public.planning_cells (day, group_code, label, teacher_labels) values ('2026-11-03', '2PB1.1', 'Remédiation', array['A. Dupont','B. Martin'])`);
+    const [c] = await sql(`select teacher_labels, teacher_ids from public.planning_cells where day = '2026-11-03' and group_code = '2PB1.1'`);
+    expect(c.teacher_labels).toEqual(['A. Dupont', 'B. Martin']);
+    expect(c.teacher_ids).toEqual([]);
+    expect(await fails(`update public.planning_cells set teacher_labels = array['a','b','c','d','e','f','g'] where day = '2026-11-03'`)).toMatch(/teachers_check/);
+    expect(await fails(`insert into public.tps (title, level, pair_size) values ('X', 'Seconde', 5)`)).toMatch(/pair_size|check/);
   });
 });

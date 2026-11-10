@@ -8,7 +8,7 @@ import { undoPlan, entryLabel } from '@/lib/restore';
 import { checkImage, newImagePath } from '@/lib/images';
 import type { AuditEntry, PlanningCell } from '@/lib/types';
 
-const cell = (day: string, group_code: string, tp_id: string | null, label: string | null = null, part: PlanningCell['part'] = 'J', seq = 1): PlanningCell => ({ day, group_code, part, seq, room_id: null, tp_id, label, note: null, updated_by: null, updated_at: '' });
+const cell = (day: string, group_code: string, tp_id: string | null, label: string | null = null, part: PlanningCell['part'] = 'J', seq = 1): PlanningCell => ({ day, group_code, part, seq, room_id: null, teacher_ids: [], teacher_labels: [], tp_id, label, note: null, updated_by: null, updated_at: '' });
 
 describe('avertissements du semainier', () => {
   const tps = new Map([['a', { system_ids: ['s1'] }], ['b', { system_ids: ['s1', 's2'] }], ['c', { system_ids: [] as string[] }]]);

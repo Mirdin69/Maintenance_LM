@@ -6,11 +6,12 @@ import { LEVELS, byText, domainClass, domainLabel, levelOfGroup } from '@/lib/do
 import { GROUP_CODES } from '@/lib/domain';
 import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf, parseISO, schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { isoWeek, monthBlocks, partsFor, periodOn, weekdaysFor } from '@/lib/calendar';
-import { CONFLICT_COLS, MAX_SEQ, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, hoursOf, indexCells, isMine, rowOfOp, weekNeeds, type CellOp } from '@/lib/semainier';
+import { CONFLICT_COLS, MAX_SEQ, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, courseTeachers, hoursOf, indexCells, isMine, rowOfOp, weekNeeds, type CellOp } from '@/lib/semainier';
 import { usePersisted } from '@/hooks/usePersisted';
 import { useMedia } from '@/hooks/useMedia';
 import type { Level, Part, PlanningCell, Tp } from '@/lib/types';
 import { Lundi } from './Lundi';
+import { PlanningImport } from '@/components/PlanningImport';
 import { Chip, Empty, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
 
 type View = 'annee' | 'semaine' | 'lundi' | 'besoins' | 'mes';
@@ -58,8 +59,8 @@ interface CommonProps {
   teacherOf: (tp: Tp | undefined) => string;
 }
 
-function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrite, teacherOf }: CommonProps & { tps: Tp[]; from: string; to: string; level: Level; canWrite: boolean }) {
-  const { data } = useStore();
+function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrite }: CommonProps & { tps: Tp[]; from: string; to: string; level: Level; canWrite: boolean }) {
+  const { data, who } = useStore();
   const { profile } = useAuth();
   const act = useAct();
   const tpById = useMemo(() => new Map(data.tps.map((t) => [t.id, t])), [data.tps]);
@@ -97,6 +98,16 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
     void act(run, { ok, tables: ['planning_cells'], undo });
   };
   const change = (day: string, group: string, part: Part, seq: number, value: string) => apply([{ day, group, part, seq, value }], 'Case modifiée.');
+
+  /** Enseignants d'une case (comptes et noms libres), annulable */
+  const setTeachers = (c: PlanningCell, ids: string[], labels: string[]) => {
+    const key = { day: c.day, group_code: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1 };
+    if (ids.join() === (c.teacher_ids ?? []).join() && labels.join() === (c.teacher_labels ?? []).join()) return;
+    void act(() => api.update('planning_cells', key, { teacher_ids: ids.slice(0, 6), teacher_labels: labels }), {
+      ok: 'Enseignants modifiés.', tables: ['planning_cells'],
+      undo: () => api.update('planning_cells', key, { teacher_ids: c.teacher_ids ?? [], teacher_labels: c.teacher_labels ?? [] }),
+    });
+  };
 
   /** Change la salle d'une case (annulable) */
   const setRoom = (c: PlanningCell, room: string) =>
@@ -156,7 +167,7 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
           const c = cells.get(cellKey(d, g, part));
           const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
           const room = roomName(c?.room_id);
-          return (tp ? `${domainLabel(tp.domain)} (${teacherOf(tp)})` : c?.label ?? '') + (room && (tp || c?.label) ? ` – ${room}` : '');
+          return (tp ? `${domainLabel(tp.domain)} (${courseTeachers(c, tp, who).join(' / ')})` : c?.label ?? '') + (room && (tp || c?.label) ? ` – ${room}` : '');
         })]);
       }
     }
@@ -183,6 +194,7 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
           <button className="btn ghost sm" onClick={() => window.print()}>Imprimer</button>
         </div>
       </div>
+      {canWrite && <PlanningImport />}
       {canWrite && (
         <details className="add no-print">
           <summary>Copier une semaine vers une autre</summary>
@@ -254,7 +266,18 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
                                     {c.room_id && !rooms.some((r) => r.id === c.room_id) && <option value={c.room_id}>{roomName(c.room_id)}</option>}
                                   </select>
                                 ) : c.room_id ? <span className="who">{roomName(c.room_id)}</span> : null)}
-                                {tp && <span className="who">{teacherOf(tp)}</span>}
+                                {(tp || c?.teacher_ids?.length || c?.teacher_labels?.length) ? <span className="who">{courseTeachers(c, tp, who).join(' / ')}</span> : null}
+                                {c && value && canWrite && (
+                                  <details className="pc-teachers no-print">
+                                    <summary aria-label={`Enseignants, ${where}`}>Enseignants{(c.teacher_ids?.length || c.teacher_labels?.length) ? ` (${(c.teacher_ids?.length ?? 0) + (c.teacher_labels?.length ?? 0)})` : ''}</summary>
+                                    <div className="stack">
+                                      {data.profiles.filter((p) => p.active).map((p) => (
+                                        <label key={p.id} className="row small"><input type="checkbox" checked={(c.teacher_ids ?? []).includes(p.id)} onChange={(e) => setTeachers(c, e.target.checked ? [...(c.teacher_ids ?? []), p.id] : (c.teacher_ids ?? []).filter((x) => x !== p.id), c.teacher_labels ?? [])} /> {who(p.id)}</label>
+                                      ))}
+                                      <input className="in" aria-label={`Autres enseignants, ${where}`} placeholder="Autres (séparés par /)" defaultValue={(c.teacher_labels ?? []).join(' / ')} onBlur={(e) => setTeachers(c, c.teacher_ids ?? [], e.target.value.split('/').map((x) => x.trim()).filter(Boolean).slice(0, 6))} />
+                                    </div>
+                                  </details>
+                                )}
                                 {c?.note && <span className="who">{c.note}</span>}
                                 {canWrite && seq > 1 && (
                                   <button type="button" className="btn ghost sm no-print course-del" aria-label={`Retirer le cours ${seq}, ${g}, ${fmtShort(d)}`}
@@ -281,8 +304,8 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
   );
 }
 
-function Week({ groups, cells, weekdays, dayParts, tpById, teacherOf }: CommonProps & { tpById: Map<string, Tp> }) {
-  const { data } = useStore();
+function Week({ groups, cells, weekdays, dayParts, tpById }: CommonProps & { tpById: Map<string, Tp> }) {
+  const { data, who } = useStore();
   const { profile } = useAuth();
   const [start, setStart] = useState(() => iso(mondayOf(new Date())));
   const [onlyMine, setOnlyMine] = useState(false);
@@ -344,9 +367,9 @@ function Week({ groups, cells, weekdays, dayParts, tpById, teacherOf }: CommonPr
                       const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
                       if (onlyMine && !isMine(tp, profile)) return <td key={k} className="dim">{ri === 0 ? '·' : ''}</td>;
                       if (ri === 2) return <td key={k} className={tp ? `dom sub ${domainClass(tp.domain)}` : ''}>{c && (tp || c.label) ? roomName(c.room_id) : ''}</td>;
-                      if (!tp) return <td key={k} className={c?.label ? 'dim' : ''}>{ri === 0 ? c?.label ?? '' : ri === 4 ? c?.note ?? '' : ''}</td>;
+                      if (!tp) return <td key={k} className={c?.label ? 'dim' : ''}>{ri === 0 ? c?.label ?? '' : ri === 1 ? courseTeachers(c, undefined, who).join(' / ') : ri === 4 ? c?.note ?? '' : ''}</td>;
                       if (ri === 0) return <td key={k} className={`dom ${domainClass(tp.domain)}`} title={tp.code ?? undefined}>{domainLabel(tp.domain)}</td>;
-                      if (ri === 1) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{teacherOf(tp)}</td>;
+                      if (ri === 1) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{courseTeachers(c, tp, who).join(' / ')}</td>;
                       if (ri === 3) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{tp.title}</td>;
                       if (ri === 4) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{tp.objective}</td>;
                       return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{tp.competences.join(' · ')}</td>;
