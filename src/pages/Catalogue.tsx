@@ -34,7 +34,7 @@ export default function Catalogue() {
     const f = new FormData(e.currentTarget);
     const row = {
       code: String(f.get('code')).trim() || null, title: String(f.get('title')).trim(), level: f.get('level'), domain: f.get('domain'),
-      hours: Number(f.get('hours')) || null, system_ids: sys, competences: comp, tool_ids: toolIds, reusable: f.get('reusable') === 'on', pair_size: Number(f.get('pair_size')) || 1, parent_id: String(f.get('parent_id') ?? '') || null,
+      hours: Number(f.get('hours')) || null, system_ids: sys, competences: comp, tool_ids: toolIds, reusable: f.get('reusable') === 'on', pair_size: Number(f.get('pair_size')) || 1, parent_id: String(f.get('parent_id') ?? '') || null, room_id: String(f.get('room_id') ?? '') || null,
       objective: String(f.get('objective')).trim() || null,
       teacher_id: String(f.get('teacher_id')) || null,
       teacher_label: String(f.get('teacher_id')) ? null : String(f.get('teacher_label')).trim() || null,
@@ -73,6 +73,7 @@ export default function Catalogue() {
               {data.tps.filter((t) => !t.parent_id && t.id !== editing?.id && !(editing && data.tps.some((x) => x.parent_id === editing.id))).map((t) => <option key={t.id} value={t.id}>{t.code ? `${t.code} · ` : ''}{t.title}</option>)}
             </select></Field>
             <Field label="Travail en équipe"><select className="in" name="pair_size" defaultValue={editing?.pair_size ?? 1}><option value={1}>Individuel</option><option value={2}>En binôme</option><option value={3}>En trinôme</option><option value={4}>Par 4</option></select></Field>
+            <Field label="Salle de base"><select className="in" name="room_id" defaultValue={editing?.room_id ?? ''}><Options placeholder="— Aucune (choisie dans le planning)" items={data.rooms.filter((r) => r.active || r.id === editing?.room_id).map((r) => [r.id, r.name])} /></select></Field>
             <Field label="Durée (h)"><input className="in" name="hours" type="number" min={0} step="0.5" defaultValue={editing?.hours ?? ''} /></Field>
             <Field label="Enseignant (compte)"><select className="in" name="teacher_id" defaultValue={editing?.teacher_id ?? ''}><Options placeholder="Autre (saisir le nom)" items={data.profiles.filter((p) => p.active).map((p) => [p.id, who(p.id)])} /></select></Field>
             <Field label="Nom de l’enseignant (si sans compte)"><input className="in" name="teacher_label" maxLength={60} defaultValue={editing?.teacher_label ?? ''} /></Field>
@@ -142,7 +143,7 @@ export default function Catalogue() {
                   <button className="btn ghost sm" title="Copie le TP (les fichiers déposés ne sont pas copiés, seulement les liens)" onClick={() => void act(() => api.insert('tps', {
                     code: t.code ? `${t.code} (copie)` : null, title: t.title, level: t.level, domain: t.domain, hours: t.hours, system_ids: t.system_ids, tool_ids: t.tool_ids ?? [],
                     competences: t.competences, objective: t.objective, teacher_id: t.teacher_id, teacher_label: t.teacher_label, sequence_name: t.sequence_name,
-                    documents: asDocs(t.documents).filter((d) => d.url), reusable: false, pair_size: t.pair_size ?? 1, parent_id: t.parent_id ?? null,
+                    documents: asDocs(t.documents).filter((d) => d.url), reusable: false, pair_size: t.pair_size ?? 1, parent_id: t.parent_id ?? null, room_id: t.room_id ?? null,
                   }), { ok: 'TP dupliqué.', tables: ['tps'] })}>Dupliquer</button>
                   {isAdmin && <ConfirmButton detail={`Supprimer le TP « ${t.title} » ? ${data.sessions.filter((x) => x.tp_id === t.id).length} séance(s), ${data.timetable_slots.filter((x) => x.tp_id === t.id).length} créneau(x) et le suivi des élèves associés seront supprimés, ainsi que les fichiers déposés.`} onConfirm={async () => { if (await act(() => api.remove('tps', { id: t.id }), { ok: 'TP supprimé.', tables: ['tps', 'progress', 'timetable_slots', 'sessions'] })) void dropFiles(orphanPaths(asDocs(t.documents), [])); }}>Supprimer</ConfirmButton>}</div></td>}
               </tr>))}</tbody>

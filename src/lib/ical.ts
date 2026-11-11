@@ -1,6 +1,6 @@
 import { isoDow, parseISO } from './dates';
 import { dayEnd, dayStart } from './schedule';
-import { isMyCell } from './semainier';
+import { cellRoomIds, isMyCell } from './semainier';
 import type { Occ } from './occupancy';
 import type { PlanningCell, Profile, Tp } from './types';
 
@@ -71,7 +71,7 @@ export function myEvents(args: {
       const step = (b0 - a0) / list.length;
       const start = Math.round((a0 + step * i) / 5) * 5;
       const end = i === list.length - 1 ? b0 : Math.round((a0 + step * (i + 1)) / 5) * 5;
-      const rooms = [c.room_id, ...(c.extra_room_ids ?? [])].map(roomName).filter(Boolean).join(' + ');
+      const rooms = cellRoomIds(c, tp).map(roomName).filter(Boolean).join(' + ');
       out.push({
         uid: `cell-${c.day}-${c.group_code}-${part}-${c.seq ?? 1}-${p}`, date: c.day, start, end,
         summary: `${c.group_code} · ${tp ? (tp.code ? `${tp.code} ${tp.title}` : tp.title) : c.label ?? ''}`,

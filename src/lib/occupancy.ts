@@ -1,6 +1,7 @@
 import { DAY_END, DAY_START } from './domain';
 import { eachDay, isoDow, parseISO, toMin } from './dates';
 import { dayEnd, dayStart } from './schedule';
+import { cellRoomIds } from './semainier';
 import type { PlanningCell, Room, Session, Slot, Tp } from './types';
 
 /** Une occupation effective un jour donné (emploi du temps ou séance datée) */
@@ -118,7 +119,7 @@ export function buildOccurrences(slots: Slot[], sessions: Session[], from: strin
  * une occupation détaillée (emploi du temps ou séance datée) sur ces horaires : le détail l'emporte, sans double compte.
  */
 export function semainierOccurrences(
-  cells: PlanningCell[], tpById: Map<string, Pick<Tp, 'teacher_id' | 'teacher_label'>>, existing: Occ[], from: string, to: string,
+  cells: PlanningCell[], tpById: Map<string, Pick<Tp, 'teacher_id' | 'teacher_label' | 'room_id'>>, existing: Occ[], from: string, to: string,
 ): Occ[] {
   const out: Occ[] = [];
   // Plusieurs cours dans une demi-journée : elle est partagée à parts égales, dans l'ordre des rangs
@@ -129,7 +130,7 @@ export function semainierOccurrences(
     rank.set(k, [...(rank.get(k) ?? []), c].sort((x, y) => (x.seq ?? 1) - (y.seq ?? 1)));
   }
   for (const c of filled) {
-    const rooms = [c.room_id, ...(c.extra_room_ids ?? [])].filter((x): x is string => !!x);
+    const rooms = cellRoomIds(c, c.tp_id ? tpById.get(c.tp_id) : undefined);
     if (!rooms.length || c.day < from || c.day > to) continue;
     const dow = isoDow(parseISO(c.day));
     if (dow > 5) continue;
@@ -147,7 +148,7 @@ export function semainierOccurrences(
       const tp = c.tp_id ? tpById.get(c.tp_id) : undefined;
       for (const roomId of rooms) {
         out.push({
-          key: `cell:${c.day}|${c.group_code}|${c.part}|${c.seq ?? 1}|${p}${roomId === c.room_id ? '' : `|${roomId}`}`, source: 'semainier', slotId: null, sessionId: null, date: c.day, start, end, roomId,
+          key: `cell:${c.day}|${c.group_code}|${c.part}|${c.seq ?? 1}|${p}${roomId === rooms[0] ? '' : `|${roomId}`}`, source: 'semainier', slotId: null, sessionId: null, date: c.day, start, end, roomId,
           groupCode: c.group_code, teacherId: tp?.teacher_id ?? null, teacherLabel: tp?.teacher_label ?? null, label: c.label, tpId: c.tp_id, systemId: null,
           status: 'planned', moved: false,
         });

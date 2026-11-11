@@ -45,6 +45,17 @@ export function isMine(tp: Pick<Tp, 'teacher_id' | 'teacher_label'> | undefined,
  * Le cours (une case du semainier) est-il à moi ? Si la case précise ses enseignants (jour et groupe par groupe),
  * eux seuls comptent ; sinon c'est l'enseignant du TP.
  */
+/** Salle principale d'une case : la sienne si elle est renseignée, sinon la salle de base du TP */
+export function cellRoomId(c: Pick<PlanningCell, 'room_id'> | undefined, tp: Pick<Tp, 'room_id'> | undefined): string | null {
+  return c?.room_id || tp?.room_id || null;
+}
+
+/** Toutes les salles d'une case (principale effective puis supplémentaires) */
+export function cellRoomIds(c: Pick<PlanningCell, 'room_id' | 'extra_room_ids'> | undefined, tp: Pick<Tp, 'room_id'> | undefined): string[] {
+  const main = cellRoomId(c, tp);
+  return [main, ...(c?.extra_room_ids ?? [])].filter((x, i, a): x is string => !!x && a.indexOf(x) === i);
+}
+
 export function isMyCell(c: Pick<PlanningCell, 'teacher_ids' | 'teacher_labels'> | undefined, tp: Pick<Tp, 'teacher_id' | 'teacher_label'> | undefined, me: Profile | null): boolean {
   if (!me) return false;
   const ids = c?.teacher_ids ?? [];

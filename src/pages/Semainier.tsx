@@ -6,7 +6,7 @@ import { LEVELS, byText, domainClass, domainLabel, levelOfGroup } from '@/lib/do
 import { GROUP_CODES } from '@/lib/domain';
 import { DAY_LONG, DAY_SHORT, addDays, fmtDate, fmtShort, iso, isoDow, mondayOf, parseISO, schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { isoWeek, monthBlocks, partsFor, periodOn, weekdaysFor } from '@/lib/calendar';
-import { CONFLICT_COLS, MAX_SEQ, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, courseTeachers, hoursOf, indexCells, isMyCell, rowOfOp, weekNeeds, type CellOp } from '@/lib/semainier';
+import { CONFLICT_COLS, MAX_SEQ, PARTS, PART_LABEL, SPECIAL_LABELS, buildWarnings, cellKey, cellPatch, carouselOps, cellValue, copyWeekOps, courseTeachers, cellRoomId, cellRoomIds, hoursOf, indexCells, isMyCell, rowOfOp, weekNeeds, type CellOp } from '@/lib/semainier';
 import { usePersisted } from '@/hooks/usePersisted';
 import { useMedia } from '@/hooks/useMedia';
 import type { Level, Part, PlanningCell, Tp } from '@/lib/types';
@@ -145,7 +145,7 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
   const rooms = data.rooms.filter((r) => r.active);
   const roomName = (id: string | null | undefined) => (id ? data.rooms.find((r) => r.id === id)?.name ?? '' : '');
   /** Toutes les salles d'un cours : la principale puis les supplémentaires */
-  const roomsLabel = (c: PlanningCell | undefined) => [c?.room_id, ...(c?.extra_room_ids ?? [])].map(roomName).filter(Boolean).join(' + ');
+  const roomsLabel = (c: PlanningCell | undefined, tp?: Tp) => cellRoomIds(c, tp).map(roomName).join(' + ');
   /** Parties de journée affichées un jour donné : celles du réglage, plus celles qui contiennent déjà des cases */
   const partsOf = (d: string): Part[] => {
     const conf = dayParts[isoDow(parseISO(d))] ?? ['J'];
@@ -192,7 +192,7 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
           if (p) return p.label;
           const c = cells.get(cellKey(d, g, part));
           const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
-          const room = roomsLabel(c);
+          const room = roomsLabel(c, tp);
           return (tp ? `${domainLabel(tp.domain)} (${courseTeachers(c, tp, who).join(' / ')})` : c?.label ?? '') + (room && (tp || c?.label) ? ` – ${room}` : '');
         })]);
       }
@@ -289,16 +289,16 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
                                 </select>
                                 {c && value && (canWrite ? (
                                   <select className="pc-room" value={c.room_id ?? ''} aria-label={`Salle, ${where}`} onChange={(e) => setRoom(c, e.target.value)}>
-                                    <option value="">Salle…</option>
+                                    <option value="">{tp?.room_id ? `Salle du TP (${roomName(tp.room_id)})` : 'Salle…'}</option>
                                     {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                                     {c.room_id && !rooms.some((r) => r.id === c.room_id) && <option value={c.room_id}>{roomName(c.room_id)}</option>}
                                   </select>
-                                ) : c.room_id ? <span className="who">{roomName(c.room_id)}</span> : null)}
-                                {c && value && canWrite && c.room_id && (
+                                ) : cellRoomId(c, tp) ? <span className="who">{roomName(cellRoomId(c, tp))}</span> : null)}
+                                {c && value && canWrite && cellRoomId(c, tp) && (
                                   <details className="pc-teachers no-print">
                                     <summary aria-label={`Autres salles, ${where}`}>Autres salles{c.extra_room_ids?.length ? ` (${c.extra_room_ids.length})` : ''}</summary>
                                     <div className="stack">
-                                      {rooms.filter((r) => r.id !== c.room_id).map((r) => (
+                                      {rooms.filter((r) => r.id !== cellRoomId(c, tp)).map((r) => (
                                         <label key={r.id} className="row small"><input type="checkbox" checked={(c.extra_room_ids ?? []).includes(r.id)} disabled={!(c.extra_room_ids ?? []).includes(r.id) && (c.extra_room_ids ?? []).length >= 3}
                                           onChange={(e) => setExtraRooms(c, e.target.checked ? [...(c.extra_room_ids ?? []), r.id] : (c.extra_room_ids ?? []).filter((x) => x !== r.id))} /> {r.name}</label>
                                       ))}
@@ -356,7 +356,7 @@ function Week({ groups, cells, weekdays, dayParts, tpById }: CommonProps & { tpB
   // Sur téléphone : un jour à la fois
   const days = narrow ? [allDays[f]] : allDays;
   const roomName = (id: string | null | undefined) => (id ? data.rooms.find((r) => r.id === id)?.name ?? '' : '');
-  const roomsLabel = (c: PlanningCell | undefined) => [c?.room_id, ...(c?.extra_room_ids ?? [])].map(roomName).filter(Boolean).join(' + ');
+  const roomsLabel = (c: PlanningCell | undefined, tp?: Tp) => cellRoomIds(c, tp).map(roomName).join(' + ');
   // Colonnes : chaque jour, découpé en matin / après-midi selon le réglage ou les cases existantes
   const cols = days.flatMap((d) => {
     const conf = dayParts[isoDow(parseISO(d))] ?? ['J'];
@@ -407,7 +407,7 @@ function Week({ groups, cells, weekdays, dayParts, tpById }: CommonProps & { tpB
                       const c = cells.get(cellKey(d, g, part, seq));
                       const tp = c?.tp_id ? tpById.get(c.tp_id) : undefined;
                       if (onlyMine && !isMyCell(c, tp, profile)) return <td key={k} className="dim">{ri === 0 ? '·' : ''}</td>;
-                      if (ri === 2) return <td key={k} className={tp ? `dom sub ${domainClass(tp.domain)}` : ''}>{c && (tp || c.label) ? roomsLabel(c) : ''}</td>;
+                      if (ri === 2) return <td key={k} className={tp ? `dom sub ${domainClass(tp.domain)}` : ''}>{c && (tp || c.label) ? roomsLabel(c, tp) : ''}</td>;
                       if (!tp) return <td key={k} className={c?.label ? 'dim' : ''}>{ri === 0 ? c?.label ?? '' : ri === 1 ? courseTeachers(c, undefined, who).join(' / ') : ri === 4 ? c?.note ?? '' : ''}</td>;
                       if (ri === 0) return <td key={k} className={`dom ${domainClass(tp.domain)}`} title={tp.code ?? undefined}>{domainLabel(tp.domain)}</td>;
                       if (ri === 1) return <td key={k} className={`dom sub ${domainClass(tp.domain)}`}>{courseTeachers(c, tp, who).join(' / ')}</td>;
@@ -451,7 +451,7 @@ function Mine({ cells, tpById }: { cells: PlanningCell[]; tpById: Map<string, Tp
               const tp = tpById.get(c.tp_id!)!;
               return <tr key={cellKey(c.day, c.group_code, c.part ?? 'J', c.seq ?? 1)}>
                 <td>{DAY_LONG[isoDow(parseISO(c.day)) - 1]} {fmtDate(c.day)}{c.part && c.part !== 'J' ? ` (${PART_LABEL[c.part].toLowerCase()})` : ''}</td><td>{c.group_code}</td>
-                <td>{data.rooms.find((r) => r.id === c.room_id)?.name ?? ''}</td>
+                <td>{data.rooms.find((r) => r.id === cellRoomId(c, tp))?.name ?? ''}</td>
                 <td><Chip tone="info">{tp.code ?? '—'}</Chip> {tp.title}</td><td className="small">{tp.objective}</td>
               </tr>;
             })}</tbody>

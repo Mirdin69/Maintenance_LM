@@ -16,6 +16,7 @@ const migration12 = readFileSync(new URL('../supabase/migrations/0012_suppressio
 const migration13 = readFileSync(new URL('../supabase/migrations/0013_salles_multiples.sql', import.meta.url), 'utf8');
 const migration14 = readFileSync(new URL('../supabase/migrations/0014_sous_tp.sql', import.meta.url), 'utf8');
 const migration15 = readFileSync(new URL('../supabase/migrations/0015_effectifs.sql', import.meta.url), 'utf8');
+const migration17 = readFileSync(new URL('../supabase/migrations/0017_salle_du_tp.sql', import.meta.url), 'utf8');
 const migration16 = readFileSync(new URL('../supabase/migrations/0016_invitations.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
@@ -88,6 +89,7 @@ beforeAll(async () => {
   await db.exec(migration14);
   await db.exec(migration15);
   await db.exec(migration16);
+  await db.exec(migration17);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');

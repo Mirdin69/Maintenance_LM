@@ -314,6 +314,16 @@ describe('occupation des salles d’après le semainier de l’année', () => {
     expect(m.map((o) => o.roomId)).toEqual(['r1', 'r2', 'r3']);
     expect(new Set(m.map((o) => o.key)).size).toBe(3);
   });
+  it('sans salle propre, la case prend la salle de base du TP ; sa propre salle l’emporte', async () => {
+    const { semainierOccurrences } = await import('@/lib/occupancy');
+    const { cellRoomId } = await import('@/lib/semainier');
+    const withRoom = new Map([['a', { teacher_id: 't1', teacher_label: null, room_id: 'rTp' }]]) as never;
+    expect(cellRoomId({ room_id: null }, { room_id: 'rTp' })).toBe('rTp');
+    expect(cellRoomId({ room_id: 'r9' }, { room_id: 'rTp' })).toBe('r9');
+    expect(cellRoomId({ room_id: null }, { room_id: null })).toBeNull();
+    expect(semainierOccurrences([c('2026-11-16', 'G1', 'M', null)], withRoom, [], '2026-11-16', '2026-11-20').map((o) => o.roomId)).toEqual(['rTp']);
+    expect(semainierOccurrences([c('2026-11-16', 'G1', 'M', 'r9')], withRoom, [], '2026-11-16', '2026-11-20').map((o) => o.roomId)).toEqual(['r9']);
+  });
   it('une journée entière occupe le matin et l’après-midi ; sans salle, ou hors période, rien', async () => {
     const { semainierOccurrences } = await import('@/lib/occupancy');
     expect(semainierOccurrences([c('2026-11-18', 'G1', 'J', 'r1')], tps, [], '2026-11-16', '2026-11-20')).toHaveLength(2);

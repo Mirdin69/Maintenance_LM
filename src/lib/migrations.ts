@@ -26,6 +26,7 @@ const PROBES: Record<string, { title: string; probe?: { table: string; columns: 
   '0014': { title: 'Sous-TP', probe: { table: 'tps', columns: ['parent_id'] } },
   '0015': { title: 'Effectifs par groupe', probe: { table: 'headcounts', columns: ['id'] } },
   '0016': { title: 'Invitations de comptes', probe: { table: 'invitations', columns: ['email'] } },
+  '0017': { title: 'Salle de base des TP', probe: { table: 'tps', columns: ['room_id'] } },
 };
 
 export const MIGRATIONS: MigrationInfo[] = Object.entries(files)
