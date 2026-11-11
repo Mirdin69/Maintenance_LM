@@ -551,4 +551,4 @@ select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 
 .menu-list button:last-child { border-bottom: 0; }
 .menu-list button:hover, .menu-list button:focus-visible { background: var(--sunken); }
 .menu-list button[aria-current='true'] { font-weight: bold; background: var(--sunken); }
-.menu-list button.off { color: var(--muted); }
+.menu-list button.off { color: var(--muted); text-decoration: line-through; cursor: not-allowed; }
