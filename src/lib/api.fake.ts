@@ -337,6 +337,9 @@ function cascade(table: string, removed: Row[]) {
 
 const FILES = new Map<string, Blob>();
 
+/** Liens de connexion envoyés depuis l'administration (démo et tests) */
+export const sentLinks: string[] = [];
+
 export const api: Api = {
   async probe() { return 'ok'; },
   configured: true,
@@ -370,6 +373,10 @@ export const api: Api = {
       if (!/@lamache\.org$/i.test(email)) throw new Error('Database error saving new user');
       signedIn = true;
       authListeners.forEach((cb) => cb(currentUser()));
+    },
+    async sendLoginLink(email) {
+      if (!T.profiles.some((p) => p.email === email.toLowerCase())) throw new Error('Signups not allowed for otp');
+      sentLinks.push(email.toLowerCase());
     },
     async verifyCode() { signedIn = true; authListeners.forEach((cb) => cb(currentUser())); },
     async signInPassword(email, password) {

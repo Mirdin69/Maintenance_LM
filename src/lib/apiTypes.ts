@@ -22,6 +22,8 @@ export interface Api {
     user(): Promise<AuthUser | null>;
     onChange(cb: (u: AuthUser | null) => void): () => void;
     sendLink(email: string): Promise<void>;
+    /** Envoie un lien de connexion à un compte existant (administration) : ne connecte pas la personne qui l'envoie */
+    sendLoginLink(email: string): Promise<void>;
     verifyCode(email: string, code: string): Promise<void>;
     signInPassword(email: string, password: string): Promise<void>;
     /** Définit ou change le mot de passe du compte connecté */

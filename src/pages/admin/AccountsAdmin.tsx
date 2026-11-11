@@ -19,7 +19,7 @@ export default function AccountsAdmin() {
 
   return (
     <>
-      <p className="muted">Validation des comptes, rôles et groupes des enseignants. Seules les adresses @lamache.org peuvent créer un compte.</p>
+      <p className="muted">Validation des comptes, rôles et groupes des enseignants. Seules les adresses @lamache.org peuvent créer un compte. « Envoyer un lien de connexion » envoie à l’enseignant un e-mail qui le connecte en un clic (valable une heure, un envoi par minute et par adresse).</p>
       <section className="panel">
         <h2>Comptes à valider ({pending.length})</h2>
         {pending.length === 0 ? <Empty>Aucun compte en attente.</Empty> : (
@@ -43,7 +43,10 @@ export default function AccountsAdmin() {
                 <td><select className="in" aria-label={`Rôle de ${p.email}`} value={p.role} disabled={self} onChange={(e) => void patch(p.id, { role: e.target.value as Role })}><Options items={Object.entries(ROLES)} /></select></td>
                 <td><div className="picks">{GROUP_CODES.map((g) => <label key={g} className="pick"><input type="checkbox" checked={mine.includes(g)} onChange={() => void toggleGroup(p.id, g, mine.includes(g))} />{g}</label>)}</div></td>
                 <td className="small">{fmtStamp(p.last_seen) || '—'}</td>
-                <td>{self ? <Chip tone="info">Vous</Chip> : <button className="btn ghost sm" onClick={() => void patch(p.id, { active: false }, `${p.email} désactivé.`)}>Désactiver</button>}</td>
+                <td><div className="row" style={{ gap: 6 }}>
+                  <button className="btn ghost sm" aria-label={`Envoyer un lien de connexion à ${p.email}`} onClick={() => void act(() => api.auth.sendLoginLink(p.email), { ok: `Lien de connexion envoyé à ${p.email}.` })}>Envoyer un lien de connexion</button>
+                  {self ? <Chip tone="info">Vous</Chip> : <button className="btn ghost sm" onClick={() => void patch(p.id, { active: false }, `${p.email} désactivé.`)}>Désactiver</button>}
+                </div></td>
               </tr>);
           })}</tbody>
         </table></div>

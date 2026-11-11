@@ -951,3 +951,15 @@ describe('menu de l’administration', () => {
     expect(ui.getByRole('button', { name: /Matériel/ })).toHaveTextContent('Outils');
   });
 });
+
+describe('lien de connexion', () => {
+  it('l’administrateur envoie un lien de connexion à un enseignant', async () => {
+    const { sentLinks } = await import('@/lib/api.fake');
+    sentLinks.length = 0;
+    await open('admin', 'admin');
+    const btn = await screen.findByRole('button', { name: /Envoyer un lien de connexion à marc/i });
+    await userEvent.click(btn);
+    expect(await screen.findByText(/Lien de connexion envoyé à marc/)).toBeInTheDocument();
+    expect(sentLinks).toHaveLength(1);
+  });
+});

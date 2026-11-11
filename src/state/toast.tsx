@@ -35,6 +35,8 @@ export const useToast = () => useContext(Ctx);
 /** Message lisible pour une erreur venue de la base ou du réseau */
 export function friendlyError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
+  if (/only request this after|rate limit|too many/i.test(msg)) return 'Un lien vient d’être envoyé : patientez une minute avant d’en renvoyer un à cette adresse.';
+  if (/signups not allowed|user not found/i.test(msg)) return 'Aucun compte ne correspond à cette adresse.';
   if (/row-level security|permission denied/i.test(msg)) return 'Votre rôle ne permet pas cette action.';
   if (/foreign key/i.test(msg)) return 'Impossible : cet élément est encore utilisé ailleurs (emploi du temps, séances, systèmes…).';
   if (/duplicate key/i.test(msg)) return 'Cet élément existe déjà.';

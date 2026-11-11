@@ -58,6 +58,10 @@ export const api: Api = {
       });
       if (error) fail(error);
     },
+    async sendLoginLink(email) {
+      const { error } = await db().auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin, shouldCreateUser: false } });
+      if (error) fail(error);
+    },
     async verifyCode(email, code) {
       const { error } = await db().auth.verifyOtp({ email, token: code, type: 'email' });
       if (error) fail(error);

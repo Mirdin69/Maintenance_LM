@@ -111,6 +111,10 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 
 - **Administration, Effectifs** : effectif initial par groupe, puis **arrivées et départs datés** ; l'effectif se lit à n'importe quelle date (initial + arrivées − départs jusqu'à ce jour). Les rotations de TP reprennent l'effectif à la date de la première séance. Nécessite la migration `0015_effectifs.sql`.
 
+## Lien de connexion
+
+**Administration, Comptes, Utilisateurs : « Envoyer un lien de connexion »** envoie à l'enseignant un e-mail (via Supabase Auth) dont le lien le connecte en un clic, depuis n'importe quel appareil. Réservé aux comptes déjà créés ; Supabase limite à un envoi par minute et par adresse. Le modèle de l'e-mail se règle dans Supabase, Authentication, Email Templates (Magic Link).
+
 ## Administration : menu par catégories
 
 Les sections de l'administration sont regroupées en listes déroulantes : **Comptes** (isolé), **Matériel** (Systèmes, Salles, Outils), **Élèves et groupes** (Élèves, Effectifs, Domaines), **Dates et horaires** (Calendrier, Horaires de TP), **Gestion** (Budget, Bilan), **Site** (Apparence, Textes) et **Données** (Historique, Confidentialité, Base de données). Le groupe actif affiche la section ouverte ; Échap ferme la liste.
