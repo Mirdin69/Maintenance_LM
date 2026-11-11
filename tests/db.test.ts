@@ -16,6 +16,7 @@ const migration12 = readFileSync(new URL('../supabase/migrations/0012_suppressio
 const migration13 = readFileSync(new URL('../supabase/migrations/0013_salles_multiples.sql', import.meta.url), 'utf8');
 const migration14 = readFileSync(new URL('../supabase/migrations/0014_sous_tp.sql', import.meta.url), 'utf8');
 const migration15 = readFileSync(new URL('../supabase/migrations/0015_effectifs.sql', import.meta.url), 'utf8');
+const migration16 = readFileSync(new URL('../supabase/migrations/0016_invitations.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -86,6 +87,7 @@ beforeAll(async () => {
   await db.exec(migration13);
   await db.exec(migration14);
   await db.exec(migration15);
+  await db.exec(migration16);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -719,5 +721,22 @@ describe('migration 0010 : plusieurs cours dans une demi-journée', () => {
     await as('prof');
     expect(await sql(`select 1 from public.headcounts`)).toHaveLength(2);
     expect(await fails(`insert into public.headcounts (group_code, day, kind, n) values ('2PB1.2', '2026-09-01', 'initial', 10)`)).toMatch(/row-level|policy|permission/);
+  });
+
+  it('invitation : le compte est créé validé avec le rôle et les groupes, réservée à l’administrateur (0016)', async () => {
+    await as('admin');
+    await sql(`insert into public.invitations (email, role, group_codes) values ('invite@lamache.org', 'prof', array['2PB1.1', 'GROUPE-INCONNU'])`);
+    expect(await fails(`insert into public.invitations (email, role) values ('x@gmail.com', 'prof')`)).toMatch(/check/);
+    await as('prof');
+    expect(await sql(`select 1 from public.invitations`)).toHaveLength(0);
+    expect(await fails(`insert into public.invitations (email, role) values ('autre@lamache.org', 'admin')`)).toMatch(/row-level|policy|permission/);
+    await db.exec('reset role');
+    await addUser('invite', 'invite@lamache.org');
+    const p = (await sql(`select id, role, active from public.profiles where email = 'invite@lamache.org'`))[0];
+    expect(p).toMatchObject({ role: 'prof', active: true });
+    const g = await sql(`select group_code from public.teacher_groups where profile_id = '${p.id}'`);
+    expect(g.map((x: { group_code: string }) => x.group_code)).toEqual(['2PB1.1']);
+    await as('admin');
+    expect(await sql(`select 1 from public.invitations where email = 'invite@lamache.org'`)).toHaveLength(0);
   });
 });

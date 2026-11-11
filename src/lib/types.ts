@@ -206,6 +206,15 @@ export interface Headcount {
   created_at: string;
 }
 
+/** Invitation en attente : le compte sera créé validé, avec ce rôle et ces groupes, à la première connexion */
+export interface Invitation {
+  email: string;
+  role: Role;
+  group_codes: string[];
+  invited_by: string | null;
+  created_at: string;
+}
+
 export interface CalendarPeriod {
   id: string;
   kind: 'vacances' | 'ferie' | 'autre';
@@ -336,6 +345,7 @@ export interface DataSet {
   settings: Setting[];
   calendar_periods: CalendarPeriod[];
   headcounts: Headcount[];
+  invitations: Invitation[];
   planning_cells: PlanningCell[];
   fiches: Fiche[];
   maintenance_plans: MaintenancePlan[];

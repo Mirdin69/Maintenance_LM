@@ -115,6 +115,10 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 
 **Administration, Comptes, Utilisateurs : « Envoyer un lien de connexion »** envoie à l'enseignant un e-mail (via Supabase Auth) dont le lien le connecte en un clic, depuis n'importe quel appareil. Réservé aux comptes déjà créés ; Supabase limite à un envoi par minute et par adresse. Le modèle de l'e-mail se règle dans Supabase, Authentication, Email Templates (Magic Link).
 
+## Inviter quelqu'un
+
+**Administration, Comptes, « Inviter un enseignant »** : saisissez une adresse @lamache.org, un rôle et des groupes. L'invité reçoit un e-mail avec un lien de connexion ; à sa première connexion, son compte est créé **déjà validé**, avec ce rôle et ces groupes (plus besoin de « Valider comme enseignant »). Les invitations en attente se renvoient ou s'annulent depuis la même page. Nécessite la migration `0016_invitations.sql`, et un envoi d'e-mails qui fonctionne (voir la limite d'e-mails de Supabase : brancher un SMTP).
+
 ## Administration : menu par catégories
 
 Les sections de l'administration sont regroupées en listes déroulantes : **Comptes** (isolé), **Matériel** (Systèmes, Salles, Outils), **Élèves et groupes** (Élèves, Effectifs, Domaines), **Dates et horaires** (Calendrier, Horaires de TP), **Gestion** (Budget, Bilan), **Site** (Apparence, Textes) et **Données** (Historique, Confidentialité, Base de données). Le groupe actif affiche la section ouverte ; Échap ferme la liste.

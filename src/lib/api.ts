@@ -17,6 +17,7 @@ const PK: Record<string, string[]> = {
   groups: ['code'],
   planning_cells: ['day', 'group_code', 'part', 'seq'],
   settings: ['key'],
+  invitations: ['email'],
 };
 
 function db(): SupabaseClient {
@@ -60,6 +61,10 @@ export const api: Api = {
     },
     async sendLoginLink(email) {
       const { error } = await db().auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin, shouldCreateUser: false } });
+      if (error) fail(error);
+    },
+    async sendInvite(email) {
+      const { error } = await db().auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin, shouldCreateUser: true } });
       if (error) fail(error);
     },
     async verifyCode(email, code) {

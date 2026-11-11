@@ -963,3 +963,23 @@ describe('lien de connexion', () => {
     expect(sentLinks).toHaveLength(1);
   });
 });
+
+describe('invitation', () => {
+  it('invite une adresse @lamache.org avec des groupes, refuse les autres adresses', async () => {
+    const { sentLinks } = await import('@/lib/api.fake');
+    sentLinks.length = 0;
+    await open('admin', 'admin');
+    const form = await screen.findByRole('form', { name: 'Inviter quelqu’un' });
+    await userEvent.type(within(form).getByLabelText('Adresse e-mail'), 'nouvel.arrivant@lamache.org');
+    await userEvent.click(within(form).getByLabelText('2PB1.1'));
+    await userEvent.click(within(form).getByRole('button', { name: 'Inviter' }));
+    expect(await screen.findByText('Invitation envoyée à nouvel.arrivant@lamache.org.')).toBeInTheDocument();
+    expect(await screen.findByText(/Invitations en attente \(1\)/)).toBeInTheDocument();
+    expect(sentLinks).toEqual(['nouvel.arrivant@lamache.org']);
+    await userEvent.click(screen.getByRole('button', { name: /Annuler l’invitation de nouvel/ }));
+    expect(await screen.findByText('Invitation annulée.')).toBeInTheDocument();
+    await userEvent.type(within(form).getByLabelText('Adresse e-mail'), 'x@gmail.com');
+    fireEvent.submit(form);
+    expect((await screen.findAllByText(/Seules les adresses @lamache.org/)).length).toBeGreaterThan(1);
+  });
+});
