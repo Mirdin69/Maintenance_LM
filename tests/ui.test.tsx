@@ -16,6 +16,22 @@ beforeEach(() => {
   window.location.hash = '';
 });
 
+
+/** Section de l'administration : ouvre la liste déroulante qui la contient, puis la choisit */
+async function adminTo(name: string) {
+  await waitFor(() => expect(document.querySelector('.menubar')).not.toBeNull());
+  const direct = screen.queryByRole('button', { name });
+  if (direct) { await userEvent.click(direct); return; }
+  for (const trigger of await screen.findAllByRole('button', { expanded: false })) {
+    if (!trigger.hasAttribute('aria-haspopup')) continue;
+    await userEvent.click(trigger);
+    const item = screen.queryByRole('button', { name });
+    if (item) { await userEvent.click(item); return; }
+    await userEvent.click(trigger);
+  }
+  throw new Error(`Section d’administration introuvable : ${name}`);
+}
+
 describe('accès', () => {
   it('affiche la connexion hors session et refuse un autre domaine', async () => {
     await open('signedout', '');
@@ -43,7 +59,7 @@ describe('accès', () => {
 describe('salles et occupation', () => {
   it('liste les salles et la salle partagée (Administration)', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Salles' }));
+    await adminTo('Salles');
     expect(await screen.findByText('Grand atelier')).toBeInTheDocument();
     expect(screen.getAllByText('Partagée').length).toBeGreaterThan(0);
   });
@@ -73,7 +89,7 @@ describe('salles et occupation', () => {
 describe('administration', () => {
   it('gère les élèves depuis Administration, plus depuis le suivi', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Élèves' }));
+    await adminTo('Élèves');
     expect(await screen.findByText('Mise à jour par fichier Excel')).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/Prénom de l’élève à ajouter dans 2PB1.1/), 'Nina');
     await userEvent.type(screen.getByLabelText(/Nom de famille/), 'Tessier{enter}');
@@ -89,7 +105,7 @@ describe('administration', () => {
     const old = new Date(); old.setMonth(old.getMonth() - 30);
     await open('admin', 'admin');
     await api.insert('students', [{ name: 'Vieux VI', group_code: '2PB1.1', left_at: old.toISOString().slice(0, 10) }, { name: 'Actif AC', group_code: '2PB1.1' }]);
-    await userEvent.click(await screen.findByRole('button', { name: 'Confidentialité' }));
+    await adminTo('Confidentialité');
     expect(await screen.findByText(/À purger maintenant/)).toHaveTextContent('1 élève sorti');
     await userEvent.click(screen.getByRole('button', { name: 'Lancer la purge maintenant' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Confirmer' }));
@@ -107,7 +123,7 @@ describe('administration', () => {
   });
   it('ajoute un outil dans la liste', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Outils' }));
+    await adminTo('Outils');
     await userEvent.click(await screen.findByText('Ajouter un outil'));
     await userEvent.type(screen.getByLabelText(/Nom \*/), 'Pince coupante');
     await userEvent.click(screen.getByRole('button', { name: 'Ajouter l’outil' }));
@@ -116,7 +132,7 @@ describe('administration', () => {
   });
   it('enregistre le titre et les logos', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Apparence' }));
+    await adminTo('Apparence');
     const title = await screen.findByLabelText('Titre du site');
     await userEvent.clear(title);
     await userEvent.type(title, 'Atelier La Mâche');
@@ -137,7 +153,7 @@ describe('administration', () => {
 describe('textes des onglets et jours par niveau', () => {
   it('modifie le commentaire d’un onglet et le retire de l’impression', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Textes' }));
+    await adminTo('Textes');
     const area = (await screen.findAllByLabelText(/sous le titre « Tableau de bord »/))[0];
     await userEvent.clear(area);
     await userEvent.type(area, 'Bienvenue à l’atelier');
@@ -150,7 +166,7 @@ describe('textes des onglets et jours par niveau', () => {
   });
   it('règle les jours affichés séparément pour chaque niveau', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Calendrier' }));
+    await adminTo('Calendrier');
     const fri = async (l: string) => within(await screen.findByRole('group', { name: `Jours affichés ${l}` })).getByLabelText('vendredi');
     await userEvent.click(await fri('Terminale'));
     await waitFor(async () => expect(await fri('Terminale')).toBeChecked());
@@ -353,7 +369,7 @@ describe('nouvelles fonctions', () => {
 
   it('l’historique liste les modifications et permet de les annuler', async () => {
     await openWith('admin', 'admin', async () => { await api.insert('systems', { name: 'Système éphémère' }); });
-    await userEvent.click(await screen.findByRole('button', { name: 'Historique' }));
+    await adminTo('Historique');
     expect(await screen.findByText('Système éphémère')).toBeInTheDocument();
     const btn = screen.getAllByRole('button', { name: 'Annuler' })[0];
     await userEvent.click(btn);
@@ -366,7 +382,7 @@ describe('nouvelles fonctions', () => {
     const nav = within(await screen.findByRole('navigation', { name: 'Sections' }));
     expect(nav.queryByRole('button', { name: 'Systèmes' })).toBeNull();
     await userEvent.click(nav.getByRole('button', { name: 'Administration' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    await adminTo('Systèmes');
     expect(await screen.findByRole('heading', { name: 'Systèmes pédagogiques' })).toBeInTheDocument();
   });
 
@@ -436,7 +452,7 @@ describe('nouvelles fonctions', () => {
 
   it('le bilan de l’année est accessible aux gestionnaires', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Bilan' }));
+    await adminTo('Bilan');
     expect(await screen.findByText('cases de TP au semainier')).toBeInTheDocument();
   });
 
@@ -476,7 +492,7 @@ describe('interface', () => {
 
   it('les formulaires s’ouvrent dans un panneau latéral fermé par Échap', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    await adminTo('Systèmes');
     await userEvent.click(await screen.findByRole('button', { name: 'Ajouter un système' }));
     expect(await screen.findByRole('dialog', { name: 'Ajouter un système' })).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
@@ -485,7 +501,7 @@ describe('interface', () => {
 
   it('la suppression demande une confirmation qui détaille les conséquences', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    await adminTo('Systèmes');
     await userEvent.click((await screen.findAllByRole('button', { name: 'Supprimer' }))[0]);
     const dlg = await screen.findByRole('alertdialog');
     expect(dlg).toHaveTextContent(/Supprimer «/);
@@ -496,7 +512,7 @@ describe('interface', () => {
 
   it('modifie le nombre de postes directement dans la liste et affiche l’enregistrement', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    await adminTo('Systèmes');
     const input = (await screen.findAllByLabelText(/^Postes de /))[0] as HTMLInputElement;
     const name = input.getAttribute('aria-label')!.replace('Postes de ', '');
     await userEvent.clear(input);
@@ -507,7 +523,7 @@ describe('interface', () => {
 
   it('importe des systèmes collés depuis Excel', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Systèmes' }));
+    await adminTo('Systèmes');
     await userEvent.click(await screen.findByText('Coller une liste depuis Excel'));
     const area = await screen.findByLabelText('Lignes à importer');
     await userEvent.click(area);
@@ -535,7 +551,7 @@ describe('interface', () => {
 
   it('ajoute un domaine dans Administration et le propose dans le catalogue', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Domaines' }));
+    await adminTo('Domaines');
     await userEvent.type(await screen.findByLabelText('Nom du domaine *'), 'Froid et clim');
     await userEvent.click(screen.getByRole('button', { name: 'Ajouter le domaine' }));
     expect(await screen.findByText('Domaine ajouté.')).toBeInTheDocument();
@@ -553,7 +569,7 @@ describe('interface', () => {
     const rec = (description: string, s: string, e: string) => ({ description, start_date: s, end_date: e, population: '-', zones: 'Zone A' });
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ results: [rec('Vacances de Noël', `${y}-12-19`, `${y + 1}-01-04`)] }) })));
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Calendrier' }));
+    await adminTo('Calendrier');
     await userEvent.click((await screen.findAllByRole('button', { name: new RegExp(`Importer les vacances ${y}-${y + 1}`) }))[0]);
     expect(await screen.findByText(/Vacances de la zone A trouvées/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /^Ajouter ces 1 périodes/ }));
@@ -594,13 +610,15 @@ describe('fonctions élèves désactivées', () => {
   });
   it('désactive aussi la section Élèves de l’administration, réactivable dans Confidentialité', async () => {
     await open('admin', 'admin', false);
+    await userEvent.click(await screen.findByRole('button', { name: 'Élèves et groupes' }));
     const sec = await screen.findByRole('button', { name: 'Élèves' });
     expect(sec).toHaveAttribute('title', 'Désactivé en attente validation RGPD');
     await userEvent.click(sec);
     expect(sec).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByLabelText('Prénom de l’élève à ajouter dans 2PB1.1')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Confidentialité' }));
+    await adminTo('Confidentialité');
     await userEvent.click(await screen.findByLabelText(/Activer le suivi des élèves/));
+    await userEvent.click(await screen.findByRole('button', { name: 'Élèves et groupes' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Élèves' })).not.toHaveAttribute('aria-disabled'));
   });
 });
@@ -650,7 +668,7 @@ describe('demi-journées, salle et carrousel', () => {
   });
   it('propose matin et après-midi pour chaque jour dans le calendrier', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Calendrier' }));
+    await adminTo('Calendrier');
     const sel = (await screen.findAllByLabelText(/^Partie de la journée, lundi Seconde/i))[0];
     await userEvent.selectOptions(sel, 'MA');
     expect(await screen.findByText('Enregistré.')).toBeInTheDocument();
@@ -660,7 +678,7 @@ describe('demi-journées, salle et carrousel', () => {
 describe('couleurs des domaines', () => {
   it('un gestionnaire change la couleur d’un domaine prédéfini et peut la rétablir', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Domaines' }));
+    await adminTo('Domaines');
     const input = (await screen.findByLabelText('Couleur de Industriel')) as HTMLInputElement;
     fireEvent.change(input, { target: { value: '#ff8800' } });
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -800,7 +818,7 @@ describe('occupation des salles et semainier', () => {
 describe('horaires de TP et plusieurs cours', () => {
   it('un gestionnaire règle les horaires par jour retenu dans le calendrier', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Horaires de TP' }));
+    await adminTo('Horaires de TP');
     const table = await screen.findByRole('table', { name: 'Horaires par jour' });
     expect(within(table).getByText('lundi', { exact: false })).toBeInTheDocument();
     const debut = screen.getByLabelText('lundi matin, début') as HTMLInputElement;
@@ -885,7 +903,7 @@ describe('sous-TP', () => {
 describe('effectifs', () => {
   it('l’administrateur ajoute un départ daté et l’effectif à la date baisse', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Effectifs' }));
+    await adminTo('Effectifs');
     expect(await screen.findByLabelText('Effectif initial 2PB1.1')).toHaveValue(24);
     const form = screen.getByRole('form', { name: 'Ajouter un mouvement' });
     await userEvent.type(within(form).getByLabelText('Note (facultatif)'), 'Réorientation');
@@ -898,7 +916,7 @@ describe('effectifs', () => {
 describe('base de données', () => {
   it('indique que tout est à jour et permet de copier le SQL', async () => {
     await open('admin', 'admin');
-    await userEvent.click(await screen.findByRole('button', { name: 'Base de données' }));
+    await adminTo('Base de données');
     expect(await screen.findByText(/Toutes les migrations vérifiables sont appliquées/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Copier le SQL de la migration 0015/ })).toBeInTheDocument();
   });
@@ -914,5 +932,22 @@ describe('fiche système (QR code)', () => {
     expect(await screen.findByRole('heading', { name: new RegExp(`${sys.name} · Poste 2`) })).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole('button', { name: /Signaler une panne/ })[0]);
     expect(await screen.findByRole('dialog', { name: 'Signaler une panne' })).toBeInTheDocument();
+  });
+});
+
+describe('menu de l’administration', () => {
+  it('garde Comptes isolé, regroupe le reste en listes déroulantes fermées par Échap', async () => {
+    await open('admin', 'admin');
+    const bar = await waitFor(() => { const el = document.querySelector('.menubar') as HTMLElement; expect(el).not.toBeNull(); return el; });
+    const ui = within(bar);
+    expect(ui.getByRole('button', { name: /^Comptes/ })).not.toHaveAttribute('aria-haspopup');
+    expect(ui.queryByRole('button', { name: 'Salles' })).toBeNull();
+    await userEvent.click(ui.getByRole('button', { name: 'Matériel' }));
+    expect(ui.getByRole('button', { name: 'Salles' })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(ui.queryByRole('button', { name: 'Salles' })).toBeNull();
+    await userEvent.click(ui.getByRole('button', { name: 'Matériel' }));
+    await userEvent.click(ui.getByRole('button', { name: 'Outils' }));
+    expect(ui.getByRole('button', { name: /Matériel/ })).toHaveTextContent('Outils');
   });
 });

@@ -539,3 +539,16 @@ select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 
   body.qr-printing .qr-sheet { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: 0; }
   .qr-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* Administration : sections regroupées en listes déroulantes */
+.menubar { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.menu-group { position: relative; }
+.menu-trigger { padding: 7px 14px; font-size: 0.86rem; color: var(--link); background: var(--surface); border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
+.menu-trigger[aria-pressed='true'] { background: var(--navy); color: var(--on-navy); font-weight: bold; }
+.menu-current { font-weight: 400; opacity: 0.85; }
+.menu-list { position: absolute; z-index: 30; top: calc(100% + 2px); left: 0; min-width: 190px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 3px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+.menu-list button { text-align: left; padding: 9px 14px; font-size: 0.88rem; color: var(--link); background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.menu-list button:last-child { border-bottom: 0; }
+.menu-list button:hover, .menu-list button:focus-visible { background: var(--sunken); }
+.menu-list button[aria-current='true'] { font-weight: bold; background: var(--sunken); }
+.menu-list button.off { color: var(--muted); }

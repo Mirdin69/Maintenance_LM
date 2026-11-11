@@ -111,6 +111,10 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 
 - **Administration, Effectifs** : effectif initial par groupe, puis **arrivées et départs datés** ; l'effectif se lit à n'importe quelle date (initial + arrivées − départs jusqu'à ce jour). Les rotations de TP reprennent l'effectif à la date de la première séance. Nécessite la migration `0015_effectifs.sql`.
 
+## Administration : menu par catégories
+
+Les sections de l'administration sont regroupées en listes déroulantes : **Comptes** (isolé), **Matériel** (Systèmes, Salles, Outils), **Élèves et groupes** (Élèves, Effectifs, Domaines), **Dates et horaires** (Calendrier, Horaires de TP), **Gestion** (Budget, Bilan), **Site** (Apparence, Textes) et **Données** (Historique, Confidentialité, Base de données). Le groupe actif affiche la section ouverte ; Échap ferme la liste.
+
 ## Base de données (migrations)
 
 - **Administration, Base de données** : la page vérifie quelles migrations sont appliquées (présence des tables et colonnes qu'elles créent), affiche celles qui manquent et copie leur SQL (une par une ou toutes d'un coup) pour l'éditeur SQL de Supabase, avec un lien direct vers l'éditeur. Les migrations qui ne créent que des fonctions ou des règles (0004, 0006, 0012) sont signalées « non vérifiables ».
