@@ -10,6 +10,7 @@ import { PasteImport } from '@/components/PasteImport';
 import { num } from '@/lib/paste';
 import { Img } from '@/components/Img';
 import { ImageField } from '@/components/ImageField';
+import { QrLabels } from '@/components/QrLabels';
 import { ToolsList } from '@/components/Tools';
 
 export default function Systems() {
@@ -19,6 +20,7 @@ export default function Systems() {
   const [editing, setEditing] = useState<System | null>(null);
   const [formKey, setFormKey] = useState(0);
   const [img, setImg] = useState('');
+  const [qr, setQr] = useState(false);
   const [tab, setTab] = usePersisted<'systemes' | 'outils'>('sys-tab', 'systemes', ['systemes', 'outils']);
 
   const systems = [...data.systems].sort(byText((s) => s.name));
@@ -92,8 +94,9 @@ export default function Systems() {
           () => api.insert('systems', rows.map((r) => ({ name: r[0].slice(0, 120), ref: r[1] ? r[1].slice(0, 80) : null, qty: Math.min(99, Math.max(1, Math.round(num(r[2], 1)))) }))),
           { ok: `${rows.length} système${rows.length > 1 ? 's' : ''} ajouté${rows.length > 1 ? 's' : ''}.`, tables: ['systems'] })} />
       )}
-      {tab === 'systemes' && <section className="panel">
-        <h2>Parc actuel</h2>
+      {tab === 'systemes' && qr && <QrLabels onClose={() => setQr(false)} />}
+      {tab === 'systemes' && !qr && <section className="panel">
+        <div className="row between"><h2>Parc actuel</h2>{canWrite && systems.length > 0 && <button className="btn ghost sm no-print" onClick={() => setQr(true)}>Étiquettes QR</button>}</div>
         {systems.length === 0 ? (
           <Empty>Aucun système pour le moment.{canWrite ? ' Utilisez « Ajouter un système » pour créer le premier.' : ''}</Empty>
         ) : (

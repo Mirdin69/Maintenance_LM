@@ -525,3 +525,17 @@ select.pc-room { width: 100%; margin-top: 2px; font-size: 0.72rem; padding: 1px 
 .pc-teachers { font-size: 0.72rem; }
 .pc-teachers summary { cursor: pointer; color: var(--muted, #555); }
 .pc-teachers .stack { padding: 4px 0; }
+
+.preview { margin: 6px 0; }
+.preview .warn td { background: color-mix(in srgb, var(--warn, #f59e0b) 14%, transparent); }
+
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.qr-label { margin: 0; border: 1px dashed var(--line, #bbb); border-radius: 6px; padding: 8px; text-align: center; break-inside: avoid; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.qr-label figcaption { display: flex; flex-direction: column; font-size: 0.78rem; }
+.qr-wait { width: 110px; height: 110px; background: #eee; display: block; }
+@media print {
+  body.qr-printing main * { visibility: hidden; }
+  body.qr-printing .qr-sheet, body.qr-printing .qr-sheet * { visibility: visible; }
+  body.qr-printing .qr-sheet { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: 0; }
+  .qr-grid { grid-template-columns: repeat(4, 1fr); }
+}

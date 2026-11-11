@@ -67,4 +67,35 @@ describe('import de planning', () => {
     const again = buildCells(p.rows.slice(0, 1), cat, dec, [{ day: '2026-11-03', group_code: '2PB1.1', part: 'J', seq: 1, tp_id: 't1', label: null }] as never, false);
     expect(again.cells).toHaveLength(0);
   });
+  it('lit la feuille SEMAINIER : mois côte à côte, cinq lignes par jour, valeurs 0 ignorées', () => {
+    const blank = ['', '', ''];
+    const day = (sem: string, j: string, d: string, lines: string[][]) => lines.map((l) => [sem, j, d, ...l, '', '', sem, j, '1', '', '', '']);
+    const grid = [
+      ['SEPTEMBRE 2026', 'SEPTEMBRE 2026', 'SEPTEMBRE 2026', 'SEPTEMBRE 2026', 'SEPTEMBRE 2026', '', '', 'OCTOBRE 2026', 'OCTOBRE 2026', 'OCTOBRE 2026', 'OCTOBRE 2026', 'OCTOBRE 2026'],
+      ['semaine', 'jour', 'date', '2PRO B1.1', '2PRO B1.2', '', '', 'semaine', 'jour', 'date', '2PRO B1.1', '2PRO B1.2'],
+      ...[['Prod Ener (1)', 'VACANCES'], ['G. MOREL', ''], ['Éclairage', ''], ['Câbler', ''], ['C1, C4', '']].map(([a, b]) => ['37', 'L', '7', a, b, '', '', '40', 'J', '1', 'Période d’observation', 'Période d’observation']),
+      ...['Période d’observation', '0', '0', '0', '0'].map((v) => ['37', 'Ma', '8', v, v, '', '', '40', 'S', '3', '', '']),
+    ];
+    void blank; void day;
+    const p = parsePlanning(grid, bounds);
+    expect(p.layout).toBe('semainier');
+    const sep = p.rows.filter((r) => r.day === '2026-09-07');
+    expect(sep).toHaveLength(1);
+    expect(sep[0]).toMatchObject({ group: '2PB1.1', ref: 'Prod Ener (1)', title: 'Éclairage', teachers: ['G. MOREL'], competences: ['C1', 'C4'] });
+    const obs = p.rows.filter((r) => r.day === '2026-10-01');
+    expect(obs.map((r) => [r.group, r.teachers.length, r.title])).toEqual([['2PB1.1', 0, ''], ['2PB1.2', 0, '']]);
+  });
+  it('un jour sans date dans l’en-tête reprend celle de la semaine ; le titre fait le TP', () => {
+    const grid = [
+      ['EMPLOI DU TEMPS - SEMAINE 37 - du 07/09/2026 au 13/09/2026'],
+      ['Groupe / contenu', 'Lundi', 'Mardi\n8 septembre'],
+      ['2PRO B1.1\nDomaine', 'Prod Ener (1)', 'Prod Ener (1)'],
+      ['Enseignant', 'Verwaerde', 'Verwaerde'],
+      ['TP / Activité', 'TP A', 'TP B'],
+    ];
+    const p = parsePlanning(grid, bounds);
+    expect(p.rows.map((r) => r.day)).toEqual(['2026-09-07', '2026-09-08']);
+    const u = findUnknowns(p.rows, cat);
+    expect(u.tps.map((t) => t.title)).toEqual(['TP A', 'TP B']);
+  });
 });

@@ -881,3 +881,25 @@ describe('sous-TP', () => {
     expect(screen.queryByLabelText(/^Postes, ZMAIN/)).toBeNull();
   });
 });
+
+describe('effectifs', () => {
+  it('l’administrateur ajoute un départ daté et l’effectif à la date baisse', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Effectifs' }));
+    expect(await screen.findByLabelText('Effectif initial 2PB1.1')).toHaveValue(24);
+    const form = screen.getByRole('form', { name: 'Ajouter un mouvement' });
+    await userEvent.type(within(form).getByLabelText('Note (facultatif)'), 'Réorientation');
+    await userEvent.click(within(form).getByRole('button', { name: 'Ajouter' }));
+    expect(await screen.findByText('Mouvement enregistré.')).toBeInTheDocument();
+    expect(await screen.findByText('Réorientation')).toBeInTheDocument();
+  });
+});
+
+describe('base de données', () => {
+  it('indique que tout est à jour et permet de copier le SQL', async () => {
+    await open('admin', 'admin');
+    await userEvent.click(await screen.findByRole('button', { name: 'Base de données' }));
+    expect(await screen.findByText(/Toutes les migrations vérifiables sont appliquées/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Copier le SQL de la migration 0015/ })).toBeInTheDocument();
+  });
+});

@@ -11,14 +11,14 @@ const ALL: TableName[] = [
   'profiles', 'teacher_groups', 'rooms', 'systems', 'tps', 'timetable_slots', 'sessions',
   'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress',
   'tools', 'settings', 'calendar_periods', 'planning_cells', 'fiches',
-  'maintenance_plans', 'companies', 'pfmp_periods', 'ideas',
+  'maintenance_plans', 'companies', 'pfmp_periods', 'ideas', 'headcounts',
 ];
 
 const emptyData = (): DataSet => ({
   profiles: [], teacher_groups: [], rooms: [], systems: [], tps: [], timetable_slots: [], sessions: [],
   maintenance: [], maintenance_notes: [], purchases: [], students: [], progress: [],
   tools: [], settings: [], calendar_periods: [], planning_cells: [], fiches: [],
-  maintenance_plans: [], companies: [], pfmp_periods: [], ideas: [],
+  maintenance_plans: [], companies: [], pfmp_periods: [], ideas: [], headcounts: [],
 });
 
 interface Store {

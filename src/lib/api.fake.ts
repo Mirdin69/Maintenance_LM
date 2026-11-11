@@ -207,9 +207,10 @@ function reset() {
     ],
     planning_cells: planning as Tbl,
     fiches: [], maintenance_plans: [], companies: [], pfmp_periods: [], ideas: [], audit_log: [],
+    headcounts: [['2PB1.1', 24], ['2PB1.2', 22], ['2PB2', 12]].map(([g, n]) => ({ id: uid(), group_code: g, day: sy.from, kind: 'initial', n, note: null, created_at: now() })) as Tbl,
   };
   if (options.empty) {
-    for (const k of ['rooms', 'systems', 'tps', 'timetable_slots', 'sessions', 'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress', 'tools', 'calendar_periods', 'planning_cells', 'fiches', 'maintenance_plans', 'companies', 'pfmp_periods', 'ideas']) T[k] = [];
+    for (const k of ['rooms', 'systems', 'tps', 'timetable_slots', 'sessions', 'maintenance', 'maintenance_notes', 'purchases', 'students', 'progress', 'tools', 'calendar_periods', 'planning_cells', 'fiches', 'maintenance_plans', 'companies', 'pfmp_periods', 'ideas', 'headcounts']) T[k] = [];
   }
   signedIn = options.as !== 'signedout';
 }
@@ -227,7 +228,7 @@ const matches = (row: Row, match: Match) =>
 
 const notify = (table: string) => queueMicrotask(() => listeners.forEach((cb) => cb(table)));
 
-const ADMIN_ONLY = new Set(['rooms', 'teacher_groups', 'tools', 'settings', 'calendar_periods', 'audit_log']);
+const ADMIN_ONLY = new Set(['rooms', 'teacher_groups', 'tools', 'settings', 'calendar_periods', 'audit_log', 'headcounts']);
 const AUDITED: Record<string, string[]> = {
   systems: ['id'], tps: ['id'], fiches: ['id'], maintenance: ['id'], maintenance_plans: ['id'], purchases: ['id'], rooms: ['id'], tools: ['id'],
   students: ['id'], planning_cells: ['day', 'group_code', 'part', 'seq'], companies: ['id'], pfmp_periods: ['id'], sessions: ['id'], timetable_slots: ['id'],
@@ -337,6 +338,7 @@ function cascade(table: string, removed: Row[]) {
 const FILES = new Map<string, Blob>();
 
 export const api: Api = {
+  async probe() { return 'ok'; },
   configured: true,
   storage: {
     async upload(path, file) {

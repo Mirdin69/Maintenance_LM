@@ -6,7 +6,7 @@ import { DOMAINS, DOMAIN_PALETTE, parseCustomDomains, type CustomDomain } from '
 import { cellText, parseCsv } from '@/lib/importStudents';
 import { schoolYearBounds, schoolYearOf } from '@/lib/dates';
 import { CONFLICT_COLS } from '@/lib/semainier';
-import { buildCells, domainGuess, findUnknowns, loose, parsePlanning, type Decisions, type ParsedPlanning, type TeacherDecision, type RoomDecision, type TpDecision } from '@/lib/importPlanning';
+import { buildCells, domainGuess, findUnknowns, isLabel, loose, parsePlanning, roomMatch, teacherMatch, tpMatch, type Decisions, type ParsedPlanning, type TeacherDecision, type RoomDecision, type TpDecision } from '@/lib/importPlanning';
 import { downloadBlob } from '@/components/ui';
 import type { Level } from '@/lib/types';
 
@@ -64,6 +64,7 @@ export function PlanningImport() {
   const [sheet, setSheet] = useState(0);
   const [error, setError] = useState('');
   const [overwrite, setOverwrite] = useState(false);
+  const [onlyDoubt, setOnlyDoubt] = useState(false);
   const [modal, setModal] = useState(false);
   const [dec, setDec] = useState<{ tps: Record<string, TpDecision>; tpDomain: Record<string, string>; teachers: Record<string, TeacherDecision>; rooms: Record<string, RoomDecision> }>({ tps: {}, tpDomain: {}, teachers: {}, rooms: {} });
 
@@ -74,6 +75,13 @@ export function PlanningImport() {
   const cat = useMemo(() => ({ tps: data.tps, profiles: data.profiles.filter((p) => p.active), rooms: data.rooms, domains: { ...DOMAINS } as Record<string, string> }), [data.tps, data.profiles, data.rooms]);
   const parsed: ParsedPlanning | null = useMemo(() => (sheets[sheet] ? parsePlanning(sheets[sheet].grid.map((r) => [...r]), bounds) : null), [sheets, sheet, bounds]);
   const unknowns = useMemo(() => (parsed ? findUnknowns(parsed.rows, cat) : null), [parsed, cat]);
+  const preRows = useMemo(() => (parsed?.rows ?? []).map((row) => {
+    const doubt: string[] = [];
+    if (!isLabel(row.ref) && !tpMatch(row.ref, row.title, cat.tps)) doubt.push('TP inconnu');
+    if (row.teachers.some((t) => !teacherMatch(t, cat.profiles))) doubt.push('enseignant sans compte');
+    if (row.room && !roomMatch(row.room, cat.rooms)) doubt.push('salle inconnue');
+    return { row, doubt };
+  }), [parsed, cat]);
   const customDomains = parseCustomDomains(settings.custom_domains);
 
   const pickFile = async (f: File | undefined) => {
@@ -83,8 +91,9 @@ export function PlanningImport() {
     try {
       const s = await readGrids(f);
       setSheets(s);
-      const best = s.findIndex((x) => parsePlanning(x.grid.map((r) => [...r]), bounds).rows.length > 0);
-      setSheet(Math.max(0, best));
+      // La feuille qui donne le plus de cours est choisie d'office (le classeur du lycée en contient plusieurs vues du même planning)
+      const counts = s.map((x) => parsePlanning(x.grid.map((r) => [...r]), bounds).rows.length);
+      setSheet(Math.max(0, counts.indexOf(Math.max(...counts))));
       setDec({ tps: {}, tpDomain: {}, teachers: {}, rooms: {} });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Lecture impossible.');
@@ -180,6 +189,28 @@ export function PlanningImport() {
               {unknowns && unknowns.teachers.length > 0 && <> · <b>{unknowns.teachers.length}</b> enseignant(s) sans compte</>}
               {unknowns && unknowns.rooms.length > 0 && <> · <b>{unknowns.rooms.length}</b> salle(s) inconnue(s)</>}.</p>
             {parsed.problems.length > 0 && <div className="alert" role="status"><b>À vérifier</b><ul>{parsed.problems.slice(0, 8).map((m) => <li key={m}>{m}</li>)}</ul></div>}
+            {parsed.rows.length > 0 && (
+              <details className="preview" open>
+                <summary>Aperçu des cours lus</summary>
+                <label className="row small"><input type="checkbox" checked={onlyDoubt} onChange={(e) => setOnlyDoubt(e.target.checked)} /> Seulement les lignes à vérifier ({preRows.filter((r) => r.doubt.length).length})</label>
+                <div className="scroll" style={{ maxHeight: 320, overflow: 'auto' }}>
+                  <table className="tbl small">
+                    <thead><tr><th>Date</th><th>Groupe</th><th>TP / activité</th><th>Enseignants</th><th>Salle</th><th>À vérifier</th></tr></thead>
+                    <tbody>
+                      {preRows.filter((r) => !onlyDoubt || r.doubt.length).slice(0, 300).map((r, i) => (
+                        <tr key={i} className={r.doubt.length ? 'warn' : ''}>
+                          <td>{r.row.day}</td><td>{r.row.group}</td>
+                          <td>{r.row.ref}{r.row.title && r.row.title !== r.row.ref ? ` — ${r.row.title}` : ''}</td>
+                          <td>{r.row.teachers.join(' / ') || '—'}</td><td>{r.row.room || '—'}</td>
+                          <td>{r.doubt.join(', ') || '✓'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {preRows.length > 300 && <p className="muted small">Les 300 premières lignes sont affichées ; toutes seront importées.</p>}
+              </details>
+            )}
             <label className="row"><input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} /> Remplacer les cases déjà remplies</label>
             {preview && <p className="muted small">{preview.cells.length} case(s) à écrire sur les TP connus{preview.skipped ? `, ${preview.skipped} ignorée(s) (déjà remplies ou à décider)` : ''}.</p>}
             <div className="actions">

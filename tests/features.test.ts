@@ -442,3 +442,25 @@ describe('sous-TP', () => {
     expect(m.get('x')!.system_ids).toEqual(['s9']);
   });
 });
+
+describe('effectifs par groupe', () => {
+  const h = (kind: 'initial' | 'arrivee' | 'depart', day: string, n: number, g = 'G') => ({ id: `${kind}${day}${n}`, group_code: g, day, kind, n, note: null, created_at: day }) as never;
+  it('initial + arrivées − départs, à la date demandée', async () => {
+    const { headcountAt, headcountTimeline } = await import('@/lib/headcount');
+    const rows = [h('initial', '2026-09-01', 24), h('depart', '2026-10-10', 2), h('arrivee', '2026-11-03', 1), h('initial', '2026-09-01', 10, 'AUTRE')];
+    expect(headcountAt(rows, 'G', '2026-09-15')).toBe(24);
+    expect(headcountAt(rows, 'G', '2026-10-10')).toBe(22);
+    expect(headcountAt(rows, 'G', '2026-12-01')).toBe(23);
+    expect(headcountAt(rows, 'X', '2026-12-01')).toBe(0);
+    expect(headcountTimeline(rows, 'G').map((t) => t.after)).toEqual([24, 22, 23]);
+  });
+});
+
+describe('liste des migrations', () => {
+  it('chaque fichier SQL du dépôt est décrit, dans l’ordre', async () => {
+    const { MIGRATIONS } = await import('@/lib/migrations');
+    expect(MIGRATIONS.length).toBeGreaterThanOrEqual(15);
+    expect(MIGRATIONS.map((m) => m.id)).toEqual([...MIGRATIONS.map((m) => m.id)].sort());
+    for (const m of MIGRATIONS) { expect(m.title).not.toBe(m.id); expect(m.sql.length).toBeGreaterThan(20); }
+  });
+});

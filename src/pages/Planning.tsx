@@ -1,3 +1,4 @@
+import { FaultButton } from '@/components/ReportFault';
 import { useMemo, useState, type FormEvent } from 'react';
 import { usePersisted } from '@/hooks/usePersisted';
 import Rotations from '@/pages/Rotations';
@@ -5,7 +6,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/state/auth';
 import { useAct, useStore } from '@/state/store';
 import { GROUP_CODES } from '@/lib/domain';
-import { addDays, fmtDayLong, fmtShort, iso, minToHM, mondayOf, parseISO, schoolYearBounds, schoolYearOf, toMin } from '@/lib/dates';
+import { addDays, fmtDate, fmtDayLong, fmtShort, iso, minToHM, mondayOf, parseISO, schoolYearBounds, schoolYearOf, toMin } from '@/lib/dates';
 import { buildOccurrences, systemUsage, type Occ } from '@/lib/occupancy';
 import { sessionConflicts } from '@/lib/conflicts';
 import { AddPanel, Chip, ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
@@ -135,6 +136,7 @@ function Week() {
                     <div>
                       <span className="tm">{minToHM(o.start)}–{minToHM(o.end)}</span> <b>{o.groupCode ?? o.label ?? 'Réservation'}</b>
                       <span className="muted small"> · {o.roomId ? roomById.get(o.roomId)?.name : 'sans salle'} · {who(o.teacherId, o.teacherLabel)}{o.tpId ? ` · ${tpById.get(o.tpId)?.code ?? tpById.get(o.tpId)?.title}` : ''}{o.systemId ? ` · ${systemById.get(o.systemId)?.name}` : ''}</span>
+                      {o.systemId && <> <FaultButton systemId={o.systemId} context={`Constaté pendant la séance du ${fmtDate(o.date)}${o.groupCode ? `, groupe ${o.groupCode}` : ''}.`} /></>}
                       {o.moved && <> <Chip tone="info">Modifiée</Chip></>} {o.status === 'done' && <Chip tone="ok">Réalisée</Chip>}
                     </div>
                     {canWrite && mine && (

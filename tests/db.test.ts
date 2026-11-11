@@ -15,6 +15,7 @@ const migration11 = readFileSync(new URL('../supabase/migrations/0011_enseignant
 const migration12 = readFileSync(new URL('../supabase/migrations/0012_suppression_tp.sql', import.meta.url), 'utf8');
 const migration13 = readFileSync(new URL('../supabase/migrations/0013_salles_multiples.sql', import.meta.url), 'utf8');
 const migration14 = readFileSync(new URL('../supabase/migrations/0014_sous_tp.sql', import.meta.url), 'utf8');
+const migration15 = readFileSync(new URL('../supabase/migrations/0015_effectifs.sql', import.meta.url), 'utf8');
 const migration4 = readFileSync(new URL('../supabase/migrations/0004_stockage.sql', import.meta.url), 'utf8');
 const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf8');
 
@@ -84,6 +85,7 @@ beforeAll(async () => {
   await db.exec(migration12);
   await db.exec(migration13);
   await db.exec(migration14);
+  await db.exec(migration15);
   await addUser('admin', 'Alexandre.V@lamache.org');
   await addUser('prof', 'collegue@lamache.org');
   await addUser('prof2', 'autre@lamache.org');
@@ -706,5 +708,16 @@ describe('migration 0010 : plusieurs cours dans une demi-journée', () => {
     expect(await fails(`update public.tps set parent_id = id where id = '${main.id}'`)).toMatch(/parent_check|sous-TP/);
     await sql(`delete from public.tps where id = $1`, [main.id]);
     expect((await sql(`select parent_id from public.tps where id = $1`, [kid.id]))[0].parent_id).toBeNull();
+  });
+
+  it('effectifs : un seul effectif initial par groupe, écriture réservée à l’administrateur (0015)', async () => {
+    await as('admin');
+    await sql(`insert into public.headcounts (group_code, day, kind, n) values ('2PB1.1', '2026-09-01', 'initial', 24)`);
+    expect(await fails(`insert into public.headcounts (group_code, day, kind, n) values ('2PB1.1', '2026-09-02', 'initial', 20)`)).toMatch(/headcounts_initial_idx|duplicate|unique/);
+    expect(await fails(`insert into public.headcounts (group_code, day, kind, n) values ('2PB1.1', '2026-10-01', 'depart', 0)`)).toMatch(/check/);
+    await sql(`insert into public.headcounts (group_code, day, kind, n) values ('2PB1.1', '2026-10-01', 'depart', 2)`);
+    await as('prof');
+    expect(await sql(`select 1 from public.headcounts`)).toHaveLength(2);
+    expect(await fails(`insert into public.headcounts (group_code, day, kind, n) values ('2PB1.2', '2026-09-01', 'initial', 10)`)).toMatch(/row-level|policy|permission/);
   });
 });

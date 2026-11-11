@@ -25,6 +25,8 @@ import Help from '@/pages/Help';
 import { useSaveState } from '@/state/saving';
 import { Search } from '@/components/Search';
 import { Notifications } from '@/components/Notifications';
+import SystemCard from '@/pages/SystemCard';
+import { parseSystemHash } from '@/lib/qr';
 import { ReportFault } from '@/components/ReportFault';
 import Privacy from '@/pages/Privacy';
 import Ideas from '@/pages/Ideas';
@@ -32,7 +34,7 @@ import { STUDENTS_OFF_TIP, STUDENT_TABS, studentsEnabled } from '@/lib/studentsF
 import { PrivacyText } from '@/components/PrivacyText';
 import { PasswordDialog } from '@/components/PasswordDialog';
 
-type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'catalogue' | 'aide' | 'confidentialite' | 'idees' | 'admin';
+type TabId = 'accueil' | 'semainier' | 'systemes' | 'edt' | 'occupation' | 'maintenance' | 'achats' | 'planning' | 'fiches' | 'eleves' | 'pfmp' | 'banque' | 'catalogue' | 'aide' | 'confidentialite' | 'idees' | 'admin' | 'systeme';
 
 /** Rubriques de la barre d'onglets ; chaque rubrique regroupe des pages */
 const FAMILIES: Array<{ id: string; label: string; tabs: Array<[TabId, string]>; admin?: boolean }> = [
@@ -52,6 +54,7 @@ const lastIn = (famId: string, fallback: TabId): TabId => {
 
 const fromHash = (): TabId => {
   const h = window.location.hash.slice(1);
+  if (parseSystemHash(h)) return 'systeme';
   return h === 'systemes' || TABS.some(([id]) => id === h) ? (h as TabId) : 'accueil';
 };
 
@@ -410,6 +413,7 @@ function Shell() {
             {current === 'accueil' && <Home go={go} />}
             {current === 'semainier' && <Semainier />}
             {current === 'systemes' && <Systems />}
+            {current === 'systeme' && (() => { const p = parseSystemHash(window.location.hash); return p ? <SystemCard id={p.id} poste={p.poste} go={go} /> : null; })()}
             {current === 'edt' && <Timetable />}
             {current === 'occupation' && <Occupancy />}
             {current === 'maintenance' && <Maintenance />}

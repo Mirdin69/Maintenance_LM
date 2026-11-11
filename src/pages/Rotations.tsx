@@ -5,6 +5,7 @@ import { addDays, fmtShort, iso, mondayOf, parseISO } from '@/lib/dates';
 import { childrenOf } from '@/lib/subtp';
 import { capacity, proposeRotation, teamsOf, type RotationStation } from '@/lib/rotation';
 import { TEAM_LABEL, rotationWorkbook } from '@/lib/rotationExport';
+import { headcountAt } from '@/lib/headcount';
 import { studentsEnabled } from '@/lib/studentsFeature';
 import { Empty, Field, Options, downloadBlob, toCsv } from '@/components/ui';
 
@@ -15,11 +16,12 @@ export default function Rotations() {
   const [group, setGroup] = useState(GROUP_CODES[0]);
   const roster = useMemo(() => (on ? data.students : []).filter((s) => s.group_code === group).sort(byText((s) => s.name)).map((s) => s.name), [data.students, group, on]);
   const [count, setCount] = useState<number | null>(null);
-  const n = count ?? (roster.length || 24);
+  const [start, setStart] = useState(() => iso(mondayOf(new Date())));
+  const planned = headcountAt(data.headcounts, group, start);
+  const n = count ?? (roster.length || planned || 24);
   const [picked, setPicked] = useState<string[]>([]);
   const [postes, setPostes] = useState<Record<string, number>>({});
   const [team, setTeam] = useState<Record<string, number>>({});
-  const [start, setStart] = useState(() => iso(mondayOf(new Date())));
   const [step, setStep] = useState(7);
 
   const level = levelOfGroup(group);
@@ -60,7 +62,7 @@ export default function Rotations() {
       <p className="muted">Choisissez les TP à faire tourner : selon l’effectif, le nombre de postes de leurs systèmes et le travail en binôme, l’outil propose des sous-groupes et un planning où chacun passe sur chaque TP. Les postes viennent des systèmes en service liés au TP (modifiables ici).</p>
       <div className="tools no-print">
         <Field label="Groupe"><select className="in" value={group} onChange={(e) => { setGroup(e.target.value); setCount(null); setPicked([]); }}><Options items={GROUP_CODES.map((g) => [g, g])} /></select></Field>
-        <Field label={roster.length ? `Élèves (${roster.length} dans la liste)` : 'Nombre d’élèves'}><input className="in" type="number" min={1} max={60} value={n} onChange={(e) => setCount(Math.min(60, Math.max(1, Number(e.target.value) || 1)))} /></Field>
+        <Field label={roster.length ? `Élèves (${roster.length} dans la liste)` : planned ? `Élèves (${planned} au ${fmtShort(start)} d’après l’administration)` : 'Nombre d’élèves'}><input className="in" type="number" min={1} max={60} value={n} onChange={(e) => setCount(Math.min(60, Math.max(1, Number(e.target.value) || 1)))} /></Field>
         <Field label="Première séance"><input className="in" type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
         <Field label="Intervalle (jours)"><input className="in" type="number" min={1} max={60} value={step} onChange={(e) => setStep(Math.max(1, Number(e.target.value) || 7))} /></Field>
       </div>

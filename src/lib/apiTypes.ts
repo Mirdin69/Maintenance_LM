@@ -38,6 +38,8 @@ export interface Api {
   images: {
     upload(file: File): Promise<string>;
   };
+  /** La table (et ces colonnes) existe-t-elle ? Sert à vérifier les migrations appliquées */
+  probe(table: string, columns: string[]): Promise<'ok' | 'missing' | 'error'>;
   select<T>(table: string, q?: Query): Promise<T[]>;
   insert<T>(table: string, rows: Row | Row[]): Promise<T[]>;
   update(table: string, match: Match, patch: Row): Promise<void>;

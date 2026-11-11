@@ -2,11 +2,27 @@ import { useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
 import { PRIORITIES } from '@/lib/domain';
 import { useAct, useStore } from '@/state/store';
+import { useAuth } from '@/state/auth';
 import { Field, Options } from '@/components/ui';
 import { ImageField } from '@/components/ImageField';
 
 /** Signalement rapide d'une panne : crée l'intervention, avec photo, et peut mettre le système hors service */
-export function ReportFault({ onClose, systemId }: { onClose: () => void; systemId?: string }) {
+/** Bouton « Panne » rattaché à un système et à son contexte (TP, groupe, date) : ouvre le signalement prérempli */
+export function FaultButton({ systemId, context, label }: { systemId: string; context?: string; label?: string }) {
+  const [open, setOpen] = useState(false);
+  const { data } = useStore();
+  const { canWrite } = useAuth();
+  if (!canWrite) return null;
+  const name = data.systems.find((s) => s.id === systemId)?.name;
+  return (
+    <>
+      <button type="button" className="btn ghost sm no-print" onClick={() => setOpen(true)} aria-label={`Signaler une panne, ${name ?? 'système'}`}>⚠ {label ?? 'Panne'}</button>
+      {open && <ReportFault systemId={systemId} context={context} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+export function ReportFault({ onClose, systemId, context }: { onClose: () => void; systemId?: string; context?: string }) {
   const { data } = useStore();
   const act = useAct();
   const [photo, setPhoto] = useState('');
@@ -37,7 +53,7 @@ export function ReportFault({ onClose, systemId }: { onClose: () => void; system
           <form className="form" onSubmit={submit}>
             <Field label="Système *" wide><select className="in" name="system_id" required defaultValue={systemId ?? ''}><Options placeholder="Choisir…" items={data.systems.map((s) => [s.id, s.name])} /></select></Field>
             <Field label="Ce qui ne marche pas *" wide><input className="in" name="title" required maxLength={120} placeholder="Disjoncteur qui saute, afficheur éteint…" /></Field>
-            <Field label="Détails" wide><textarea className="in" name="description" maxLength={1000} /></Field>
+            <Field label="Détails" wide><textarea className="in" name="description" maxLength={1000} defaultValue={context ?? ''} /></Field>
             <Field label="Urgence"><select className="in" name="priority" defaultValue="h"><Options items={Object.entries(PRIORITIES).map(([k, v]) => [k, v.label])} /></select></Field>
             <ImageField label="Photo de la panne" value={photo} onChange={setPhoto} />
             <label className="row wide"><input type="checkbox" name="stop" defaultChecked /> Marquer le système hors service</label>

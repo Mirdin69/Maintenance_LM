@@ -16,8 +16,10 @@ import History from './admin/History';
 import BilanAdmin from './admin/BilanAdmin';
 import { STUDENTS_OFF_TIP, studentsEnabled } from '@/lib/studentsFeature';
 import RgpdAdmin from './admin/RgpdAdmin';
+import DatabaseAdmin from './admin/DatabaseAdmin';
+import HeadcountAdmin from './admin/HeadcountAdmin';
 
-export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'outils', 'domaines', 'calendrier', 'horaires', 'apparence', 'textes', 'budget', 'historique', 'bilan', 'rgpd'] as const;
+export const ADMIN_SECTIONS = ['comptes', 'systemes', 'eleves', 'salles', 'effectifs', 'outils', 'domaines', 'calendrier', 'horaires', 'apparence', 'textes', 'budget', 'historique', 'bilan', 'rgpd', 'base'] as const;
 type Section = (typeof ADMIN_SECTIONS)[number];
 
 export default function Admin() {
@@ -30,13 +32,14 @@ export default function Admin() {
       <PageHead tab="admin" title="Administration" />
       <div className="tools">
         <Seg<Section> label="Section" value={section} onChange={setSection} items={[
-          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves', ...(studentsOn ? [] : [{ off: STUDENTS_OFF_TIP }])] as [Section, string], ['salles', 'Salles'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['horaires', 'Horaires de TP'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'], ['rgpd', 'Confidentialité'],
+          ['comptes', pending ? `Comptes (${pending})` : 'Comptes'], ['systemes', 'Systèmes'], ['eleves', 'Élèves', ...(studentsOn ? [] : [{ off: STUDENTS_OFF_TIP }])] as [Section, string], ['salles', 'Salles'], ['effectifs', 'Effectifs'], ['outils', 'Outils'], ['domaines', 'Domaines'], ['calendrier', 'Calendrier'], ['horaires', 'Horaires de TP'], ['apparence', 'Apparence'], ['textes', 'Textes'], ['budget', 'Budget'], ['historique', 'Historique'], ['bilan', 'Bilan'], ['rgpd', 'Confidentialité'], ['base', 'Base de données'],
         ]} />
       </div>
       {section === 'comptes' && <AccountsAdmin />}
       {section === 'systemes' && <Systems />}
       {section === 'eleves' && (studentsOn ? <StudentsAdmin /> : <section className="panel"><h2>Fonction désactivée</h2><p>{STUDENTS_OFF_TIP}. Réactivation : Administration, Confidentialité.</p></section>)}
       {section === 'salles' && <RoomsAdmin />}
+      {section === 'effectifs' && <HeadcountAdmin />}
       {section === 'outils' && <ToolsAdmin />}
       {section === 'calendrier' && <CalendarAdmin />}
       {section === 'horaires' && <ScheduleAdmin />}
@@ -47,6 +50,7 @@ export default function Admin() {
       {section === 'historique' && <History />}
       {section === 'bilan' && <BilanAdmin />}
       {section === 'rgpd' && <RgpdAdmin />}
+      {section === 'base' && <DatabaseAdmin />}
     </>
   );
 }

@@ -1,10 +1,11 @@
+import { FaultButton } from '@/components/ReportFault';
 import { useMemo } from 'react';
 import { useStore } from '@/state/store';
 import { useAuth } from '@/state/auth';
 import { useNotes } from '@/components/Notifications';
 import { buildWarnings, isMyCell } from '@/lib/semainier';
 import { buildOccurrences } from '@/lib/occupancy';
-import { addDays, fmtShort, iso, mondayOf, minToHM } from '@/lib/dates';
+import { addDays, fmtDate, fmtShort, iso, mondayOf, minToHM } from '@/lib/dates';
 import { PRIORITIES, MAINT_STATUS, PURCHASE_STATUS, SYSTEM_STATES, eur } from '@/lib/domain';
 import { Chip, Empty, PageHead } from '@/components/ui';
 
@@ -63,7 +64,10 @@ export default function Home({ go }: { go: (tab: string) => void }) {
                 return (
                   <div key={c.group_code} className="row between">
                     <div><b>{c.group_code}</b> · {tp.code ?? tp.title}<span className="muted small"> {tp.title}</span>{tp.objective && <span className="muted small"> · {tp.objective}</span>}</div>
-                    {w && <span className="chip warn" title={w.join('\n')}>⚠ {w[0]}</span>}
+                    <span className="row" style={{ gap: 6 }}>
+                      {w && <span className="chip warn" title={w.join('\n')}>⚠ {w[0]}</span>}
+                      {tp.system_ids.slice(0, 3).map((sid) => <FaultButton key={sid} systemId={sid} label={systemById.get(sid)?.name ?? 'Panne'} context={`Constaté pendant ${tp.code ?? tp.title}, groupe ${c.group_code}, le ${fmtDate(c.day)}.`} />)}
+                    </span>
                   </div>
                 );
               })}

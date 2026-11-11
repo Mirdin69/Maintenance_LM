@@ -18,7 +18,7 @@ export interface PlanRow {
   competences: string[];
 }
 
-export interface ParsedPlanning { layout: 'edt' | 'tableau' | null; rows: PlanRow[]; problems: string[] }
+export interface ParsedPlanning { layout: 'edt' | 'semainier' | 'tableau' | null; rows: PlanRow[]; problems: string[] }
 
 export const norm = (x: string) => x.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[’']/g, ' ').replace(/\s+/g, ' ').trim();
 /** Sans parenthèses ni ponctuation : « Prod Ener (1) » = « prod ener » */
@@ -57,6 +57,8 @@ export function parseDate(raw: string, bounds: { from: string; to: string }): st
 
 const splitTeachers = (v: string) => v.split(/\s*(?:[/,;&+]| et )\s*/i).map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
 const parseComps = (v: string) => [...new Set((v.toUpperCase().match(/C\d{1,2}/g) ?? []).filter((c) => c in COMPETENCES))];
+/** Cellule d'un bloc : « 0 » (résultat de formule vide) et la répétition du titre d'une cellule fusionnée comptent pour du vide */
+const part = (v: string | undefined, ref: string) => { const t = (v ?? '').trim(); return t === '0' || t === ref ? '' : t; };
 const IGNORED = /^(vacances?|ferie|jour ferie|ferme|-+|x)$/;
 const partOf = (v: string): Part => { const n = norm(v); return /^(m|matin)/.test(n) ? 'M' : /^(a|am|apres)/.test(n) ? 'A' : 'J'; };
 
@@ -64,10 +66,27 @@ const partOf = (v: string): Part => { const n = norm(v); return /^(m|matin)/.tes
 function parseEdt(grid: string[][], bounds: { from: string; to: string }): PlanRow[] {
   const rows: PlanRow[] = [];
   let dates: Array<string | null> = [];
+  let monday: Date | null = null;
   for (let i = 0; i < grid.length; i++) {
+    // Titre de semaine : « EMPLOI DU TEMPS - SEMAINE 36 - du 01/09/2026 au 06/09/2026 » (sert aux jours dont l'en-tête n'a pas de date)
+    const wk = /du\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(grid[i][0] ?? '');
+    if (wk) {
+      const d = new Date(Date.UTC(Number(wk[3]), Number(wk[2]) - 1, Number(wk[1])));
+      d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+      monday = d;
+    }
     const first = norm(grid[i][0] ?? '');
     if (first.startsWith('groupe') || (grid[i].slice(1).some((c) => DAYS.some((d) => norm(c).startsWith(d))) && !first.includes('domaine'))) {
-      dates = grid[i].map((c, j) => (j === 0 ? null : parseDate(c, bounds)));
+      dates = grid[i].map((c, j) => {
+        if (j === 0) return null;
+        const own = parseDate(c, bounds);
+        if (own) return own;
+        const dn = DAYS.findIndex((d) => norm(c).startsWith(d));
+        if (dn < 0 || !monday) return null;
+        const d = new Date(monday);
+        d.setUTCDate(d.getUTCDate() + dn);
+        return d.toISOString().slice(0, 10);
+      });
       continue;
     }
     const m = /^(.*?)\s*\n\s*domaine\s*$/i.exec(grid[i][0] ?? '') ?? (/domaine\s*$/i.test(grid[i][0] ?? '') ? /^(.*?)\s*domaine\s*$/i.exec(grid[i][0]) : null);
@@ -86,10 +105,51 @@ function parseEdt(grid: string[][], bounds: { from: string; to: string }): PlanR
       if (j === 0 || !day || !code || IGNORED.test(loose(code))) return;
       rows.push({
         line: `Ligne ${i + 1}, colonne ${j + 1}`, day, group: g.code, part: 'J', ref: code,
-        title: (block.tp?.[j] ?? '').trim(), domainRef: code, teachers: splitTeachers(block.enseignant?.[j] ?? ''), room: '',
-        objective: (block.objectif?.[j] ?? '').trim(), competences: parseComps(block.competences?.[j] ?? ''),
+        title: part(block.tp?.[j], code), domainRef: code, teachers: splitTeachers(part(block.enseignant?.[j], code)), room: '',
+        objective: part(block.objectif?.[j], code), competences: parseComps(part(block.competences?.[j], code)),
       });
     });
+  }
+  return rows;
+}
+
+/**
+ * Feuille « SEMAINIER » : mois côte à côte et empilés (ligne « SEPTEMBRE 2026 », puis « semaine | jour | date | groupes… »),
+ * cinq lignes par jour : domaine (ou TP), enseignant, TP / activité, objectif, compétences.
+ */
+function parseSemainierSheet(grid: string[][]): PlanRow[] {
+  const rows: PlanRow[] = [];
+  const cell = (r: number, c: number) => (grid[r]?.[c] ?? '').trim();
+  for (let h = 1; h < grid.length; h++) {
+    for (let c = 0; c < (grid[h]?.length ?? 0); c++) {
+      if (norm(cell(h, c)) !== 'semaine' || norm(cell(h, c + 1)) !== 'jour' || norm(cell(h, c + 2)) !== 'date') continue;
+      const mm = /([a-zéû]+)\s+(\d{4})/i.exec(cell(h - 1, c));
+      const month = mm ? MONTHS.indexOf(norm(mm[1])) + 1 : 0;
+      if (!month) continue;
+      const groups: Array<{ col: number; code: string }> = [];
+      for (let k = c + 3; k < grid[h].length && cell(h, k); k++) {
+        if (norm(cell(h, k)) === 'semaine') break;
+        const g = parseGroup(cell(h, k));
+        if (g) groups.push({ col: k, code: g.code });
+      }
+      // Lignes de données : jusqu'à la prochaine ligne de mois ou la fin du bloc
+      let r = h + 1;
+      while (r < grid.length && /^\d+$/.test(cell(r, c + 2))) {
+        const dayNum = Number(cell(r, c + 2));
+        const start = r;
+        while (r < grid.length && cell(r, c + 2) === String(dayNum) && cell(r, c) === cell(start, c) && cell(r, c + 1) === cell(start, c + 1)) r++;
+        const date = `${mm![2]}-${pad(month)}-${pad(dayNum)}`;
+        for (const g of groups) {
+          const line = (k: number) => (start + k < r ? cell(start + k, g.col) : '');
+          const ref = line(0);
+          if (!ref || IGNORED.test(loose(ref))) continue;
+          rows.push({
+            line: `Ligne ${start + 1}`, day: date, group: g.code, part: 'J', ref, title: part(line(2), ref), domainRef: ref, teachers: splitTeachers(part(line(1), ref)), room: '',
+            objective: part(line(3), ref), competences: parseComps(part(line(4), ref)),
+          });
+        }
+      }
+    }
   }
   return rows;
 }
@@ -126,6 +186,12 @@ function parseTable(grid: string[][], bounds: { from: string; to: string }, prob
 /** Lit une feuille (lignes de texte) : format emploi du temps ou tableau, détecté automatiquement */
 export function parsePlanning(grid: string[][], bounds: { from: string; to: string }): ParsedPlanning {
   const problems: string[] = [];
+  const isSemainier = grid.some((r) => r.some((c, j) => norm(c) === 'semaine' && norm(r[j + 1] ?? '') === 'jour' && norm(r[j + 2] ?? '') === 'date'));
+  if (isSemainier) {
+    const rows = parseSemainierSheet(grid);
+    if (!rows.length) problems.push('Aucun cours reconnu dans cette feuille (colonnes semaine / jour / date).');
+    return { layout: 'semainier', rows, problems };
+  }
   const isEdt = grid.some((r) => /domaine\s*$/i.test(r[0] ?? '') && /\S/.test(r[0] ?? '') && parseGroupFromBlock(r[0]));
   if (isEdt) {
     const rows = parseEdt(grid, bounds);
@@ -166,8 +232,12 @@ export function domainGuess(v: string, domains: Record<string, string> = DOMAINS
 export function tpMatch(ref: string, title: string, tps: Tp[]): Tp | undefined {
   const r = loose(ref);
   const t = loose(title);
-  return tps.find((x) => (x.code && loose(x.code) === r) || loose(x.title) === r || (t && loose(x.title) === t) || (x.code && loose(x.code) === t));
+  // Avec un titre (emploi du temps : « Prod Ener (1) » est le domaine, le titre est le vrai TP), c'est le titre qui compte
+  return tps.find((x) => (x.code && loose(x.code) === r) || (t ? loose(x.title) === t : loose(x.title) === r));
 }
+
+/** Identifiant d'un TP inconnu : son titre s'il y en a un, sinon le texte de la cellule */
+export const tpKey = (r: Pick<PlanRow, 'ref' | 'title'>) => loose(r.title || r.ref);
 
 export const isLabel = (ref: string) => SPECIAL_LABELS.some((l) => loose(l) === loose(ref));
 
@@ -195,7 +265,7 @@ export function findUnknowns(rows: PlanRow[], cat: Catalog): Unknowns {
   const rooms = new Set<string>();
   for (const r of rows) {
     if (!isLabel(r.ref) && !tpMatch(r.ref, r.title, cat.tps)) {
-      const key = loose(r.ref);
+      const key = tpKey(r);
       const cur = tps.get(key) ?? { key, ref: r.ref, title: r.title || r.ref, domainRef: r.domainRef, level: parseGroup(r.group)?.level ?? 'Seconde', rows: [] };
       cur.rows.push(r);
       tps.set(key, cur);
@@ -248,11 +318,11 @@ export function buildCells(rows: PlanRow[], cat: Catalog, dec: Decisions, existi
       const known = tpMatch(r.ref, r.title, cat.tps);
       if (known) tp_id = known.id;
       else {
-        const d = dec.tps[loose(r.ref)] ?? { mode: 'create' as const };
+        const d = dec.tps[tpKey(r)] ?? { mode: 'create' as const };
         if (d.mode === 'skip') { skipped++; continue; }
         if (d.mode === 'label') label = (r.title || r.ref).slice(0, 60);
         else if (d.mode === 'existing') tp_id = d.id;
-        else tp_id = dec.created[loose(r.ref)] ?? null;
+        else tp_id = dec.created[tpKey(r)] ?? null;
         if (!tp_id && !label) { skipped++; continue; }
       }
     }

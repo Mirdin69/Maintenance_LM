@@ -12,6 +12,7 @@ import { useMedia } from '@/hooks/useMedia';
 import type { Level, Part, PlanningCell, Tp } from '@/lib/types';
 import { effectiveTps } from '@/lib/subtp';
 import { Lundi } from './Lundi';
+import { FaultButton } from '@/components/ReportFault';
 import { PlanningImport } from '@/components/PlanningImport';
 import { Chip, Empty, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
 
@@ -485,13 +486,14 @@ function Needs() {
       </div>
       {all.length === 0 ? <Empty>Aucun TP de cette semaine n’a de système ou d’outil associé. Associez-les dans Planning des TP, Catalogue.</Empty> : (
         <div className="scroll"><table className="tbl">
-          <thead><tr><th>Élément</th><th>Type</th><th className="num">Disponible</th><th>Groupes</th><th>TP</th></tr></thead>
+          <thead><tr><th>Élément</th><th>Type</th><th className="num">Disponible</th><th>Groupes</th><th>TP</th><th className="no-print" /></tr></thead>
           <tbody>{all.map((r) => (
             <tr key={r.kind + r.id}>
               <td><b>{r.info!.label}</b>{r.info!.bad && <span className="chip bad" style={{ marginLeft: 6 }}>indisponible</span>}</td>
               <td>{r.kind}</td><td className="num">{r.info!.qty}</td>
               <td>{r.groups.join(', ')}{r.groups.length > 1 && <span className="chip warn" style={{ marginLeft: 6 }}>{r.groups.length} groupes</span>}</td>
               <td>{[...new Set(r.uses.map((u) => u.tp))].join(', ')}</td>
+              <td className="no-print">{r.kind === 'Système' && <FaultButton systemId={r.id} context={`Constaté pendant : ${[...new Set(r.uses.map((u) => u.tp))].join(', ')} (${r.groups.join(', ')}), semaine du ${fmtShort(days[0])}.`} />}</td>
             </tr>
           ))}</tbody>
         </table></div>

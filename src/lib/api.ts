@@ -101,6 +101,14 @@ export const api: Api = {
     },
   },
 
+  async probe(table, columns) {
+    if (!client) return 'error';
+    const { error } = await client.from(table).select(columns.join(',')).limit(1);
+    if (!error) return 'ok';
+    // 42P01 / PGRST205 : table absente ; 42703 / PGRST204 : colonne absente
+    return /does not exist|could not find|schema cache/i.test(error.message) || ['42P01', '42703', 'PGRST205', 'PGRST204'].includes(error.code ?? '') ? 'missing' : 'error';
+  },
+
   async select<T>(table: string, q: Query = {}) {
     const rows: T[] = [];
     const order = q.order ?? (PK[table] ?? ['id']).map((c) => [c, 'asc'] as [string, 'asc' | 'desc']);

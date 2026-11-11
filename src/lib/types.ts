@@ -195,6 +195,17 @@ export interface Setting {
   value: string;
 }
 
+/** Effectif d'un groupe : initial (rentrée), puis arrivées et départs datés */
+export interface Headcount {
+  id: string;
+  group_code: string;
+  day: string;
+  kind: 'initial' | 'arrivee' | 'depart';
+  n: number;
+  note: string | null;
+  created_at: string;
+}
+
 export interface CalendarPeriod {
   id: string;
   kind: 'vacances' | 'ferie' | 'autre';
@@ -324,6 +335,7 @@ export interface DataSet {
   tools: Tool[];
   settings: Setting[];
   calendar_periods: CalendarPeriod[];
+  headcounts: Headcount[];
   planning_cells: PlanningCell[];
   fiches: Fiche[];
   maintenance_plans: MaintenancePlan[];
