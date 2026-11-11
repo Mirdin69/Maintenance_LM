@@ -903,3 +903,16 @@ describe('base de données', () => {
     expect(screen.getByRole('button', { name: /Copier le SQL de la migration 0015/ })).toBeInTheDocument();
   });
 });
+
+describe('fiche système (QR code)', () => {
+  it('ouvre la fiche du système depuis son adresse et permet de signaler une panne', async () => {
+    const { api } = await import('@/lib/api');
+    configureDemo({ as: 'prof' as never, studentsOn: true });
+    const [sys] = await api.select<{ id: string; name: string }>('systems');
+    window.location.hash = `systeme/${sys.id}/2`;
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: new RegExp(`${sys.name} · Poste 2`) })).toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole('button', { name: /Signaler une panne/ })[0]);
+    expect(await screen.findByRole('dialog', { name: 'Signaler une panne' })).toBeInTheDocument();
+  });
+});

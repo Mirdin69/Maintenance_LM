@@ -101,6 +101,27 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - Dans le catalogue, le champ **« Sous-TP de (TP principal) »** rattache un TP à un principal (un seul niveau). Le semainier et le planning du lundi ne proposent que les **TP principaux** ; un principal regroupe les systèmes, outils et compétences de ses sous-TP (alertes, besoins matériel, vue semaine).
 - Dans **Rotations des groupes**, cocher un principal coche tous ses sous-TP, qui deviennent les postes de la rotation (on peut décocher un sous-TP). Supprimer un principal libère ses sous-TP, qui redeviennent des TP principaux. Nécessite la migration `0014_sous_tp.sql`.
 
+## Import de planning : feuilles du classeur du lycée et aperçu
+
+- Le classeur « Semainier MELEC » est lu tel quel : la feuille **SEMAINIER** (mois côte à côte et empilés, en-têtes « SEPTEMBRE 2026 » puis « semaine | jour | date | groupes », cinq lignes par jour : domaine, enseignant, TP / activité, objectif, compétences) et les feuilles **EDT_ANNEE / EDT_SEMAINE** (une semaine par bloc ; un jour sans date dans l'en-tête reprend celle du titre « du 07/09/2026 au 13/09/2026 »). La feuille qui donne le plus de cours est choisie d'office. Les « 0 » issus de formules vides et les cellules fusionnées répétées sont ignorés.
+- Quand une cellule « domaine » (par exemple « Prod Ener (1) ») est accompagnée d'un titre de TP, c'est le **titre** qui désigne le TP à créer ou à associer.
+- Un **aperçu** liste chaque cours lu (date, groupe, TP, enseignants, salle) avec les lignes à vérifier en surbrillance (TP inconnu, enseignant sans compte, salle inconnue) avant tout import.
+
+## Effectifs des groupes
+
+- **Administration, Effectifs** : effectif initial par groupe, puis **arrivées et départs datés** ; l'effectif se lit à n'importe quelle date (initial + arrivées − départs jusqu'à ce jour). Les rotations de TP reprennent l'effectif à la date de la première séance. Nécessite la migration `0015_effectifs.sql`.
+
+## Base de données (migrations)
+
+- **Administration, Base de données** : la page vérifie quelles migrations sont appliquées (présence des tables et colonnes qu'elles créent), affiche celles qui manquent et copie leur SQL (une par une ou toutes d'un coup) pour l'éditeur SQL de Supabase, avec un lien direct vers l'éditeur. Les migrations qui ne créent que des fonctions ou des règles (0004, 0006, 0012) sont signalées « non vérifiables ».
+
+## Agenda, pannes et QR codes
+
+- **Mes cours (agenda .ics)** (Semainier, vue année) : vos cours de l'année (cases où vous figurez, créneaux et séances dont vous êtes l'enseignant) avec salles et compétences, à importer dans Google Agenda, Outlook ou le téléphone (heure de Paris).
+- **Reprise d'une année sur l'autre** : « Préparer la nouvelle année scolaire » reporte aussi les enseignants et les salles supplémentaires de chaque case.
+- **Panne depuis le planning** : bouton « ⚠ Panne » sur « Ma journée » (accueil), sur les séances du planning et sur les besoins en matériel de la semaine ; le signalement s'ouvre avec le système choisi et le contexte (TP, groupe, date).
+- **QR codes** : Administration, Systèmes, « Étiquettes QR » imprime une planche (un QR par système, ou par poste). Le QR ouvre la **fiche du système** (`#systeme/<id>`) : état, interventions ouvertes, TP concernés, signalement d'une panne.
+
 ## Salles et occupation
 
 - **Salles** (Administration, gestionnaire) : nom, bâtiment, type, places, option *partagée* (grand atelier : plusieurs groupes en même temps sans conflit).

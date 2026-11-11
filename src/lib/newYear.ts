@@ -63,7 +63,7 @@ export const onlyNewPeriods = (found: NewPeriod[], existing: CalendarPeriod[]) =
 
 /* ───────── Préparation d'une nouvelle année à partir de la précédente ───────── */
 
-export interface CellCopy { day: string; group: string; value: string; part?: Part; seq?: number; room?: string | null }
+export interface CellCopy { day: string; group: string; value: string; part?: Part; seq?: number; room?: string | null; teacherIds?: string[]; teacherLabels?: string[]; extraRooms?: string[] }
 export interface HolidayDiff { label: string; before: string; after: string; status: 'identique' | 'decale' | 'nouveau' | 'absent' }
 
 export interface YearPlan {
@@ -117,7 +117,7 @@ export function planNewYear(args: {
     if (p) { blocked.push({ day, group: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1, value, why: p.label }); continue; }
     const ex = target.get(cellKey(day, c.group_code, c.part ?? 'J', c.seq ?? 1));
     if (ex && (ex.tp_id || ex.label) && !args.overwrite) { kept++; continue; }
-    ops.push({ day, group: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1, value, room: c.room_id ?? null });
+    ops.push({ day, group: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1, value, room: c.room_id ?? null, teacherIds: c.teacher_ids ?? [], teacherLabels: c.teacher_labels ?? [], extraRooms: c.extra_room_ids ?? [] });
   }
 
   const vac = periods.filter((p) => p.kind === 'vacances');

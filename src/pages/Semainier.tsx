@@ -12,6 +12,9 @@ import { useMedia } from '@/hooks/useMedia';
 import type { Level, Part, PlanningCell, Tp } from '@/lib/types';
 import { effectiveTps } from '@/lib/subtp';
 import { Lundi } from './Lundi';
+import { useToast } from '@/state/toast';
+import { buildIcs, myEvents } from '@/lib/ical';
+import { buildOccurrences } from '@/lib/occupancy';
 import { FaultButton } from '@/components/ReportFault';
 import { PlanningImport } from '@/components/PlanningImport';
 import { Chip, Empty, PageHead, Seg, downloadBlob, toCsv } from '@/components/ui';
@@ -63,6 +66,7 @@ interface CommonProps {
 
 function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrite }: CommonProps & { tps: Tp[]; from: string; to: string; level: Level; canWrite: boolean }) {
   const { data, who } = useStore();
+  const toast = useToast();
   const { profile } = useAuth();
   const act = useAct();
   const tpById = useMemo(() => effectiveTps(data.tps), [data.tps]);
@@ -171,6 +175,14 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
     apply(ops, `${ops.length} case${ops.length > 1 ? 's' : ''} copiée${ops.length > 1 ? 's' : ''}.`);
   };
 
+  /** Mes cours de l'année scolaire au format agenda (.ics) */
+  const exportIcs = () => {
+    if (!profile) return;
+    const occs = buildOccurrences(data.timetable_slots, data.sessions, from, to).occs;
+    const events = myEvents({ cells: data.planning_cells, tpById, me: profile, from, to, roomName, occs });
+    if (!events.length) { toast('Aucun cours à vous sur cette période : cochez-vous sur les cases du semainier (« Enseignants ») ou rattachez-vous à des TP.'); return; }
+    downloadBlob(`mes-cours-${from.slice(0, 4)}-${to.slice(0, 4)}.ics`, new Blob([buildIcs(events, `Mes cours ${from.slice(0, 4)}-${to.slice(0, 4)}`)], { type: 'text/calendar;charset=utf-8' }));
+  };
   const exportCsv = () => {
     const rows: Array<Array<string>> = [['Semaine', 'Jour', 'Date', ...groups]];
     for (const m of months) for (const d of m.days) {
@@ -205,6 +217,7 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
         </div>
         <div className="row">
           <button className="btn ghost sm" onClick={exportCsv}>Exporter en CSV</button>
+          {profile && <button className="btn ghost sm" onClick={exportIcs} title="Vos cours de l’année, à importer dans Google Agenda, Outlook ou le téléphone">Mes cours (agenda .ics)</button>}
           <button className="btn ghost sm" onClick={() => window.print()}>Imprimer</button>
         </div>
       </div>

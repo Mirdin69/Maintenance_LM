@@ -25,7 +25,7 @@ describe('copie de semaine', () => {
   it('copie lundi-vendredi, respecte les cases remplies et les jours bloqués', () => {
     const cells = indexCells([cell('2026-10-05', 'G', 'a'), cell('2026-10-06', 'G', null, 'Évaluation'), cell('2026-10-12', 'G', 'z'), cell('2026-10-14', 'G', 'a')]);
     const base = { overwrite: false, blocked: (d: string) => d === '2026-10-14' };
-    expect(copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', base)).toEqual([{ day: '2026-10-13', group: 'G', part: 'J', seq: 1, room: null, value: 'lab:Évaluation' }]);
+    expect(copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', base)).toEqual([{ day: '2026-10-13', group: 'G', part: 'J', seq: 1, room: null, value: 'lab:Évaluation', teacherIds: [], teacherLabels: [], extraRooms: [] }]);
     const ow = copyWeekOps(cells, ['G'], '2026-10-05', '2026-10-12', { ...base, overwrite: true });
     expect(ow.map((o) => o.day)).toEqual(['2026-10-12', '2026-10-13']);
   });
@@ -133,7 +133,7 @@ describe('demi-journées du semainier', () => {
   it('la copie de semaine garde la partie de journée et la salle', () => {
     const c = { ...cell('2026-10-05', 'G', 'a', null, 'A'), room_id: 'r1' };
     const ops = copyWeekOps(indexCells([c]), ['G'], '2026-10-05', '2026-10-12', { overwrite: false, blocked: () => false });
-    expect(ops).toEqual([{ day: '2026-10-12', group: 'G', part: 'A', seq: 1, room: 'r1', value: 'tp:a' }]);
+    expect(ops).toEqual([{ day: '2026-10-12', group: 'G', part: 'A', seq: 1, room: 'r1', value: 'tp:a', teacherIds: [], teacherLabels: [], extraRooms: [] }]);
   });
   it('deux avertissements de système ne se mélangent pas entre matin et après-midi', () => {
     const tps = new Map([['a', { system_ids: ['s1'] }], ['b', { system_ids: ['s1'] }]]);
@@ -462,5 +462,36 @@ describe('liste des migrations', () => {
     expect(MIGRATIONS.length).toBeGreaterThanOrEqual(15);
     expect(MIGRATIONS.map((m) => m.id)).toEqual([...MIGRATIONS.map((m) => m.id)].sort());
     for (const m of MIGRATIONS) { expect(m.title).not.toBe(m.id); expect(m.sql.length).toBeGreaterThan(20); }
+  });
+});
+
+describe('export agenda (.ics)', () => {
+  it('produit mes cours, avec l’horaire de la demi-journée et la salle, et échappe le texte', async () => {
+    const { buildIcs, myEvents } = await import('@/lib/ical');
+    const me = { id: 'me', email: 'a@lamache.org', full_name: 'Alexandre V' } as never;
+    const cell = (group: string, seq: number, ids: string[]) => ({ day: '2026-11-17', group_code: group, part: 'M', seq, tp_id: 't', label: null, note: null, room_id: 'r1', extra_room_ids: ['r2'], teacher_ids: ids, teacher_labels: [] }) as never;
+    const tpById = new Map([['t', { id: 't', code: 'P1', title: 'Câblage, fiches', teacher_id: 'autre', teacher_label: null, objective: 'Câbler', competences: ['C1'] }]]) as never;
+    const ev = myEvents({ cells: [cell('2PB1.1', 1, ['me']), cell('2PB1.1', 2, ['autre']), cell('2PB1.2', 1, [])], tpById, me, from: '2026-09-01', to: '2027-07-04', roomName: (id) => (id === 'r1' ? 'A101' : 'A102'), occs: [] });
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ date: '2026-11-17', start: 7 * 60 + 45, location: 'A101 + A102' });
+    expect(ev[0].end).toBeLessThan(11 * 60 + 40);
+    const ics = buildIcs(ev, 'Mes cours', new Date('2026-11-11T08:00:00Z'));
+    expect(ics).toContain('BEGIN:VCALENDAR');
+    expect(ics).toContain('DTSTART;TZID=Europe/Paris:20261117T0745');
+    expect(ics).toContain('SUMMARY:2PB1.1 · P1 Câblage\\, fiches');
+    expect(ics.split('\r\n').every((l) => l.length <= 75)).toBe(true);
+  });
+});
+
+describe('adresses QR des systèmes', () => {
+  it('construit et relit l’adresse d’un système ou d’un poste', async () => {
+    const { systemUrl, parseSystemHash } = await import('@/lib/qr');
+    const id = '0b1c2d3e-1111-4222-8333-444455556666';
+    expect(systemUrl(id, undefined, 'https://parc.example/app')).toBe(`https://parc.example/app#systeme/${id}`);
+    expect(systemUrl(id, 3, 'https://parc.example/app')).toBe(`https://parc.example/app#systeme/${id}/3`);
+    expect(parseSystemHash(`#systeme/${id}/3`)).toEqual({ id, poste: 3 });
+    expect(parseSystemHash(`#systeme/${id}`)).toEqual({ id, poste: null });
+    expect(parseSystemHash('#catalogue')).toBeNull();
+    expect(parseSystemHash('#systeme/<script>')).toBeNull();
   });
 });

@@ -81,11 +81,16 @@ export const hoursOf = (tps: Tp[], cells: PlanningCell[]) => {
 };
 
 /** Une écriture dans le semainier : valeur vide = case effacée */
-export interface CellOp { day: string; group: string; value: string; part?: Part; seq?: number; room?: string | null }
+export interface CellOp {
+  day: string; group: string; value: string; part?: Part; seq?: number; room?: string | null;
+  /** Enseignants de la case et salles supplémentaires : écrits seulement s'ils sont précisés */
+  teacherIds?: string[]; teacherLabels?: string[]; extraRooms?: string[];
+}
 
 /** Ligne de la table planning_cells correspondant à une écriture (la salle n'est écrite que si elle est précisée) */
 export function rowOfOp(o: CellOp) {
-  return { day: o.day, group_code: o.group, part: o.part ?? 'J', seq: o.seq ?? 1, ...(o.room !== undefined ? { room_id: o.room } : {}), ...cellPatch(o.value) };
+  return { day: o.day, group_code: o.group, part: o.part ?? 'J', seq: o.seq ?? 1, ...(o.room !== undefined ? { room_id: o.room } : {}),
+    ...(o.teacherIds ? { teacher_ids: o.teacherIds } : {}), ...(o.teacherLabels ? { teacher_labels: o.teacherLabels } : {}), ...(o.extraRooms ? { extra_room_ids: o.extraRooms } : {}), ...cellPatch(o.value) };
 }
 export const CONFLICT_COLS = 'day,group_code,part,seq';
 
@@ -141,7 +146,7 @@ export function copyWeekOps(
         const value = cellValue(c);
         if (!value) continue;
         if (cells.get(cellKey(dst, g, part, seq)) && !opts.overwrite) continue;
-        ops.push({ day: dst, group: g, part, seq, value, room: c?.room_id ?? null });
+        ops.push({ day: dst, group: g, part, seq, value, room: c?.room_id ?? null, teacherIds: c?.teacher_ids ?? [], teacherLabels: c?.teacher_labels ?? [], extraRooms: c?.extra_room_ids ?? [] });
       }
     }
   }

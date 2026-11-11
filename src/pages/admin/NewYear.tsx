@@ -81,7 +81,7 @@ export function NewYear() {
   return (
     <section className="panel stack">
       <h2>Préparer la nouvelle année scolaire</h2>
-      <p className="muted">Reprend le semainier {prevFrom.slice(0, 4)}-{prevTo.slice(0, 4)} comme modèle : chaque case revient le même jour de la même semaine (depuis la rentrée). Les cases qui tombent sur des vacances ou des jours fériés de la nouvelle année sont signalées, pas copiées. Importez d’abord les vacances de la nouvelle année.</p>
+      <p className="muted">Reprend le semainier {prevFrom.slice(0, 4)}-{prevTo.slice(0, 4)} comme modèle : chaque case revient le même jour de la même semaine (depuis la rentrée), avec sa salle (et ses salles supplémentaires), ses enseignants et sa séquence ou son TP. Les cases qui tombent sur des vacances ou des jours fériés de la nouvelle année sont signalées, pas copiées. Importez d’abord les vacances de la nouvelle année.</p>
       <div className="tools">
         <Field label="Rentrée de la nouvelle année"><input className="in" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
         <Field label="Fin d’année"><input className="in" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
