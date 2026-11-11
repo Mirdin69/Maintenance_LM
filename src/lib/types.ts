@@ -74,7 +74,7 @@ export interface Tp {
   pair_size: number;
   /** TP principal, si celui-ci est un sous-TP */
   parent_id?: string | null;
-  /** Salle de base : reprise dans le semainier quand la case n'a pas de salle propre */
+  /** Salle conseillée : reprise dans le semainier quand la case n'a pas de salle propre */
   room_id?: string | null;
   created_at: string;
 }

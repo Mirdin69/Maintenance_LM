@@ -125,12 +125,30 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
     });
   };
 
+  /** Affecte une salle conseillée à un TP qui n'en avait pas (annulable) */
+  const setTpRoom = (tpId: string, room: string) =>
+    void act(() => api.update('tps', { id: tpId }, { room_id: room }), {
+      ok: 'Salle conseillée enregistrée pour ce TP.', tables: ['tps'], undo: () => api.update('tps', { id: tpId }, { room_id: null }),
+    });
+
   /** Change la salle d'une case (annulable) */
-  const setRoom = (c: PlanningCell, room: string) =>
+  const setRoom = (c: PlanningCell, room: string) => {
+    const tp = c.tp_id ? tpById.get(c.tp_id) : undefined;
+    const propose = !!room && !!tp && !tp.room_id;
     void act(() => api.update('planning_cells', { day: c.day, group_code: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1 }, { room_id: room || null }), {
       ok: room ? 'Salle modifiée.' : 'Salle retirée.', tables: ['planning_cells'],
       undo: () => api.update('planning_cells', { day: c.day, group_code: c.group_code, part: c.part ?? 'J', seq: c.seq ?? 1 }, { room_id: c.room_id ?? null }),
+    }).then(() => {
+      if (!propose || !tp) return;
+      const rn = roomName(room);
+      toast(`${rn} comme salle conseillée de « ${tp.code ?? tp.title} » ?`, 'ok', {
+        label: 'Affecter au TP',
+        run: async () => { await act(() => api.update('tps', { id: tp.id }, { room_id: room }), {
+          ok: `Salle conseillée du TP : ${rn}.`, tables: ['tps'], undo: () => api.update('tps', { id: tp.id }, { room_id: null }),
+        }); },
+      });
     });
+  };
 
   const drop = (e: React.DragEvent, day: string, group: string, part: Part) => {
     e.preventDefault();
@@ -289,11 +307,16 @@ function Year({ groups, tps, cells, weekdays, dayParts, from, to, level, canWrit
                                 </select>
                                 {c && value && (canWrite ? (
                                   <select className="pc-room" value={c.room_id ?? ''} aria-label={`Salle, ${where}`} onChange={(e) => setRoom(c, e.target.value)}>
-                                    <option value="">{tp?.room_id ? `Salle du TP (${roomName(tp.room_id)})` : 'Salle…'}</option>
+                                    <option value="">{tp?.room_id ? `Salle conseillée (${roomName(tp.room_id)})` : 'Salle…'}</option>
                                     {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                                     {c.room_id && !rooms.some((r) => r.id === c.room_id) && <option value={c.room_id}>{roomName(c.room_id)}</option>}
                                   </select>
                                 ) : cellRoomId(c, tp) ? <span className="who">{roomName(cellRoomId(c, tp))}</span> : null)}
+                                {c && value && canWrite && tp && c.room_id && !tp.room_id && (
+                                  <button type="button" className="btn sm ghost no-print" aria-label={`Définir ${roomName(c.room_id)} comme salle conseillée du TP, ${where}`}
+                                    title="Ce TP n'a pas de salle conseillée : l'affecter à toutes ses cases sans salle propre"
+                                    onClick={() => setTpRoom(tp.id, c.room_id!)}>Définir « {roomName(c.room_id)} » comme salle conseillée du TP</button>
+                                )}
                                 {c && value && canWrite && cellRoomId(c, tp) && (
                                   <details className="pc-teachers no-print">
                                     <summary aria-label={`Autres salles, ${where}`}>Autres salles{c.extra_room_ids?.length ? ` (${c.extra_room_ids.length})` : ''}</summary>

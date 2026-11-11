@@ -45,7 +45,7 @@ export function isMine(tp: Pick<Tp, 'teacher_id' | 'teacher_label'> | undefined,
  * Le cours (une case du semainier) est-il à moi ? Si la case précise ses enseignants (jour et groupe par groupe),
  * eux seuls comptent ; sinon c'est l'enseignant du TP.
  */
-/** Salle principale d'une case : la sienne si elle est renseignée, sinon la salle de base du TP */
+/** Salle principale d'une case : la sienne si elle est renseignée, sinon la salle conseillée du TP */
 export function cellRoomId(c: Pick<PlanningCell, 'room_id'> | undefined, tp: Pick<Tp, 'room_id'> | undefined): string | null {
   return c?.room_id || tp?.room_id || null;
 }

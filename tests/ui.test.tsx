@@ -336,6 +336,19 @@ describe('nouvelles fonctions', () => {
     await waitFor(() => expect((screen.getAllByRole('combobox', { name: /^2PB1\.1,/ })[0] as HTMLSelectElement).value).toBe(before));
   });
 
+  it('une salle choisie dans le planning peut être proposée comme salle conseillée du TP', async () => {
+    await open('prof', 'semainier');
+    const cell = (await screen.findAllByRole('combobox', { name: /^2PB1\.1,/ }))[0] as HTMLSelectElement;
+    const tpOpt = Array.from(cell.options).find((o) => o.value.startsWith('tp:'))!;
+    await userEvent.selectOptions(cell, tpOpt.value);
+    const room = (await screen.findAllByRole('combobox', { name: /^Salle, 2PB1\.1,/ }))[0] as HTMLSelectElement;
+    await userEvent.selectOptions(room, room.options[1].value);
+    await userEvent.click(await screen.findByRole('button', { name: /comme salle conseillée du TP/ }));
+    const tpId = tpOpt.value.slice(3);
+    await waitFor(async () => expect((await api.select<{ id: string; room_id: string | null }>('tps')).find((t) => t.id === tpId)?.room_id).toBe(room.options[1].value));
+    await waitFor(() => expect(screen.queryByRole('button', { name: /comme salle conseillée du TP/ })).toBeNull());
+  });
+
   it('copie une semaine vers la suivante', async () => {
     await open('prof', 'semainier');
     await userEvent.click(await screen.findByText('Copier une semaine vers une autre'));
@@ -650,8 +663,10 @@ describe('demi-journées, salle et carrousel', () => {
     await open('prof', 'semainier');
     const room = (await screen.findAllByRole('combobox', { name: /^Salle, 2PB1\.1,/ }))[0];
     await userEvent.selectOptions(room, 'A101');
-    expect(await screen.findByText('Salle modifiée.')).toBeInTheDocument();
     await waitFor(() => expect((screen.getAllByRole('combobox', { name: /^Salle, 2PB1\.1,/ })[0] as HTMLSelectElement).selectedOptions[0].textContent).toBe('A101'));
+    // le TP n'a pas de salle conseillée : le choix est proposé à l'affectation
+    await userEvent.click(await screen.findByRole('button', { name: 'Affecter au TP' }));
+    expect(await screen.findByText(/Salle conseillée du TP : A101/)).toBeInTheDocument();
   });
   it('génère le carrousel d’une demi-journée et remplit le semainier', async () => {
     await open('admin', 'edt');

@@ -96,9 +96,9 @@ Application web pour les enseignants du bac pro MELEC : parc de systèmes, **sal
 - **Plusieurs salles pour un cours** : une fois la salle principale choisie, « Autres salles » permet d'en cocher jusqu'à 3 de plus (rotations en ateliers). Toutes sont affichées (semainier, export CSV) et comptées dans l'occupation des salles. Nécessite la migration `0013_salles_multiples.sql`.
 - **Première : des séquences plutôt que des TP.** Dans la vue année de la Première, la liste d'une case propose en tête les **séquences** créées dans Fiches (celles de Première ou sans niveau) ; le nom de la séquence est inscrit dans la case. Les TP restent disponibles, et la répartition des élèves sur les TP se fait dans « Rotations des groupes ».
 
-## Salle de base d'un TP
+## Salle conseillée d'un TP
 
-- Dans le catalogue, un TP peut avoir une **salle de base**. Dans le semainier, une case dont la salle est vide prend automatiquement celle du TP (affichage, export CSV, agenda iCal, occupation des salles). La salle reste modifiable case par case : choisir une autre salle dans la liste de la case la remplace ; « Salle du TP (…) » rétablit la salle de base. Changer la salle du TP met à jour toutes les cases qui n'ont pas de salle propre. Nécessite la migration `0017_salle_du_tp.sql`.
+- Dans le catalogue, un TP peut avoir une **salle conseillée**. Dans le semainier, une case dont la salle est vide prend automatiquement celle du TP (affichage, export CSV, agenda iCal, occupation des salles). La salle reste modifiable case par case : choisir une autre salle dans la liste de la case la remplace ; « Salle conseillée (…) » rétablit la salle du TP. Inversement, si on choisit une salle dans une case dont le TP n'en a pas, un message propose de l'**affecter au TP** comme salle conseillée. Si une case reçoit une salle alors que son TP n'en a pas, un bouton propose de l'affecter comme salle conseillée du TP. Changer la salle du TP met à jour toutes les cases qui n'ont pas de salle propre. Nécessite la migration `0017_salle_du_tp.sql`.
 
 ## Sous-TP
 

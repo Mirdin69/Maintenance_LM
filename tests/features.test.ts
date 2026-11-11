@@ -314,7 +314,7 @@ describe('occupation des salles d’après le semainier de l’année', () => {
     expect(m.map((o) => o.roomId)).toEqual(['r1', 'r2', 'r3']);
     expect(new Set(m.map((o) => o.key)).size).toBe(3);
   });
-  it('sans salle propre, la case prend la salle de base du TP ; sa propre salle l’emporte', async () => {
+  it('sans salle propre, la case prend la salle conseillée du TP ; sa propre salle l’emporte', async () => {
     const { semainierOccurrences } = await import('@/lib/occupancy');
     const { cellRoomId } = await import('@/lib/semainier');
     const withRoom = new Map([['a', { teacher_id: 't1', teacher_label: null, room_id: 'rTp' }]]) as never;
