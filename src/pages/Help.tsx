@@ -72,7 +72,7 @@ export default function Help() {
       </section>
       <section className="panel stack">
         <h2>À propos</h2>
-        <p><b>Parc MELEC</b> : outil des enseignants du bac pro MELEC du lycée La Mâche pour le parc de systèmes, les salles, le semainier, les TP, les fiches, la maintenance, les achats et le suivi des élèves.</p>
+        <p><b>Parc MELEC</b> : outil des enseignants du bac pro MELEC du lycée La Mache pour le parc de systèmes, les salles, le semainier, les TP, les fiches, la maintenance, les achats et le suivi des élèves.</p>
         <p className="muted small">Accès réservé aux adresses @lamache.org. Votre compte : {profile?.email} ({profile ? ROLES[profile.role] : ''}). Les données sont stockées dans une base privée ; les images déposées (systèmes, outils, logos, photos de panne) sont publiques, les documents ne le sont pas.</p>
         <p className="muted small">Un problème ou une idée ? Contactez le gestionnaire du parc.</p>
       </section>

@@ -1,4 +1,4 @@
--- Parc MELEC - Lycée La Mâche
+-- Parc MELEC - Lycée La Mache
 -- Schéma initial : comptes, groupes, salles, systèmes, emploi du temps, séances,
 -- maintenance, achats, élèves. À exécuter une seule fois (SQL Editor de Supabase
 -- ou `supabase db push`).

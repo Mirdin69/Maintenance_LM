@@ -117,7 +117,7 @@ function Logos({ onDark = false }: { onDark?: boolean }) {
       <Img url={siteLogo} alt="Logo du site" width={240} />
       <div className="brand">
         <b>{title}</b>
-        <span className={onDark ? '' : 'muted small'}>Lycée La Mâche · bac pro MELEC</span>
+        <span className={onDark ? '' : 'muted small'}>Lycée La Mache · bac pro MELEC</span>
       </div>
       <Img url={schoolLogo} alt="Logo du lycée" width={240} />
     </div>

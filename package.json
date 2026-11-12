@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Suivi du parc de systèmes, des salles, de l'emploi du temps et de la progression des élèves - bac pro MELEC, Lycée La Mâche",
+  "description": "Suivi du parc de systèmes, des salles, de l'emploi du temps et de la progression des élèves - bac pro MELEC, Lycée La Mache",
   "scripts": {
     "dev": "vite",
     "demo": "vite --mode demo",

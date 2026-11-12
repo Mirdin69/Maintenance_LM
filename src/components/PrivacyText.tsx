@@ -1,5 +1,5 @@
 export const PRIVACY_DEFAULTS = {
-  controller: 'Lycée La Mâche (représenté par le chef d’établissement)',
+  controller: 'Lycée La Mache (représenté par le chef d’établissement)',
   dpo: 'le délégué à la protection des données de l’académie, joignable via le secrétariat du lycée',
   studentsMonths: 12,
   auditMonths: 12,

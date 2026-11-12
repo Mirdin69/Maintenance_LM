@@ -1,4 +1,4 @@
-# Parc MELEC — Lycée La Mâche
+# Parc MELEC — Lycée La Mache
 
 Application web pour les enseignants du bac pro MELEC : parc de systèmes, **salles et occupation selon l'emploi du temps**, maintenance, achats, planning des TP, suivi des élèves, administration des comptes.
 

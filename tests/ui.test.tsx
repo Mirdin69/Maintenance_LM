@@ -135,10 +135,10 @@ describe('administration', () => {
     await adminTo('Apparence');
     const title = await screen.findByLabelText('Titre du site');
     await userEvent.clear(title);
-    await userEvent.type(title, 'Atelier La Mâche');
+    await userEvent.type(title, 'Atelier La Mache');
     await userEvent.type(screen.getByLabelText('Logo du lycée'), 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view?usp=sharing');
     await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
-    await waitFor(() => expect(screen.getAllByText('Atelier La Mâche').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('Atelier La Mache').length).toBeGreaterThan(0));
     const img = document.querySelector('img[alt="Logo du lycée"]') as HTMLImageElement;
     expect(img.src).toContain('drive.google.com/thumbnail?id=1AbCdEfGhIjKlMnOpQrSt');
   });
