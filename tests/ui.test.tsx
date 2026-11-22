@@ -238,6 +238,8 @@ describe('fiches au modèle des documents Word', () => {
     expect(screen.getByText('CC42 / C4')).toBeInTheDocument();
     expect(screen.getByText('Aucun écart')).toBeInTheDocument();
     expect(screen.getByText('2 h 05')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exporter en Word' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exporter en PDF' })).toBeInTheDocument();
   });
 
   it('saisit une fiche de séance avec un bloc par jour et son total', async () => {

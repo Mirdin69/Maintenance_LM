@@ -8,7 +8,8 @@ import { CC_LABELS, COMPETENCES, DOMAINS, LEVELS, ccToC } from '@/lib/domain';
 import { LEVEL_NOTE, NATURES, ccPair, emptyActivity, emptyEval, emptyPart, fmtMinutes, lines, missingEvalRows, seanceData, sequenceData, totalMinutes, type SeanceData, type SequenceData } from '@/lib/fiche';
 import { fmtStamp } from '@/lib/dates';
 import type { Fiche, FicheKind, Level } from '@/lib/types';
-import { ConfirmButton, Empty, Field, Options, PageHead, Seg } from '@/components/ui';
+import { ConfirmButton, Empty, Field, Options, PageHead, Seg, downloadBlob } from '@/components/ui';
+import { fileName, seanceModel, sequenceModel, toDocx, toPdf } from '@/lib/ficheExport';
 import { DocsEditor, DocsViewer } from '@/components/Docs';
 import { asDocs, cleanDocs, orphanPaths, type Doc } from '@/lib/docs';
 
@@ -157,6 +158,10 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
   const clearDraft = () => { try { window.localStorage.removeItem(draftKey); } catch { /* ignoré */ } setDraft(null); };
 
   const ro = !editable;
+  const exportAs = (format: 'docx' | 'pdf') => act(async () => {
+    const model = kind === 'sequence' ? sequenceModel(title, level, sq) : seanceModel(title, level, sc, data.fiches.find((x) => x.id === (fiche?.sequence_id ?? sequenceId))?.title);
+    downloadBlob(fileName(title, format), format === 'docx' ? await toDocx(model) : await toPdf(model));
+  }, { ok: format === 'docx' ? 'Fiche Word téléchargée.' : 'Fiche PDF téléchargée.' });
   const sequences = data.fiches.filter((x) => x.kind === 'sequence').sort((a, b) => a.title.localeCompare(b.title, 'fr'));
   const linkedSeq = data.fiches.find((x) => x.id === (fiche?.sequence_id ?? sequenceId));
   const seances = fiche ? data.fiches.filter((x) => x.sequence_id === fiche.id).sort((a, b) => a.title.localeCompare(b.title, 'fr', { numeric: true })) : [];
@@ -175,6 +180,10 @@ function Editor({ fiche, kind, editable, canEdit, onEdit, onClose, onSaved, onOp
         {ro && canEdit && <button className="btn sm" onClick={onEdit}>Modifier</button>}
         {editable && <button className="btn sm" onClick={() => void save()}>Enregistrer</button>}
         <button className="btn ghost sm" onClick={() => window.print()}>Imprimer</button>
+        {ro && <>
+          <button className="btn ghost sm" title="Télécharge la fiche au format Word (.docx)" onClick={() => void exportAs('docx')}>Exporter en Word</button>
+          <button className="btn ghost sm" title="Télécharge la fiche au format PDF" onClick={() => void exportAs('pdf')}>Exporter en PDF</button>
+        </>}
         {fiche && canWrite && <button className="btn ghost sm" title="Copie la fiche (les fichiers déposés ne sont pas copiés, seulement les liens)" onClick={async () => {
           let newId = '';
           const ok = await act(async () => {
