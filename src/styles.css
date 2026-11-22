@@ -303,6 +303,25 @@ tr.sel td { background: var(--sunken); }
 .fiche-sheet table { border-collapse: collapse; width: 100%; }
 .fiche-sheet th, .fiche-sheet td { border: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
 .fiche-sheet th { background: var(--sunken); }
+/* Fiches de séquence et de séance : même plan que les documents Word (charte La Mache) */
+.fiche-sheet .fd-bar { background: #1f3864; color: #fff; font-size: 0.95rem; padding: 6px 10px; margin: 16px 0 8px; grid-column: 1 / -1; }
+.fiche-doc .fd-bar:first-of-type { margin-top: 8px; }
+.fd-title { text-align: center; color: var(--navy); font-size: 1.3rem; margin: 4px 0 8px; letter-spacing: 0.04em; }
+.fd-sub { color: var(--navy); font-size: 0.95rem; margin: 14px 0 6px; }
+.fd-head td { width: 33%; vertical-align: middle; }
+.fd-banner { background: #fff2cc; color: #3a2e00; padding: 6px 10px; margin: 6px 0; border: 1px solid #e6d28a; }
+.fd-tp { background: #c55a11; color: #fff; padding: 6px 10px; margin: 6px 0; }
+.fd-banner .linklike { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
+.fiche-sheet .fd-kv th { width: 22%; background: var(--sunken); font-weight: 600; }
+.fiche-sheet .fd-tbl thead th { background: #1f3864; color: #fff; }
+.fiche-sheet .fd-zebra tbody tr:nth-child(even) td { background: var(--sunken); }
+.fd-list { margin: 4px 0 4px 18px; padding: 0; }
+.fd-note { background: var(--sunken); border: 1px solid var(--line); padding: 6px 10px; }
+.fd-warn, .fd-good { padding: 7px 10px; margin: 6px 0; border-left: 4px solid; }
+.fd-warn { border-color: #c00000; background: #fdecec; color: #5c0000; }
+.fd-good { border-color: #548235; background: #eaf3e2; color: #1e3a0e; }
+.fd-block { border-top: 1px dashed var(--line); padding-top: 8px; }
+@media print { .fiche-sheet .fd-bar, .fiche-sheet .fd-tbl thead th, .fd-tp, .fd-banner, .fd-warn, .fd-good { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .fd-tbl tr { break-inside: avoid; } }
 .pre { white-space: pre-wrap; }
 .only-print { display: none; }
 

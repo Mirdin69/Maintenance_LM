@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildWarnings, copyWeekOps, indexCells, weekNeeds } from '@/lib/semainier';
 import { buildRotation } from '@/lib/rotation';
+import { fmtMinutes, lines, minutesOf, missingEvalRows, seanceData, sequenceData, totalMinutes } from '@/lib/fiche';
+import { ccToC } from '@/lib/domain';
 import { blocksFrom, periodsOf } from '@/lib/schedule';
 import { competencesOf, groupShare, studentCompetence } from '@/lib/competences';
 import { buildBilan } from '@/lib/bilan';
@@ -503,5 +505,43 @@ describe('adresses QR des systèmes', () => {
     expect(parseSystemHash(`#systeme/${id}`)).toEqual({ id, poste: null });
     expect(parseSystemHash('#catalogue')).toBeNull();
     expect(parseSystemHash('#systeme/<script>')).toBeNull();
+  });
+});
+
+describe('fiches de séquence et de séance (modèle des documents Word)', () => {
+  it('relie une compétence commune du vademecum à celle du référentiel', () => {
+    expect(['CC11', 'CC23', 'CC41', 'CC42', 'CC51', 'CC61', 'CC73', 'CC81', 'CC92', 'XX'].map(ccToC)).toEqual(['C1', 'C2', 'C4', 'C4', 'C6', 'C7', 'C8', 'C11', 'C13', null]);
+  });
+  it('lit les durées écrites à la main et les additionne', () => {
+    expect(['35 min', '1 h 05', '1h30', '65', '20min', 'abc', ''].map(minutesOf)).toEqual([35, 65, 90, 65, 20, null, null]);
+    expect(totalMinutes(['35 min', '35 min', '65 min', '30 min'])).toBe(165);
+    expect(totalMinutes(['35 min', 'à voir'])).toBeNull();
+    expect(totalMinutes(['', ' '])).toBeNull();
+    expect([165, 385, 20, 60, 125].map(fmtMinutes)).toEqual(['2 h 45', '6 h 25', '20 min', '1 h', '2 h 05']);
+  });
+  it('une ligne par puce, sans les tirets', () => {
+    expect(lines('- Gestes\n\n• Préparation\n  Vérifications  ')).toEqual(['Gestes', 'Préparation', 'Vérifications']);
+  });
+  it('reprend une ancienne fiche séquence : séances → parties, durée et effectif → organisation', () => {
+    const d = sequenceData({ objectif: 'Câbler', seances: ['Découverte', '', 'Câblage'], duree: '6 h', effectif: '14', contexte: 'Fil rouge' });
+    expect(d.parties.map((p) => [p.partie, p.intitule])).toEqual([['1', 'Découverte'], ['2', 'Câblage']]);
+    expect(d.organisation).toBe('6 h · Effectif : 14');
+    expect(d.coherence).toBe('Fil rouge');
+    expect(d.objectif).toBe('Câbler');
+    expect(d.principe.map((p) => p.titre)).toEqual(['Répartition en séances', 'Occupation des postes', 'Arrêts de validation', 'Rotation']);
+  });
+  it('reprend une ancienne fiche séance : tableau unique → un bloc, objectifs → objectif du TP', () => {
+    const d = seanceData({ objectifs: 'Mesurer', activites: [{ activite: 'Accueil', professeur: 'Appel', eleve: 'Écoutent', outils: 'Tableau' }] }, new Date('2026-11-22'));
+    expect(d.blocs).toHaveLength(1);
+    expect(d.blocs[0].lignes[0]).toMatchObject({ activite: 'Accueil', duree: '', professeur: 'Appel' });
+    expect(d.objectif).toBe('Mesurer');
+    expect(d.annee).toBe('2026-2027');
+    expect(d.discipline).toBe('Bac Pro MELEC');
+    expect(seanceData(null, new Date('2026-06-01')).annee).toBe('2025-2026');
+    expect(seanceData({ activites: [] }).blocs).toEqual([{ titre: '', lignes: [] }]);
+  });
+  it('propose une ligne d’évaluation par compétence cochée qui n’en a pas encore', () => {
+    const rows = missingEvalRows(['CC11', 'CC42', 'CC51'], [{ cc: 'CC42', indicateur: 'x', na: '', eca: '', pa: '', a: '' }]);
+    expect(rows.map((r) => r.cc)).toEqual(['CC11', 'CC51']);
   });
 });

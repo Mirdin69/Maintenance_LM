@@ -207,6 +207,41 @@ export const COMPETENCES: Record<string, string> = {
   C13: 'Communiquer avec le client/usager sur l’opération',
 };
 
+/** Compétences communes du vademecum de Seconde (famille des métiers de la transition numérique et énergétique) */
+export const CC_LABELS: Record<string, string> = {
+  CC11: 'Collecter les données nécessaires à l’intervention ou à la réalisation en utilisant les outils numériques',
+  CC12: 'Ordonner les données nécessaires à l’intervention ou à la réalisation en tenant compte des interactions avec les autres intervenants',
+  CC13: 'Repérer les contraintes liées à l’efficacité énergétique',
+  CC21: 'Organiser son poste de travail en assurant la sécurité de tous les intervenants',
+  CC22: 'Identifier les EPC et les EPI adaptés à l’intervention',
+  CC23: 'Déterminer les matériels, les produits et les outillages nécessaires à la réalisation de son intervention',
+  CC31: 'Identifier les éléments d’un système énergétique, de son installation électrique et de son environnement numérique',
+  CC32: 'Identifier les grandeurs physiques nominales associées à l’installation (températures, pression, puissances, intensités, tensions, …)',
+  CC33: 'Représenter tout ou partie d’une installation, manuellement ou avec un outil numérique',
+  CC41: 'Implanter les matériels et les supports',
+  CC42: 'Réaliser l’installation et/ou les modifications des réseaux fluidiques et/ou les câblages électriques',
+  CC43: 'Opérer avec une attitude écoresponsable',
+  CC51: 'Contrôler la conformité des réalisations sur les réseaux fluidiques et les installations électriques',
+  CC52: 'Déterminer les réglages nécessaires pour obtenir le fonctionnement attendu du système',
+  CC53: 'Identifier les modes opératoires des essais normatifs nécessaires à la mise en service des installations',
+  CC61: 'Appliquer les mesures de prévention des risques professionnels',
+  CC62: 'Réaliser les opérations de mise en service et/ou d’arrêt de l’installation',
+  CC63: 'Réaliser les mesures nécessaires pour valider le fonctionnement de l’installation',
+  CC71: 'Contrôler les données d’exploitation (indicateurs, voyants…) par rapport aux attendus',
+  CC72: 'Constater la défaillance',
+  CC73: 'Lister des hypothèses de panne et/ou de dysfonctionnement',
+  CC81: 'Compléter les documents techniques et administratifs',
+  CC82: 'Expliquer l’état d’avancement des opérations, leurs contraintes et leurs difficultés',
+  CC83: 'Formuler un compte-rendu, un rapport d’activité',
+  CC91: 'Interpréter les informations du client et/ou l’exploitant sur ses besoins',
+  CC92: 'Expliquer le fonctionnement et l’utilisation de l’installation au client et/ou à l’exploitant',
+};
+
+/** Correspondance du vademecum : CC1 ↔ C1, CC2 ↔ C2, CC3 ↔ C3, CC4 ↔ C4, CC5 ↔ C6, CC6 ↔ C7, CC7 ↔ C8, CC8 ↔ C11, CC9 ↔ C13 */
+const CC_TO_C: Record<string, string> = { '1': 'C1', '2': 'C2', '3': 'C3', '4': 'C4', '5': 'C6', '6': 'C7', '7': 'C8', '8': 'C11', '9': 'C13' };
+/** Compétence MELEC du référentiel qui correspond à une compétence commune (CC11 → C1), ou null */
+export const ccToC = (cc: string): string | null => CC_TO_C[/^CC(\d)\d$/.exec(cc)?.[1] ?? ''] ?? null;
+
 export const MARKS: MarkLevel[] = ['NA', 'ECA', 'PA', 'A'];
 export const MARK_LABEL: Record<MarkLevel, string> = {
   NA: 'Non acquis',

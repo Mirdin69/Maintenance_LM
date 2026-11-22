@@ -214,6 +214,62 @@ describe('fiches', () => {
   });
 });
 
+describe('fiches au modèle des documents Word', () => {
+  it('saisit une fiche de séquence complète puis la relit avec le même plan', async () => {
+    await open('prof', 'fiches');
+    await userEvent.click(await screen.findByRole('button', { name: '+ Fiche séquence' }));
+    await userEvent.type(screen.getByLabelText(/Titre \*/), 'Thème 2.1 – Ventilation');
+    await userEvent.click(screen.getByLabelText('CC42'));
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter une partie' }));
+    await userEvent.type(screen.getByLabelText('Partie 1'), 'A');
+    await userEvent.type(screen.getByLabelText('Intitulé 1'), 'Préparation');
+    await userEvent.type(screen.getByLabelText('Durée 1'), '1 h 10');
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter une partie' }));
+    await userEvent.type(screen.getByLabelText('Durée 2'), '55 min');
+    expect(screen.getByText('Total : 2 h 05')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Ajouter les compétences cochées \(1\)/ }));
+    await userEvent.type(screen.getByLabelText('A 1'), 'Aucun écart');
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(await screen.findByText('Fiche enregistrée.')).toBeInTheDocument();
+    expect(await screen.findByText('FICHE DE SÉQUENCE')).toBeInTheDocument();
+    expect(screen.getByText('Identité de la séquence')).toBeInTheDocument();
+    // CC42 coche aussi sa compétence du référentiel C4, affichée à côté
+    expect(screen.getByText('Réaliser une installation de manière éco-responsable')).toBeInTheDocument();
+    expect(screen.getByText('CC42 / C4')).toBeInTheDocument();
+    expect(screen.getByText('Aucun écart')).toBeInTheDocument();
+    expect(screen.getByText('2 h 05')).toBeInTheDocument();
+  });
+
+  it('saisit une fiche de séance avec un bloc par jour et son total', async () => {
+    await open('prof', 'fiches');
+    await userEvent.click(await screen.findByRole('button', { name: '+ Fiche séance' }));
+    await userEvent.type(screen.getByLabelText(/Titre \*/), 'Câbler et vérifier hors tension');
+    await userEvent.type(screen.getByLabelText('Titre du bloc 1'), 'Mercredi – 3 séances de 55 min');
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter une ligne' }));
+    await userEvent.type(screen.getByLabelText('activite 1.1'), 'A – Préparation');
+    await userEvent.type(screen.getByLabelText('duree 1.1'), '35 min');
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter une ligne' }));
+    await userEvent.type(screen.getByLabelText('duree 1.2'), '65 min');
+    expect(screen.getByText('Total du bloc : 1 h 40')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '+ Ajouter un point' }));
+    await userEvent.type(screen.getByLabelText('Point de vigilance 1'), 'Coffret hors tension');
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(await screen.findByText('FICHE DE SÉANCE')).toBeInTheDocument();
+    expect(screen.getByText('Mercredi – 3 séances de 55 min')).toBeInTheDocument();
+    expect(screen.getByText('A – Préparation')).toBeInTheDocument();
+    expect(screen.getByText(/⚠ Coffret hors tension/)).toBeInTheDocument();
+  });
+
+  it('une fiche enregistrée avec l’ancien modèle reste lisible et modifiable', async () => {
+    await openWith('prof', 'fiches', async () => {
+      await api.insert('fiches', { kind: 'seance', title: 'Ancienne séance', level: null, data: { objectifs: 'Mesurer', activites: [{ activite: 'Accueil', professeur: 'Appel', eleve: 'Écoutent', outils: 'Tableau' }] } });
+    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Ouvrir' }));
+    expect(await screen.findByText('Appel')).toBeInTheDocument();
+    expect(screen.getByText(/Objectif : Mesurer/)).toBeInTheDocument();
+  });
+});
+
 describe('documents et séquences', () => {
   it('joint un document à un TP et affiche son aperçu Drive', async () => {
     await open('admin', 'catalogue');
